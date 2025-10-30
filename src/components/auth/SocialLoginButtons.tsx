@@ -6,7 +6,7 @@ export function SocialLoginButtons() {
 
   const handleGoogleLogin = () => {
     setLoading('google');
-    const clientId = '493459087329-esd7kq05bmm0v8k10h3glp1hrk91ipfj.apps.googleusercontent.com';
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
     const redirectUri = 'http://localhost:5173/auth/google/callback';
     const scope = 'openid email profile';
     
@@ -16,7 +16,7 @@ export function SocialLoginButtons() {
 
   const handleGithubLogin = () => {
     setLoading('github');
-    const clientId = 'Ov23liABCDEFGHIJKLMN';
+    const clientId = import.meta.env.VITE_GITHUB_CLIENT_ID;
     const redirectUri = `${window.location.origin}/auth/github/callback`;
     
     const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=user:email`;
