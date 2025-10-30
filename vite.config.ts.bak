@@ -1,0 +1,87 @@
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react-swc";
+import path from "path";
+import { componentTagger } from "lovable-tagger";
+
+// https://vitejs.dev/config/
+export default defineConfig(({ mode, command }) => {
+  // Production build environment checks
+  if (command === 'build') {
+    const requiredEnvVars = [
+      'VITE_API_URL',
+      'VITE_STARKNET_RPC_URL',
+      'VITE_BOUNTY_CONTRACT_ADDRESS',
+      'VITE_AUTOSWAPPR_API_URL',
+      'VITE_CAVOS_CLIENT_ID'
+    ];
+
+    const optionalEnvVars = [
+      'VITE_GPT_OSS_ENDPOINT',
+      'VITE_GOOGLE_CLIENT_ID',
+      'VITE_GITHUB_CLIENT_ID',
+      'VITE_TWITTER_CLIENT_ID',
+      'VITE_EMAIL_SERVICE_KEY'
+    ];
+
+    const missingRequired = requiredEnvVars.filter(env => !process.env[env]);
+    const missingOptional = optionalEnvVars.filter(env => !process.env[env]);
+
+    if (missingRequired.length > 0) {
+      console.error('\x1b[31m%s\x1b[0m', '❌ Error: Missing required environment variables:');
+      missingRequired.forEach(env => console.error(`   - ${env}`));
+      console.error('\nThese variables are required for production builds. Please set them in your environment.');
+      process.exit(1);
+    }
+
+    if (missingOptional.length > 0) {
+      console.warn('\x1b[33m%s\x1b[0m', '⚠️ Warning: Missing optional environment variables:');
+      missingOptional.forEach(env => console.warn(`   - ${env}`));
+      console.warn('\nSome features may be disabled without these variables.');
+    }
+
+    if (process.env.VITE_API_URL?.includes('localhost')) {
+      console.error('\x1b[31m%s\x1b[0m', '❌ Error: VITE_API_URL contains localhost - this is not allowed in production builds.');
+      process.exit(1);
+    }
+  }
+
+  return {
+    server: {
+      host: "::",
+      port: 8080,
+    },
+    plugins: [
+      react(),
+      mode === 'development' && componentTagger(),
+    ].filter(Boolean),
+    resolve: {
+      alias: {
+        "@": path.resolve(__dirname, "./src"),
+      },
+    },
+    build: {
+    sourcemap: process.env.NODE_ENV === 'development',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-ui': [
+            '@radix-ui/react-alert-dialog',
+            '@radix-ui/react-dropdown-menu',
+            '@radix-ui/react-dialog',
+            '@radix-ui/react-toast',
+            '@radix-ui/react-tooltip'
+          ],
+          'vendor-charts': ['recharts', '@nivo/core', '@nivo/line', '@nivo/pie'],
+          'vendor-grid': ['react-grid-layout'],
+          'vendor-core': ['react', 'react-dom', 'react-router-dom', '@tanstack/react-query'],
+          'vendor-monaco': ['@monaco-editor/react']
+        }
+      }
+    }
+      },
+    },
+  },
+  define: {
+    global: 'globalThis',
+  },
+});
