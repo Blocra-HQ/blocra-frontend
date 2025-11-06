@@ -35,8 +35,14 @@ function Chart({
 
   useEffect(() => {
     const fetchData = async () => {
+      if (endpoints.length === 0) {
+        setStatus("No RPC endpoints configured");
+        return;
+      }
+
       try {
         let response;
+        let lastError;
 
         // Try each RPC endpoint until one works
         for (const endpoint of endpoints) {
@@ -47,8 +53,8 @@ function Chart({
               body: JSON.stringify({
                 jsonrpc: "2.0",
                 method,
-                params: ["latest"],
-                id: 1,
+                params: method === "starknet_blockNumber" ? [] : ["latest"],
+                id: Date.now(),
               }),
             });
 
@@ -57,53 +63,58 @@ function Chart({
               break; // stop after first success
             }
           } catch (e) {
+            lastError = e;
             console.warn(`RPC endpoint failed: ${endpoint}`, e);
             continue;
           }
         }
 
-        if (!response || !response.ok) throw new Error("All RPC endpoints failed");
+        if (!response || !response.ok) {
+          throw lastError || new Error("All RPC endpoints failed");
+        }
 
         const result = await response.json();
-
-        // console.log(`${method} response:`, result); // optional debug log
+        
+        if (result.error) {
+          throw new Error(result.error.message || 'RPC Error');
+        }
 
         if (onDataUpdate) onDataUpdate(result);
 
         const now = Date.now();
-        let value = Math.floor(Math.random() * 500) + 50;
+        let value = 0;
 
         if (result.result) {
           if (method === "starknet_getBlockWithTxs" && result.result.transactions) {
             value = result.result.transactions.length;
           } else if (method === "starknet_getStateUpdate" && result.result.state_diff) {
-            value =
-              Object.keys(result.result.state_diff).length ||
-              Math.floor(Math.random() * 200) + 20;
+            value = Object.keys(result.result.state_diff || {}).length;
+          } else if (method === "starknet_blockNumber") {
+            value = parseInt(result.result, 16) % 1000; // Show last 3 digits for visualization
+          } else {
+            value = Math.floor(Math.random() * 100) + 10;
           }
         }
 
-        setData((prev) => [...prev.slice(-30), { timestamp: now, value }]);
-        setStatus(`Active - Last: ${value}`);
+        setData((prev) => [...prev.slice(-20), { timestamp: now, value }]);
+        setStatus(`Connected - Latest: ${value}`);
       } catch (error) {
         console.error("RPC call failed:", error);
-        setStatus("RPC Error - Using mock data");
-        const now = Date.now();
-        const value = Math.floor(Math.random() * 500) + 50;
-        setData((prev) => [...prev.slice(-30), { timestamp: now, value }]);
+        setStatus(`RPC Error: ${error.message}`);
+        // Don't add mock data on error, just keep existing data
       }
     };
 
+    // Initial fetch
     fetchData();
 
-    // ✅ Run every 5s only — stable interval
+    // Update every 5 seconds for real-time feel
     intervalRef.current = setInterval(fetchData, 5000);
 
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  // ⚠️ Only re-run when method changes (avoid rapid refresh)
-  }, [method]);
+  }, [method, endpoints.join(',')]);
 
   if (!xAxis || !yAxis) {
     return (

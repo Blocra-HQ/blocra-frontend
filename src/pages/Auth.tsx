@@ -32,7 +32,7 @@ const [lastName, setLastName] = useState('');
 
   const [activeTab, setActiveTab] = useState<'signin' | 'signup'>('signin');
 
-  const BACKEND_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+  const BACKEND_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
   // ------------------- SIGN IN -------------------
   const handleSignIn = async (e: React.FormEvent) => {
@@ -172,12 +172,12 @@ const handleSignUp = async (e: React.FormEvent) => {
               <BarChart3 className="w-7 h-7 text-primary-foreground" />
             </div>
             <span className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-              Starklytics
+              BloDI
             </span>
           </Link>
-          <h1 className="text-3xl font-bold mb-2">Welcome to Starklytics</h1>
+          <h1 className="text-3xl font-bold mb-2">Welcome to BloDI</h1>
           <p className="text-muted-foreground mb-4">
-            Join the premier analytics bounty platform for Starknet
+            Join the premier blockchain data intelligence platform for Starknet
           </p>
         </div>
 
@@ -355,152 +355,7 @@ const handleSignUp = async (e: React.FormEvent) => {
                 </div>
               </div>
               <div className="mt-6">
-                <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'signin' | 'signup')}>
-              <TabsList className="grid w-full grid-cols-2 mb-6">
-                <TabsTrigger value="signin">
-                  <LogIn className="w-4 h-4 mr-2" />
-                  Sign In
-                </TabsTrigger>
-                <TabsTrigger value="signup">
-                  <UserPlus className="w-4 h-4 mr-2" />
-                  Sign Up
-                </TabsTrigger>
-              </TabsList>
-
-              {error && (
-                <Alert variant="destructive" className="mb-4">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
-
-              {message && (
-                <Alert className="mb-4">
-                  <AlertDescription>{message}</AlertDescription>
-                </Alert>
-              )}
-
-              <TabsContent value="signin">
-                <form onSubmit={handleSignIn} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="signin-email">Email</Label>
-                    <Input
-                      id="signin-email"
-                      type="email"
-                      placeholder="Enter your email"
-                      value={signInEmail}
-                      onChange={(e) => setSignInEmail(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signin-password">Password</Label>
-                    <Input
-                      id="signin-password"
-                      type="password"
-                      placeholder="Enter your password"
-                      value={signInPassword}
-                      onChange={(e) => setSignInPassword(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <Button type="submit" className="w-full glow-primary" disabled={loading}>
-                    {loading ? 'Signing in...' : 'Sign In'}
-                  </Button>
-                </form>
-              </TabsContent>
-
-              <TabsContent value="signup">
-                <form onSubmit={handleSignUp} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="first-name">First Name</Label>
-                      <Input
-                        id="first-name"
-                        placeholder="John"
-                        value={firstName}
-                        onChange={(e) => setFirstName(e.target.value)}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="last-name">Last Name</Label>
-                      <Input
-                        id="last-name"
-                        placeholder="Doe"
-                        value={lastName}
-                        onChange={(e) => setLastName(e.target.value)}
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="role">I want to</Label>
-                    <Select
-                      value={role}
-                      onValueChange={(value: 'analyst' | 'creator') => setRole(value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="analyst">
-                          <div className="flex items-center space-x-2">
-                            <Trophy className="w-4 h-4 text-chart-warning" />
-                            <div className="text-left">
-                              <div className="font-medium">Work on Bounties</div>
-                              <div className="text-xs text-muted-foreground">
-                                Solve analytics challenges and earn rewards
-                              </div>
-                            </div>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="creator">
-                          <div className="flex items-center space-x-2">
-                            <Briefcase className="w-4 h-4 text-chart-primary" />
-                            <div className="text-left">
-                              <div className="font-medium">Create Bounties</div>
-                              <div className="text-xs text-muted-foreground">
-                                Post analytics challenges for the community
-                              </div>
-                            </div>
-                          </div>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-email">Email</Label>
-                    <Input
-                      id="signup-email"
-                      type="email"
-                      placeholder="Enter your email"
-                      value={signUpEmail}
-                      onChange={(e) => setSignUpEmail(e.target.value)}
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-password">Password</Label>
-                    <Input
-                      id="signup-password"
-                      type="password"
-                      placeholder="Create a password"
-                      value={signUpPassword}
-                      onChange={(e) => setSignUpPassword(e.target.value)}
-                      required
-                    />
-                  </div>
-
-                  <Button type="submit" className="w-full glow-primary" disabled={loading}>
-                    {loading ? 'Creating account...' : 'Create Account'}
-                  </Button>
-                </form>
-              </TabsContent>
-            </Tabs>
+                <SocialLoginButtons />
               </div>
             </div>
           </CardContent>
