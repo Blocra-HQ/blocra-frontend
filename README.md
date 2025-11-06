@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🚀 Starklytics Suite
+# 🚀 BloDI
 
 ### Next-Generation Analytics & Bounty Platform for Starknet
 
@@ -17,7 +17,7 @@
 
 ---
 
-## 🌟 **What is Starklytics Suite?**
+## 🌟 **What is BloDI?**
 
 Starklytics Suite is a **production-ready, enterprise-grade platform** that revolutionizes how developers and analysts interact with the Starknet ecosystem. Combining powerful analytics dashboards with a seamless bounty system, it's the ultimate toolkit for Starknet development and data analysis.
 
