@@ -2,16 +2,15 @@
 
 # 🚀 BloDI
 
-### Next-Generation Analytics & Bounty Platform for Starknet
+### Next-Generation Analytics & Intelligence Platform for Starknet
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Production Ready](https://img.shields.io/badge/Status-Production%20Ready-brightgreen.svg)](https://starklytics-suite.vercel.app/)
+[![Production Ready](https://img.shields.io/badge/Status-Production%20Ready-brightgreen.svg)](https://blodi-suite.vercel.app/)
 [![Starknet](https://img.shields.io/badge/Built%20for-Starknet-black?logo=ethereum)](https://starknet.io/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-20232A?logo=react&logoColor=61DAFB)](https://reactjs.org/)
-[![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?logo=supabase&logoColor=white)](https://supabase.com/)
 
-[🌐 **Live Demo**](https://starklytics-suite.vercel.app/) • [📖 **Documentation**](./README-PRODUCTION.md) • [🚀 **Deploy Now**](#-quick-deploy)
+[🌐 **Live Demo**](https://blodi-suite.vercel.app/) • [📖 **Documentation**](#-features) • [🚀 **Deploy Now**](#-quick-deploy)
 
 </div>
 
@@ -19,15 +18,15 @@
 
 ## 🌟 **What is BloDI?**
 
-Starklytics Suite is a **production-ready, enterprise-grade platform** that revolutionizes how developers and analysts interact with the Starknet ecosystem. Combining powerful analytics dashboards with a seamless bounty system, it's the ultimate toolkit for Starknet development and data analysis.
+**BloDI (Blockchain Data Intelligence)** is a production-ready, enterprise-grade platform that revolutionizes how developers, analysts, and businesses interact with the Starknet ecosystem. Combining powerful real-time analytics with AI-powered intelligence reports, it's the ultimate toolkit for blockchain data analysis and business intelligence.
 
 ### 🎯 **Core Value Propositions**
 
-- 📊 **Real-Time Analytics**: Live Starknet data with interactive visualizations
-- 🏆 **Automated Bounty System**: Create, fund, and manage bounties with smart contracts
-- 🔐 **Enterprise Security**: Production-grade security with rate limiting and validation
-- 🤖 **AI-Powered Insights**: GPT-OSS integration for intelligent data interpretation
-- ⚡ **Lightning Fast**: Optimized performance with modern tech stack
+- 📊 **Real-Time Analytics**: Live Starknet data with interactive visualizations and comprehensive dashboards
+- 🤖 **AI-Powered Intelligence**: Blocra Intelligence Engine generates professional business reports with strategic insights
+- 📄 **Professional Reports**: Export detailed PDF intelligence reports with risk assessment and recommendations
+- 🔍 **Contract Analysis**: Deep dive into any Starknet contract with comprehensive event analysis
+- ⚡ **Lightning Fast**: Optimized performance with real-time RPC data integration
 
 ---
 
@@ -37,42 +36,44 @@ Starklytics Suite is a **production-ready, enterprise-grade platform** that revo
 <tr>
 <td width="50%">
 
-### 🏆 **Bounty Management**
-- **Smart Contract Integration**: Cairo-based bounty logic
-- **AutoSwappr Integration**: Automated token deposits/payouts
-- **Role-Based Access**: Creator, Analyst, Admin roles
-- **Real-Time Notifications**: Email alerts for all bounty events
-- **Transaction Tracking**: Complete audit trail
+### 🔍 **Contract Intelligence**
+- **Real-Time Event Analysis**: Live contract event monitoring and decoding
+- **User Segmentation**: Whale, Bot, DAO, and Regular User classification
+- **Performance Metrics**: Gas analysis, success rates, and efficiency scoring
+- **Visual Dashboards**: Interactive charts and KPI cards with real blockchain data
+- **Export Capabilities**: CSV, JSON, and dashboard image exports
 
 </td>
 <td width="50%">
 
-### 📊 **Analytics Dashboard**
-- **Live Starknet Data**: Real-time RPC integration
-- **Interactive Charts**: Bar, line, area, and pie charts
-- **Custom Queries**: SQL-like query interface
-- **Data Export**: JSON/CSV export capabilities
-- **Contract Events**: EDA for any Starknet contract
+### 🤖 **AI-Powered Reports**
+- **Blocra Intelligence Engine**: Advanced AI analysis of contract data
+- **Professional PDF Reports**: Business-ready intelligence documents
+- **Risk Assessment**: Technical, operational, and market risk analysis
+- **Strategic Recommendations**: Actionable insights for growth and optimization
+- **Executive Summaries**: C-level ready business intelligence
 
 </td>
 </tr>
 <tr>
 <td width="50%">
 
-### 🤖 **AI Integration**
-- **GPT-OSS 120B**: Advanced language model
-- **Smart Query Suggestions**: AI-optimized analytics
-- **Real-Time Interpretation**: Instant data insights
-- **Interactive Chat**: AI assistant for platform help
+### 📊 **Analytics Dashboard**
+- **Live Starknet Data**: Real-time RPC integration with multiple endpoints
+- **Interactive Visualizations**: Pie charts, bar charts, line graphs, and gauges
+- **Custom Metrics**: Gas usage, user retention, transaction patterns
+- **Cross-Contract Analysis**: Multi-contract interaction tracking
+- **Performance Monitoring**: Success rates, error analysis, and reliability scoring
 
 </td>
 <td width="50%">
 
-### 🔒 **Enterprise Security**
-- **Rate Limiting**: API abuse protection
-- **Input Validation**: SQL injection prevention
-- **Error Handling**: Comprehensive error management
-- **Authentication**: Secure user management
+### 🔒 **Enterprise Features**
+- **Production Ready**: Deployed and tested for enterprise use
+- **Multiple RPC Endpoints**: Failover support for high availability
+- **Professional UI**: Clean, modern interface built with shadcn/ui
+- **Responsive Design**: Works seamlessly on desktop and mobile
+- **Error Handling**: Comprehensive error management and user feedback
 
 </td>
 </tr>
@@ -80,199 +81,24 @@ Starklytics Suite is a **production-ready, enterprise-grade platform** that revo
 
 ---
 
-## 🌍 **Production Environment Setup**
-
-Before deploying to production, ensure you have configured the following environment variables properly. These are critical for the application's security and functionality:
-
-### Required Environment Variables
-
-1. **API Configuration**
-   - `VITE_API_URL`: Your production API endpoint
-   - `VITE_APP_ENV`: Set to 'production'
-
-2. **Starknet Configuration**
-   - `VITE_STARKNET_RPC_URL`: Production RPC endpoint (recommended: Infura/Alchemy)
-   - `VITE_BOUNTY_CONTRACT_ADDRESS`: Your deployed contract address
-
-3. **Integration Services**
-   - `VITE_AUTOSWAPPR_API_URL`: AutoSwappr production API
-   - `VITE_GPT_OSS_ENDPOINT`: Your GPT service endpoint (if using AI features)
-
-4. **Authentication**
-   - `VITE_CAVOS_CLIENT_ID`: Your Cavos production client ID
-   - OAuth IDs (if implemented):
-     - `VITE_GOOGLE_CLIENT_ID`
-     - `VITE_GITHUB_CLIENT_ID`
-     - `VITE_TWITTER_CLIENT_ID`
-
-5. **Security & Services**
-   - `VITE_EMAIL_SERVICE_KEY`: Production email service API key
-
-### Production Checklist
-
-✅ Set all environment variables in your deployment platform
-✅ Deploy smart contracts to mainnet
-✅ Configure proper rate limits
-✅ Enable production error logging
-✅ Set up monitoring and alerts
-✅ Configure proper CORS settings
-✅ Enable SSL/TLS
-✅ Set up database backups
-
----
-
-## 🚀 **Quick Deploy**
-
-### One-Click Deployment
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/your-repo/starklytics-suite)
-
-### Manual Deployment
-
-```bash
-# 1. Clone the repository
-git clone https://github.com/your-repo/starklytics-suite.git
-cd starklytics-suite
-
-# 2. Install dependencies
-pnpm install
-
-# 3. Set up environment variables
-cp .env.example .env.local
-# Edit .env.local with your configuration
-
-# 4. Deploy backend services
-supabase functions deploy deposit-bounty
-supabase functions deploy payout-bounty
-supabase functions deploy send-notification
-
-# 5. Deploy smart contracts
-./scripts/deploy-contract.sh
-
-# 6. Run database migrations
-supabase db push
-
-# 7. Start the application
-pnpm run dev
-```
-
----
-
-## 🏗️ **Architecture Overview**
-
-```mermaid
-graph TB
-    A[Frontend - React/Vite] --> B[Supabase Backend]
-    A --> C[Starknet RPC]
-    B --> D[PostgreSQL Database]
-    B --> E[Edge Functions]
-    E --> F[AutoSwappr API]
-    E --> G[Email Service]
-    C --> H[Cairo Smart Contracts]
-    A --> I[AI Integration - GPT-OSS]
-```
-
-### 🛠️ **Tech Stack**
-
-| Layer | Technology | Purpose |
-|-------|------------|----------|
-| **Frontend** | React + Vite + TypeScript | Modern, fast UI development |
-| **Styling** | Tailwind CSS + shadcn/ui | Beautiful, responsive design |
-| **Backend** | Supabase (PostgreSQL + Auth) | Scalable backend infrastructure |
-| **Blockchain** | Starknet + Cairo | Smart contract integration |
-| **AI** | GPT-OSS 120B | Intelligent data analysis |
-| **Deployment** | Vercel + Edge Functions | Global CDN deployment |
-
----
-
-## 🎮 **User Journey**
-
-### For Bounty Creators
-```
-1. 🔐 Sign Up & Set Role → "Bounty Creator"
-2. 🏆 Create Bounty → Fill details, set reward
-3. 💰 Auto-Deposit → AutoSwappr handles token staking
-4. 📧 Get Notified → Email alerts for submissions
-5. 🏅 Select Winner → Automated payout to winner
-```
-
-### For Analysts
-```
-1. 🔍 Browse Bounties → Find interesting challenges
-2. 🚀 Join Bounty → Submit your solution
-3. 📊 Use Analytics → Leverage data insights
-4. 🎯 Win Rewards → Get paid automatically
-```
-
-### For Data Analysts
-```
-1. 📈 Access Dashboard → Real-time Starknet data
-2. 🔍 Run Queries → Custom SQL-like interface
-3. 📊 Visualize Data → Interactive charts
-4. 🤖 AI Insights → GPT-powered analysis
-```
-
----
-
-## 📊 **Production Metrics**
-
-<div align="center">
-
-| Metric | Value | Status |
-|--------|-------|--------|
-| **Uptime** | 99.9% | 🟢 Excellent |
-| **Response Time** | <200ms | 🟢 Fast |
-| **Security Score** | A+ | 🟢 Secure |
-| **Test Coverage** | 95% | 🟢 Reliable |
-| **Performance** | 98/100 | 🟢 Optimized |
-
-</div>
-
----
-
-## 🎯 **Demo Features**
-
-### 🔥 **Try These Features Now**
-- **Analytics Dashboard**: Real-time Starknet data visualization
-- **Query Editor**: Write SQL-like queries for blockchain data
-- **Bounty System**: Create and manage bounties with demo tokens
-- **Wallet Integration**: Connect Argent X or Braavos wallets
-- **Dashboard Builder**: Drag-and-drop analytics creation
-- **Contract Analysis**: Analyze smart contract events
-- **AI Chat**: GPT-powered data insights
-- **User Roles**: Switch between Analyst, Creator, and Admin
-
-### 🚀 **Getting Started in 30 Seconds**
-1. Visit the live demo
-2. Login with `demo@starklytics.com` / `password123`
-3. Explore the analytics dashboard
-4. Create your first bounty
-5. Connect your Starknet wallet
-
----
-
-## 🔧 **Development**
+## 🚀 **Quick Start**
 
 ### Prerequisites
 - Node.js 18+
 - pnpm (recommended) or npm
-- Supabase CLI
-- Starkli (for contract deployment)
 
-### Local Setup
+### Local Development
 
 ```bash
+# Clone the repository
+git clone https://github.com/Ndifreke000/BloDI.git
+cd BloDI
+
 # Install dependencies
 pnpm install
 
-# Set up environment
-cp .env.example .env.local
-
 # Start development server
 pnpm run dev
-
-# Run tests
-pnpm run test
 
 # Build for production
 pnpm run build
@@ -281,77 +107,153 @@ pnpm run build
 ### Environment Variables
 
 ```env
-# Supabase
-VITE_SUPABASE_URL=your_supabase_url
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+# Starknet RPC Configuration
+VITE_STARKNET_RPC_URL=https://starknet-mainnet.public.blastapi.io
 
-# Starknet
-VITE_STARKNET_RPC_URL=https://starknet-mainnet.reddio.com/rpc/v0_7
-VITE_BOUNTY_CONTRACT_ADDRESS=0x07070d915635269ea0930fa1c538f2d026e02e5078884aeb007141c39f481eee
-
-# AutoSwappr
-VITE_AUTOSWAPPR_API_URL=https://api.autoswappr.com
-
-# AI Integration
-VITE_GPT_OSS_ENDPOINT=http://localhost:8000
+# Optional: Additional RPC endpoints are configured in the app
+# The app automatically uses multiple RPC endpoints with failover
 ```
 
 ---
 
-## 🧪 **Testing**
+## 🎮 **How to Use BloDI**
+
+### 1. **Contract Analysis**
+```
+1. 🔍 Enter Contract Address → Input any Starknet mainnet contract
+2. 📝 Add Contract Name → Provide a custom name for your analysis
+3. 🚀 Fetch Events → Retrieve and analyze contract events
+4. 📊 View Dashboard → Explore interactive analytics and metrics
+```
+
+### 2. **Generate Intelligence Reports**
+```
+1. 📊 Complete Contract Analysis → Ensure you have fetched contract data
+2. 🤖 Generate AI Report → Click "Generate PDF Report" 
+3. ⏳ Wait for Analysis → Blocra Intelligence Engine processes the data
+4. 📄 Download PDF → Get your professional intelligence report
+```
+
+### 3. **Export and Share**
+```
+1. 📊 Export Data → Download CSV/JSON of contract events
+2. 📸 Export Dashboard → Save dashboard as high-quality image
+3. 📄 Share Reports → Professional PDF reports for stakeholders
+```
+
+---
+
+## 🏗️ **Architecture Overview**
+
+```mermaid
+graph TB
+    A[React Frontend] --> B[Multiple RPC Endpoints]
+    A --> C[Blocra Intelligence Engine]
+    B --> D[Starknet Mainnet]
+    C --> E[AI Analysis Service]
+    E --> F[PDF Report Generation]
+    A --> G[Real-time Dashboard]
+    G --> H[Interactive Charts]
+```
+
+### 🛠️ **Tech Stack**
+
+| Layer | Technology | Purpose |
+|-------|------------|----------|
+| **Frontend** | React + Vite + TypeScript | Modern, fast UI development |
+| **Styling** | Tailwind CSS + shadcn/ui | Beautiful, responsive design |
+| **Charts** | Recharts | Interactive data visualizations |
+| **Blockchain** | Starknet RPC + starknet.js | Real-time blockchain data |
+| **AI Engine** | Blocra Intelligence Engine | Advanced contract analysis |
+| **Reports** | jsPDF | Professional PDF generation |
+| **Deployment** | Vercel | Global CDN deployment |
+
+---
+
+## 📊 **Sample Intelligence Report Sections**
+
+BloDI generates comprehensive reports with these sections:
+
+- **📋 Contract Information**: Address, type, deployment details, current status
+- **📈 Executive Summary**: Key performance indicators and strategic assessment  
+- **⚡ Performance Analysis**: Gas efficiency, reliability metrics, user retention
+- **💼 Business Insights**: User behavior patterns, market position, revenue implications
+- **⚠️ Risk Assessment**: Technical, operational, and market risk factors
+- **🔧 Technical Analysis**: Event architecture, cross-contract interactions, health indicators
+- **🎯 Market Position**: Competitive analysis, growth trajectory, market opportunity
+- **📋 Strategic Recommendations**: Immediate actions, improvements, and long-term strategy
+
+---
+
+## 🎯 **User Segments Explained**
+
+BloDI automatically classifies contract users into segments:
+
+- **🐋 Whale**: Large holders making high-value transactions with substantial holdings
+- **🤖 Bot**: Automated programs performing arbitrage, market making, or trading strategies  
+- **🏛️ DAO**: Decentralized organizations managing protocol operations and governance
+- **👤 Regular User**: Individual retail users making standard transactions and interactions
+
+---
+
+## 🌍 **Production Deployment**
+
+### One-Click Deployment
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Ndifreke000/BloDI)
+
+### Manual Deployment
 
 ```bash
-# Run all tests
-pnpm run test
+# Build the application
+pnpm run build
 
-# Run tests with coverage
-pnpm run test:coverage
-
-# Run E2E tests
-pnpm run test:e2e
-
-# Test Starknet integration
-pnpm run test:starknet
+# Deploy to your preferred platform
+# The app is optimized for Vercel, Netlify, or any static hosting
 ```
 
 ---
 
-## 📈 **Monitoring & Analytics**
+## 📈 **Performance Metrics**
 
-### System Health Dashboard
-Access real-time system metrics at `/status`:
+<div align="center">
 
-- 🟢 **Database Connection**: Supabase health
-- 🟢 **RPC Status**: Starknet connectivity
-- 🟢 **API Limits**: Rate limiting status
-- 🟢 **Contract Status**: Smart contract health
+| Metric | Value | Status |
+|--------|-------|--------|
+| **Build Time** | <30s | 🟢 Fast |
+| **Bundle Size** | Optimized | 🟢 Efficient |
+| **RPC Failover** | 4 Endpoints | 🟢 Reliable |
+| **Report Generation** | <5s | 🟢 Quick |
+| **Mobile Support** | Responsive | 🟢 Compatible |
 
-### Performance Monitoring
-- **Error Tracking**: Comprehensive error logging
-- **Performance Metrics**: Response time monitoring
-- **User Analytics**: Usage patterns and insights
-
----
-
-## 🔐 **Security**
-
-### Security Features
-- ✅ **Input Validation**: All user inputs sanitized
-- ✅ **SQL Injection Prevention**: Parameterized queries
-- ✅ **Rate Limiting**: API abuse protection
-- ✅ **Authentication**: Secure user sessions
-- ✅ **HTTPS Everywhere**: End-to-end encryption
-
-### Security Audits
-- **Last Audit**: January 2025
-- **Security Score**: A+
-- **Vulnerabilities**: 0 Critical, 0 High
+</div>
 
 ---
 
-## 🌍 **Community & Support**
+## 🔧 **Development**
 
-### 🤝 **Contributing**
+### Project Structure
+```
+src/
+├── components/          # Reusable UI components
+├── pages/              # Main application pages
+├── services/           # Business logic and API services
+│   ├── AIAnalysisService.ts    # Blocra Intelligence Engine
+│   ├── PDFReportService.ts     # PDF generation
+│   └── StarknetRPCService.ts   # Blockchain data fetching
+├── lib/                # Utility functions
+└── styles/             # Global styles and themes
+```
+
+### Key Services
+
+- **AIAnalysisService**: Generates comprehensive business intelligence reports
+- **PDFReportService**: Creates professional PDF documents with proper formatting
+- **StarknetRPCService**: Handles real-time blockchain data with failover support
+
+---
+
+## 🤝 **Contributing**
 
 We welcome contributions! Here's how to get started:
 
@@ -361,64 +263,6 @@ We welcome contributions! Here's how to get started:
 4. **Push** to the branch (`git push origin feature/amazing-feature`)
 5. **Open** a Pull Request
 
-### 📞 **Support**
-
-- 📧 **Email**: support@starklytics.com
-- 💬 **Discord**: [Join our community](https://discord.gg/starklytics)
-- 🐛 **Issues**: [GitHub Issues](https://github.com/your-repo/starklytics-suite/issues)
-- 📖 **Docs**: [Full Documentation](./README-PRODUCTION.md)
-
----
-
-## 🏆 **Achievements**
-
-<div align="center">
-
-🥇 **Best Starknet Analytics Platform 2025**  
-🚀 **Featured on Starknet Official Blog**  
-⭐ **500+ GitHub Stars**  
-👥 **1000+ Active Users**  
-🔥 **99.9% Uptime**  
-
-</div>
-
----
-
-## 🚀 **Performance & Optimization**
-
-### ⚡ **Speed Metrics**
-- **First Contentful Paint**: < 1.2s
-- **Largest Contentful Paint**: < 2.5s
-- **Time to Interactive**: < 3.8s
-- **Bundle Size**: Optimized chunks
-- **Lighthouse Score**: 95+ across all metrics
-
-### 🔧 **Technical Optimizations**
-- **Code Splitting**: Dynamic imports for route-based splitting
-- **Tree Shaking**: Unused code elimination
-- **Image Optimization**: WebP format with lazy loading
-- **Caching Strategy**: Service worker implementation
-- **CDN Integration**: Global content delivery
-
----
-
-## 📋 **Roadmap**
-
-### Q1 2025
-- [x] Production deployment
-- [x] AutoSwappr integration
-- [x] AI-powered analytics
-- [x] Performance optimization
-- [x] Security hardening
-- [ ] Mobile app (React Native)
-- [ ] Advanced DeFi analytics
-
-### Q2 2025
-- [ ] Multi-chain support
-- [ ] Advanced AI features
-- [ ] Enterprise dashboard
-- [ ] API marketplace
-
 ---
 
 ## 📄 **License**
@@ -426,7 +270,7 @@ We welcome contributions! Here's how to get started:
 ```
 MIT License
 
-Copyright (c) 2025 Starklytics Suite
+Copyright (c) 2025 BloDI - Blockchain Data Intelligence
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -453,8 +297,8 @@ SOFTWARE.
 
 **Built with ❤️ for the Starknet Community**
 
-[🌐 Website](https://starklytics-suite.vercel.app/) • [📖 Docs](./README-PRODUCTION.md) • [💬 Discord](https://discord.gg/starklytics) • [🐦 Twitter](https://twitter.com/starklytics)
+[🌐 Website](https://blodi-suite.vercel.app/) • [📖 Docs](#-features) • [🐦 Twitter](https://twitter.com/blodi_suite) • [💬 Discord](https://discord.gg/blodi)
 
-⭐ **Star us on GitHub** if you find this project useful!
+⭐ **Star us on GitHub** if you find BloDI useful for your blockchain analytics!
 
-</div># Starklytics.....
+</div>
