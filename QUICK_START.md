@@ -182,6 +182,19 @@ lsof -i :3000
 # Check CORS configuration
 ```
 
+### Deploying the frontend to a static host (GitHub Pages / Vercel)
+
+If you deploy the frontend as static files, you can change the backend URL at runtime without rebuilding by creating an `env.js` file next to your deployed `index.html` with this content:
+
+```js
+// public/env.js served from the same origin as your static site
+window.__RUNTIME_CONFIG__ = { VITE_API_URL: 'https://api.myapp.com/api' };
+```
+
+Make sure `env.js` is loaded before the application bundle (this repo already includes a `<script src="/env.js"></script>` in `index.html`). This lets the deployed site contact a public backend URL instead of `localhost`.
+
+If you deploy with Vercel/Netlify, prefer setting `VITE_API_URL` in the project environment variables and rebuilding the site so the value is baked into the build.
+
 ### Queries not executing
 ```bash
 # Check MongoDB is running

@@ -21,6 +21,8 @@
 
   <body>
     <div id="root"></div>
+    <!-- Load runtime env override (create public/env.js on the server with window.__RUNTIME_CONFIG__) -->
+    <script src="/env.js"></script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
