@@ -8,6 +8,7 @@ import { Download, BarChart3, PieChart, TrendingUp, FileText, ExternalLink, Bot,
 import { useNavigate } from 'react-router-dom';
 import { AIAnalysisService } from '@/services/AIAnalysisService';
 import { DocumentService } from '@/services/DocumentService';
+import { PDFReportService } from '@/services/PDFReportService';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPieChart, Cell, LineChart, Line, AreaChart, Area, Pie } from 'recharts';
 
 
@@ -287,6 +288,7 @@ async function fetchEvents(contractAddress: string) {
 
 export default function ContractEventsEDA() {
   const [address, setAddress] = useState('');
+  const [contractName, setContractName] = useState('');
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -464,6 +466,34 @@ export default function ContractEventsEDA() {
     URL.revokeObjectURL(url);
   };
 
+  const downloadPDFReport = async () => {
+    if (!aiReport) return;
+    
+    try {
+      setError('🔄 Generating professional intelligence report...');
+      
+      const blob = await PDFReportService.generatePDFReport(
+        address,
+        contractName || contractInfo?.contractName || 'Smart Contract',
+        contractInfo,
+        stats,
+        aiReport
+      );
+      
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${contractName || contractInfo?.contractName || 'Contract'}_Intelligence_Report.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      
+      setError('✅ Intelligence report downloaded successfully!');
+    } catch (error) {
+      console.error('Failed to generate report:', error);
+      setError('❌ Failed to generate report: ' + error.message);
+    }
+  };
+
   const generateAIReport = async () => {
     if (!events.length || !stats || !contractInfo) {
       setError('Missing required data for report generation');
@@ -471,55 +501,26 @@ export default function ContractEventsEDA() {
     }
     
     setGeneratingReport(true);
-    setError('🤖 AI is analyzing contract data and generating comprehensive business report...');
+    setError('🤖 Blocra Intelligence Engine analyzing contract data...');
     
     try {
-      // Simulate AI processing time for better UX
       await new Promise(resolve => setTimeout(resolve, 3000));
       
-      const report = await AIAnalysisService.generateComprehensiveReport({
-        events,
-        stats,
+      const report = await AIAnalysisService.generateBlockcraReport({
+        contractAddress: address,
+        contractName: contractName || contractInfo?.contractName || 'Smart Contract',
         contractInfo,
-        comprehensiveData
+        stats,
+        events
       });
       
       setAiReport(report);
       setError('');
     } catch (error) {
-      console.error('Failed to generate AI report:', error);
+      console.error('Failed to generate report:', error);
       setError('❌ Failed to generate report: ' + error.message);
     }
     setGeneratingReport(false);
-  };
-
-  const downloadDocxReport = async () => {
-    if (!aiReport) return;
-    
-    try {
-      const blob = await DocumentService.generateDocxReport(
-        aiReport,
-        address,
-        contractInfo,
-        stats
-      );
-      
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${contractInfo.contractName || 'Contract'}_Analysis_Report.docx`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Failed to generate DOCX:', error);
-    }
-  };
-
-  const openGoogleDocs = () => {
-    if (!contractInfo || !aiReport) return;
-    
-    const googleDocsUrl = DocumentService.generateGoogleDocsLink(address, contractInfo, aiReport);
-    window.open(googleDocsUrl, '_blank');
   };
 
   const exportDashboardAsImage = async () => {
@@ -634,18 +635,27 @@ export default function ContractEventsEDA() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  <div className="flex space-x-2">
+                  <div className="space-y-2">
                     <Input
                       placeholder="0x07070d915635269ea0930fa1c538f2d026e02e5078884aeb007141c39f481eee"
                       value={address}
                       onChange={e => setAddress(e.target.value)}
-                      className="flex-1 font-mono text-sm"
+                      className="w-full font-mono text-sm"
                       onKeyPress={(e) => e.key === 'Enter' && handleFetch()}
                     />
+                    <Input
+                      placeholder="Contract Name (e.g., MyToken, DEX Contract, NFT Collection)"
+                      value={contractName}
+                      onChange={e => setContractName(e.target.value)}
+                      className="w-full text-sm"
+                      onKeyPress={(e) => e.key === 'Enter' && handleFetch()}
+                    />
+                  </div>
+                  <div className="flex space-x-2">
                     <Button 
                       onClick={handleFetch} 
                       disabled={loading}
-                      className="bg-gradient-to-r from-primary to-accent"
+                      className="bg-gradient-to-r from-primary to-accent w-full"
                     >
                       {loading ? (
                         <div className="flex items-center space-x-2">
@@ -686,7 +696,7 @@ export default function ContractEventsEDA() {
                 <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle className="flex items-center space-x-2">
                     <BarChart3 className="h-5 w-5" />
-                    <span>Contract Analytics Dashboard</span>
+                    <span>{contractName || contractInfo?.contractName || 'Contract Analytics Dashboard'}</span>
                   </CardTitle>
                   <Button onClick={exportDashboardAsImage} disabled={exportingImage} variant="outline" size="sm">
                     <Camera className="h-4 w-4 mr-2" />
@@ -1109,7 +1119,7 @@ export default function ContractEventsEDA() {
                       className="bg-gradient-to-r from-purple-600 to-blue-600"
                     >
                       <FileText className="h-4 w-4 mr-2" />
-                      {generatingReport ? 'Creating Report...' : 'Create AI Report'}
+                      {generatingReport ? 'Creating Report...' : 'Generate PDF Report'}
                     </Button>
                   </div>
                   
@@ -1118,13 +1128,9 @@ export default function ContractEventsEDA() {
                     <div className="border-t pt-4">
                       <p className="text-sm text-green-600 mb-4">✅ Report generated successfully!</p>
                       <div className="flex justify-center space-x-4">
-                        <Button onClick={downloadDocxReport} className="bg-gradient-to-r from-green-600 to-blue-600">
-                          <FileText className="h-4 w-4 mr-2" />
-                          Download DOCX
-                        </Button>
-                        <Button onClick={openGoogleDocs} variant="outline">
-                          <ExternalLink className="h-4 w-4 mr-2" />
-                          Open Google Docs
+                        <Button onClick={downloadPDFReport} className="bg-gradient-to-r from-red-600 to-pink-600">
+                          <Download className="h-4 w-4 mr-2" />
+                          Download PDF
                         </Button>
                       </div>
                     </div>

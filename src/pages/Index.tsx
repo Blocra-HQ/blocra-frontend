@@ -5,6 +5,8 @@ import { Header } from "@/components/layout/Header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Chart } from "@/components/ui/chart";
 import { StatCard } from "@/components/ui/stat-card";
+import { SpecializedChart } from "@/components/ui/specialized-chart";
+import { TransactionTypesChart } from "@/components/ui/transaction-types-chart";
 import { AIChatBox } from "@/components/ai/AIChatBox";
 import { AIFloatingButton } from "@/components/ai/AIFloatingButton";
 import { starknetRPC } from "@/services/StarknetRPCService";
@@ -249,14 +251,9 @@ const Index = () => {
                 <CardTitle>Network Activity</CardTitle>
               </CardHeader>
               <CardContent>
-                <Chart
+                <SpecializedChart
                   title="Network Activity"
-                  type="line"
-                  method="starknet_getStateUpdate"
-                  data={[]} // required initial data
-                  xAxis="timestamp"
-                  yAxis="value"
-                  color="hsl(var(--chart-secondary))"
+                  type="networkActivity"
                   endpoints={endpoints}
                 />
               </CardContent>
@@ -291,39 +288,7 @@ const Index = () => {
                 <p className="text-sm text-muted-foreground">Distribution of transaction categories</p>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={200}>
-                  <PieChart>
-                    <Pie
-                      data={[
-                        { name: "Transfers", value: 45 },
-                        { name: "DeFi", value: 25 },
-                        { name: "NFT", value: 15 },
-                        { name: "Gaming", value: 10 },
-                        { name: "Other", value: 5 }
-                      ]}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, value }) => `${name} ${value}%`}
-                      outerRadius={60}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {[
-                        { name: "Transfers", value: 45 },
-                        { name: "DeFi", value: 25 },
-                        { name: "NFT", value: 15 },
-                        { name: "Gaming", value: 10 },
-                        { name: "Other", value: 5 }
-                      ].map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={[
-                          "#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"
-                        ][index]} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
+                <TransactionTypesChart endpoints={endpoints} />
               </CardContent>
             </Card>
             
@@ -374,14 +339,9 @@ const Index = () => {
                 <p className="text-sm text-muted-foreground">Recent block average fees</p>
               </CardHeader>
               <CardContent>
-                <Chart
+                <SpecializedChart
                   title="Average Fees"
-                  type="line"
-                  method="starknet_getStateUpdate"
-                  data={[]}
-                  xAxis="timestamp"
-                  yAxis="value"
-                  color="#8b5cf6"
+                  type="avgFees"
                   endpoints={endpoints}
                 />
               </CardContent>
@@ -431,14 +391,9 @@ const Index = () => {
                 <p className="text-sm text-muted-foreground">New unique addresses over time</p>
               </CardHeader>
               <CardContent>
-                <Chart
+                <SpecializedChart
                   title="Wallet Growth"
-                  type="area"
-                  method="starknet_getStateUpdate"
-                  data={[]}
-                  xAxis="timestamp"
-                  yAxis="value"
-                  color="#ec4899"
+                  type="walletGrowth"
                   endpoints={endpoints}
                 />
               </CardContent>
@@ -469,14 +424,9 @@ const Index = () => {
                 <p className="text-sm text-muted-foreground">Percentage of failed transactions</p>
               </CardHeader>
               <CardContent>
-                <Chart
+                <SpecializedChart
                   title="Failed Rate"
-                  type="line"
-                  method="starknet_getStateUpdate"
-                  data={[]}
-                  xAxis="timestamp"
-                  yAxis="value"
-                  color="#ef4444"
+                  type="failedRate"
                   endpoints={endpoints}
                 />
               </CardContent>
