@@ -50,7 +50,7 @@ const [lastName, setLastName] = useState('');
     }
 
     try {
-      const res = await fetch(`${BACKEND_URL}/auth/login`, {
+      const res = await fetch(`${BACKEND_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -118,7 +118,7 @@ const handleSignUp = async (e: React.FormEvent) => {
   console.log('🔹 Signup data to send:', { firstName, lastName, email: signUpEmail, role, backendUrl: BACKEND_URL });
 
   try {
-    const res = await fetch(`${BACKEND_URL}/auth/register`, {
+    const res = await fetch(`${BACKEND_URL}/api/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
