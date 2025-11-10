@@ -1,4 +1,8 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+// Allow runtime-config override via a small runtime file (public/env.js) so deployed
+// static sites (GitHub Pages / Vercel with static files) can change API URL
+// without rebuilding. The file should set `window.__RUNTIME_CONFIG__ = { VITE_API_URL: 'https://api.example.com/api' }`.
+const runtimeApiUrl = typeof window !== 'undefined' && (window as any).__RUNTIME_CONFIG__?.VITE_API_URL;
+const API_BASE_URL = runtimeApiUrl || import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 class ApiClient {
   private baseURL: string;

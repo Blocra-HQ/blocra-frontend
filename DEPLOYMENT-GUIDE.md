@@ -92,3 +92,27 @@ starklytics-suite/
 ---
 
 **Ready to push? Use Method 1 above! 🚀**
+
+## 🛠️ Deploy Backend (Docker) & Wire Frontend
+
+1. Build and publish a backend Docker image to GitHub Container Registry (CI is included in `.github/workflows/backend-build-and-publish.yml`). After the workflow runs the image will be available as:
+
+	`ghcr.io/<your-github-org-or-username>/starklytics-backend:latest`
+
+2. Deploy the image to Render / Railway / DigitalOcean App Platform by providing the image URL above. Set environment variables on the host (MONGO_URI, JWT secrets, CORS_ORIGIN, FRONTEND_URL).
+
+3. Configure CORS on the backend to allow your front-end origin (e.g. `https://your-frontend.example.com`).
+
+4. Frontend configuration options:
+	- If you deploy the frontend with Vercel/Netlify, set `VITE_API_URL` in the project environment variables to `https://api.yourdomain.com/api` and redeploy.
+	- If you deploy as static files (GitHub Pages or S3), create a file `env.js` at the root of the served site with this content:
+
+```js
+window.__RUNTIME_CONFIG__ = { VITE_API_URL: 'https://api.yourdomain.com/api' };
+```
+
+	The repo already includes a small runtime hook: `index.html` loads `/env.js` before the app bundle, and the frontend will read `window.__RUNTIME_CONFIG__.VITE_API_URL` at runtime if present.
+
+5. Verify:
+	- Visit `https://your-frontend.example.com` and open DevTools > Network. Confirm requests go to `https://api.yourdomain.com/api/...` (not `localhost`).
+	- Check backend `/health` endpoint: `https://api.yourdomain.com/health` returns HTTP 200 and `mongo: connected`.
