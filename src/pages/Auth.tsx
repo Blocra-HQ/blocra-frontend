@@ -1,7 +1,5 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { validateEmail, validatePassword, sanitizeInput } from '@/utils/validation';
-import { SocialLoginButtons } from '@/components/auth/SocialLoginButtons';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,155 +7,214 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { BarChart3, UserPlus, LogIn, AlertCircle, Trophy, Briefcase } from 'lucide-react';
+import { BarChart3, UserPlus, LogIn, AlertCircle, Eye, EyeOff, CheckCircle, XCircle } from 'lucide-react';
+
+interface User {
+  id: string;
+  email: string;
+  name: string;
+  password: string;
+  role: string;
+}
+
+const hashPassword = (password: string): string => {
+  // Simple hash for demo - use proper bcrypt in production
+  let hash = 0;
+  for (let i = 0; i < password.length; i++) {
+    const char = password.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return hash.toString();
+};
+
+const validateEmail = (email: string): boolean => {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+};
+
+const validatePassword = (password: string): { isValid: boolean; message?: string; strength: 'weak' | 'medium' | 'strong' } => {
+  if (password.length < 6) return { isValid: false, message: 'Password must be at least 6 characters', strength: 'weak' };
+  if (password.length < 8) return { isValid: true, message: 'Password is acceptable', strength: 'medium' };
+  const hasUpper = /[A-Z]/.test(password);
+  const hasLower = /[a-z]/.test(password);
+  const hasNumber = /\d/.test(password);
+  const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+  
+  const score = [hasUpper, hasLower, hasNumber, hasSpecial].filter(Boolean).length;
+  if (score >= 3) return { isValid: true, message: 'Strong password', strength: 'strong' };
+  return { isValid: true, message: 'Medium strength password', strength: 'medium' };
+};
 
 export default function Auth() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [activeTab, setActiveTab] = useState<'signin' | 'signup'>('signin');
 
   // Sign in form
-  const [signInEmail, setSignInEmail] = useState('');
+  const [signInIdentifier, setSignInIdentifier] = useState('');
   const [signInPassword, setSignInPassword] = useState('');
+  const [showSignInPassword, setShowSignInPassword] = useState(false);
 
   // Sign up form
   const [signUpEmail, setSignUpEmail] = useState('');
+  const [signUpName, setSignUpName] = useState('');
   const [signUpPassword, setSignUpPassword] = useState('');
-  //const [fullName, setFullName] = useState('');
-  //const [username, setUsername] = useState('');
-  const [firstName, setFirstName] = useState('');
-const [lastName, setLastName] = useState('');
+  const [showSignUpPassword, setShowSignUpPassword] = useState(false);
+  const [role, setRole] = useState('analyst');
+  const [emailValid, setEmailValid] = useState<boolean | null>(null);
+  const [passwordStrength, setPasswordStrength] = useState<'weak' | 'medium' | 'strong' | null>(null);
 
-  const [role, setRole] = useState<'analyst' | 'creator'>('analyst');
+  // Real-time email validation
+  useEffect(() => {
+    if (signUpEmail) {
+      setEmailValid(validateEmail(signUpEmail));
+    } else {
+      setEmailValid(null);
+    }
+  }, [signUpEmail]);
 
-  const [activeTab, setActiveTab] = useState<'signin' | 'signup'>('signin');
+  // Real-time password strength
+  useEffect(() => {
+    if (signUpPassword) {
+      const validation = validatePassword(signUpPassword);
+      setPasswordStrength(validation.strength);
+    } else {
+      setPasswordStrength(null);
+    }
+  }, [signUpPassword]);
 
-  const BACKEND_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+  // Clear messages when switching tabs
+  useEffect(() => {
+    setError('');
+    setMessage('');
+  }, [activeTab]);
 
-  // ------------------- SIGN IN -------------------
-  const handleSignIn = async (e: React.FormEvent) => {
+  // Create demo account if none exists
+  useEffect(() => {
+    const users = JSON.parse(localStorage.getItem('blodi_users') || '[]');
+    if (users.length === 0) {
+      const demoUser: User = {
+        id: 'demo-1',
+        email: 'demo@blodi.com',
+        name: 'demo',
+        password: 'demo123', // Store plain text for demo
+        role: 'analyst'
+      };
+      localStorage.setItem('blodi_users', JSON.stringify([demoUser]));
+    }
+    console.log('Current users:', users);
+  }, []);
+
+  const handleSignIn = (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
-    setMessage('');
 
-    console.log('🔵 Sign in attempt:', { email: signInEmail, backendUrl: BACKEND_URL });
-
-    if (!validateEmail(signInEmail)) {
-      setError('Please enter a valid email address');
+    if (!signInIdentifier.trim() || !signInPassword) {
+      setError('Please fill in all fields');
       setLoading(false);
       return;
     }
 
     try {
-      const res = await fetch(`${BACKEND_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: sanitizeInput(signInEmail),
-          password: sanitizeInput(signInPassword),
-        }),
-      });
-
-      console.log('📡 Response status:', res.status);
-      const data = await res.json();
-      console.log('📥 Response data:', data);
-
-      if (!res.ok) {
-        throw new Error(data.message || `HTTP ${res.status}: ${res.statusText}`);
+      const users: User[] = JSON.parse(localStorage.getItem('blodi_users') || '[]');
+      
+      if (users.length === 0) {
+        setError('No accounts found. Please create an account first.');
+        setLoading(false);
+        return;
       }
 
-      if (data.success && data.data) {
-        localStorage.setItem('auth_token', data.data.accessToken || data.token);
-        localStorage.setItem('demo_user', JSON.stringify(data.data.user));
+      const user = users.find(u => 
+        (u.email === signInIdentifier.trim() || u.name === signInIdentifier.trim()) && 
+        u.password === signInPassword
+      );
+
+      if (user) {
+        // Store user in the format AuthContext expects
+        const authUser = {
+          _id: user.id,
+          email: user.email,
+          firstName: user.name,
+          lastName: '',
+          role: user.role,
+          isActive: true,
+          lastLogin: new Date()
+        };
+        localStorage.setItem('demo_user', JSON.stringify(authUser));
+        localStorage.setItem('auth_token', `demo_token_${Date.now()}`);
         setMessage('Signed in successfully!');
-        setTimeout(() => window.location.href = '/', 1000);
+        window.location.href = '/';
       } else {
-        throw new Error('Invalid response format from server');
+        setError('Invalid email/name or password');
       }
-    } catch (err: any) {
-      console.error('❌ Sign in error:', err);
-      if (err.name === 'TypeError' && err.message.includes('fetch')) {
-        setError('Cannot connect to server. Please check if the backend is running.');
-      } else {
-        setError(err.message || 'Something went wrong during sign in');
-      }
-    } finally {
-      setLoading(false);
+    } catch (err) {
+      setError('Error accessing user data');
     }
+    setLoading(false);
   };
 
- // ------------------- SIGN UP -------------------
-const handleSignUp = async (e: React.FormEvent) => {
-  e.preventDefault();
-  console.log('🟢 Signup button clicked');
-  setLoading(true);
-  setError('');
-  setMessage('');
-
-  // Validation
-  if (!firstName.trim() || !lastName.trim()) {
-    setError('First name and last name are required');
-    setLoading(false);
-    return;
-  }
-
-  if (!validateEmail(signUpEmail)) {
-    setError('Please enter a valid email address');
-    setLoading(false);
-    return;
-  }
-
-  const passwordValidation = validatePassword(signUpPassword);
-  if (!passwordValidation.isValid) {
-    setError(passwordValidation.message!);
-    setLoading(false);
-    return;
-  }
-
-  console.log('🔹 Signup data to send:', { firstName, lastName, email: signUpEmail, role, backendUrl: BACKEND_URL });
-
-  try {
-    const res = await fetch(`${BACKEND_URL}/api/auth/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        firstName: sanitizeInput(firstName),
-        lastName: sanitizeInput(lastName),
-        email: sanitizeInput(signUpEmail),
-        password: sanitizeInput(signUpPassword),
-        role,
-      }),
-    });
-
-    console.log('📡 Signup response status:', res.status);
-    const data = await res.json();
-    console.log('📥 Signup response received:', data);
-
-    if (!res.ok) {
-      throw new Error(data.message || `HTTP ${res.status}: Registration failed`);
-    }
-
-    setMessage('Account created successfully! You can now sign in.');
+  const handleSignUp = (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
     setError('');
-    setActiveTab('signin');
-    
-    // Clear form
-    setFirstName('');
-    setLastName('');
-    setSignUpEmail('');
-    setSignUpPassword('');
-  } catch (err: any) {
-    console.error('❌ Signup error:', err);
-    if (err.name === 'TypeError' && err.message.includes('fetch')) {
-      setError('Cannot connect to server. Please check if the backend is running.');
-    } else {
-      setError(err.message || 'Something went wrong during sign up');
+
+    const trimmedEmail = signUpEmail.trim();
+    const trimmedName = signUpName.trim();
+
+    if (!trimmedEmail || !trimmedName || !signUpPassword) {
+      setError('Please fill in all fields');
+      setLoading(false);
+      return;
     }
-  } finally {
+
+    if (!validateEmail(trimmedEmail)) {
+      setError('Please enter a valid email address');
+      setLoading(false);
+      return;
+    }
+
+    const passwordValidation = validatePassword(signUpPassword);
+    if (!passwordValidation.isValid) {
+      setError(passwordValidation.message!);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const users: User[] = JSON.parse(localStorage.getItem('blodi_users') || '[]');
+      
+      if (users.find(u => u.email === trimmedEmail || u.name === trimmedName)) {
+        setError('User with this email or name already exists');
+        setLoading(false);
+        return;
+      }
+
+      const newUser: User = {
+        id: Date.now().toString(),
+        email: trimmedEmail,
+        name: trimmedName,
+        password: signUpPassword, // Store plain text for demo
+        role
+      };
+
+      users.push(newUser);
+      localStorage.setItem('blodi_users', JSON.stringify(users));
+      
+      setMessage('Account created successfully! You can now sign in.');
+      setActiveTab('signin');
+      
+      // Clear form
+      setSignUpEmail('');
+      setSignUpName('');
+      setSignUpPassword('');
+    } catch {
+      setError('Error creating account');
+    }
     setLoading(false);
-  }
-};
+  };
 
 
 
@@ -165,7 +222,6 @@ const handleSignUp = async (e: React.FormEvent) => {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-lg">
-        {/* Logo & Heading */}
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center space-x-2 mb-4">
             <div className="w-12 h-12 bg-gradient-primary rounded-xl flex items-center justify-center">
@@ -181,7 +237,6 @@ const handleSignUp = async (e: React.FormEvent) => {
           </p>
         </div>
 
-        {/* Card */}
         <Card className="glass border-border">
           <CardHeader>
             <CardTitle className="text-center">Get Started</CardTitle>
@@ -215,30 +270,64 @@ const handleSignUp = async (e: React.FormEvent) => {
                 </Alert>
               )}
 
-              {/* SIGN IN */}
               <TabsContent value="signin">
+                <div className="mb-4 p-3 bg-muted rounded-lg">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">Demo Account:</p>
+                      <p className="text-xs font-mono">Email/Name: demo | Password: demo123</p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        localStorage.removeItem('blodi_users');
+                        localStorage.removeItem('blodi_current_user');
+                        localStorage.removeItem('demo_user');
+                        localStorage.removeItem('auth_token');
+                        window.location.reload();
+                      }}
+                      className="text-xs"
+                    >
+                      Clear Data
+                    </Button>
+                  </div>
+                </div>
                 <form onSubmit={handleSignIn} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="signin-email">Email</Label>
+                    <Label htmlFor="signin-identifier">Email or Name</Label>
                     <Input
-                      id="signin-email"
-                      type="email"
-                      placeholder="Enter your email"
-                      value={signInEmail}
-                      onChange={(e) => setSignInEmail(e.target.value)}
+                      id="signin-identifier"
+                      placeholder="Enter your email or name"
+                      value={signInIdentifier}
+                      onChange={(e) => setSignInIdentifier(e.target.value)}
                       required
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="signin-password">Password</Label>
-                    <Input
-                      id="signin-password"
-                      type="password"
-                      placeholder="Enter your password"
-                      value={signInPassword}
-                      onChange={(e) => setSignInPassword(e.target.value)}
-                      required
-                    />
+                    <div className="relative">
+                      <Input
+                        id="signin-password"
+                        type={showSignInPassword ? 'text' : 'password'}
+                        placeholder="Enter your password"
+                        value={signInPassword}
+                        onChange={(e) => setSignInPassword(e.target.value)}
+                        required
+                        className="pr-10"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        onClick={() => setShowSignInPassword(!showSignInPassword)}
+                        aria-label={showSignInPassword ? 'Hide password' : 'Show password'}
+                      >
+                        {showSignInPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                    </div>
                   </div>
                   <Button type="submit" className="w-full glow-primary" disabled={loading}>
                     {loading ? 'Signing in...' : 'Sign In'}
@@ -246,124 +335,127 @@ const handleSignUp = async (e: React.FormEvent) => {
                 </form>
               </TabsContent>
 
-              {/* SIGN UP */}
-            <TabsContent value="signup">
-  <form onSubmit={handleSignUp} className="space-y-4">
-    {/* First Name & Last Name */}
-    <div className="grid grid-cols-2 gap-4">
-      <div className="space-y-2">
-        <Label htmlFor="first-name">First Name</Label>
-        <Input
-          id="first-name"
-          placeholder="John"
-          value={firstName}
-          onChange={(e) => setFirstName(e.target.value)}
-          required
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="last-name">Last Name</Label>
-        <Input
-          id="last-name"
-          placeholder="Doe"
-          value={lastName}
-          onChange={(e) => setLastName(e.target.value)}
-          required
-        />
-      </div>
-    </div>
-
-    {/* Role selection */}
-    <div className="space-y-2">
-      <Label htmlFor="role">I want to</Label>
-      <Select
-        value={role}
-        onValueChange={(value: 'analyst' | 'creator') => setRole(value)}
-      >
-        <SelectTrigger>
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="analyst">
-            <div className="flex items-center space-x-2">
-              <Trophy className="w-4 h-4 text-chart-warning" />
-              <div className="text-left">
-                <div className="font-medium">Work on Bounties</div>
-                <div className="text-xs text-muted-foreground">
-                  Solve analytics challenges and earn rewards
-                </div>
-              </div>
-            </div>
-          </SelectItem>
-          <SelectItem value="creator">
-            <div className="flex items-center space-x-2">
-              <Briefcase className="w-4 h-4 text-chart-primary" />
-              <div className="text-left">
-                <div className="font-medium">Create Bounties</div>
-                <div className="text-xs text-muted-foreground">
-                  Post analytics challenges for the community
-                </div>
-              </div>
-            </div>
-          </SelectItem>
-        </SelectContent>
-      </Select>
-    </div>
-
-    {/* Email */}
-    <div className="space-y-2">
-      <Label htmlFor="signup-email">Email</Label>
-      <Input
-        id="signup-email"
-        type="email"
-        placeholder="Enter your email"
-        value={signUpEmail}
-        onChange={(e) => setSignUpEmail(e.target.value)}
-        required
-      />
-    </div>
-
-    {/* Password */}
-    <div className="space-y-2">
-      <Label htmlFor="signup-password">Password</Label>
-      <Input
-        id="signup-password"
-        type="password"
-        placeholder="Create a password"
-        value={signUpPassword}
-        onChange={(e) => setSignUpPassword(e.target.value)}
-        required
-      />
-    </div>
-
-    {/* Submit button */}
-    <Button type="submit" className="w-full glow-primary" disabled={loading}>
-      {loading ? 'Creating account...' : 'Create Account'}
-    </Button>
-  </form>
-</TabsContent>
-
+              <TabsContent value="signup">
+                <form onSubmit={handleSignUp} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-name">Name</Label>
+                    <Input
+                      id="signup-name"
+                      placeholder="Enter your name"
+                      value={signUpName}
+                      onChange={(e) => setSignUpName(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-email">Email</Label>
+                    <div className="relative">
+                      <Input
+                        id="signup-email"
+                        type="email"
+                        placeholder="Enter your email"
+                        value={signUpEmail}
+                        onChange={(e) => setSignUpEmail(e.target.value)}
+                        required
+                        className={emailValid === false ? 'border-red-500' : emailValid === true ? 'border-green-500' : ''}
+                      />
+                      {emailValid !== null && (
+                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                          {emailValid ? (
+                            <CheckCircle className="h-4 w-4 text-green-500" />
+                          ) : (
+                            <XCircle className="h-4 w-4 text-red-500" />
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    {emailValid === false && (
+                      <p className="text-sm text-red-500">Please enter a valid email address</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="role">Role</Label>
+                    <Select value={role} onValueChange={setRole}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="analyst">
+                          <div className="flex flex-col items-start">
+                            <span className="font-medium">Analyst</span>
+                            <span className="text-xs text-muted-foreground">Analyze blockchain data and create insights</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="creator">
+                          <div className="flex flex-col items-start">
+                            <span className="font-medium">Creator</span>
+                            <span className="text-xs text-muted-foreground">Create and manage analytics projects</span>
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-password">Password</Label>
+                    <div className="relative">
+                      <Input
+                        id="signup-password"
+                        type={showSignUpPassword ? 'text' : 'password'}
+                        placeholder="Create a password (min 6 characters)"
+                        value={signUpPassword}
+                        onChange={(e) => setSignUpPassword(e.target.value)}
+                        required
+                        minLength={6}
+                        className="pr-10"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        onClick={() => setShowSignUpPassword(!showSignUpPassword)}
+                        aria-label={showSignUpPassword ? 'Hide password' : 'Show password'}
+                      >
+                        {showSignUpPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                    {passwordStrength && (
+                      <div className="flex items-center space-x-2">
+                        <div className="flex space-x-1">
+                          <div className={`h-1 w-8 rounded ${passwordStrength === 'weak' ? 'bg-red-500' : passwordStrength === 'medium' ? 'bg-yellow-500' : 'bg-green-500'}`} />
+                          <div className={`h-1 w-8 rounded ${passwordStrength === 'medium' || passwordStrength === 'strong' ? passwordStrength === 'medium' ? 'bg-yellow-500' : 'bg-green-500' : 'bg-gray-200'}`} />
+                          <div className={`h-1 w-8 rounded ${passwordStrength === 'strong' ? 'bg-green-500' : 'bg-gray-200'}`} />
+                        </div>
+                        <span className={`text-xs ${passwordStrength === 'weak' ? 'text-red-500' : passwordStrength === 'medium' ? 'text-yellow-600' : 'text-green-600'}`}>
+                          {passwordStrength === 'weak' ? 'Weak' : passwordStrength === 'medium' ? 'Medium' : 'Strong'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <Button type="submit" className="w-full glow-primary" disabled={loading}>
+                    {loading ? 'Creating account...' : 'Create Account'}
+                  </Button>
+                </form>
+              </TabsContent>
             </Tabs>
-            
-            <div className="mt-6">
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
-                </div>
-              </div>
-              <div className="mt-6">
-                <SocialLoginButtons />
-              </div>
-            </div>
           </CardContent>
         </Card>
-
-        <p className="text-center text-sm text-muted-foreground mt-6">
-          By signing up, you agree to our Terms of Service and Privacy Policy
-        </p>
+        
+        <div className="text-center mt-6 space-y-2">
+          <p className="text-sm text-muted-foreground">
+            By creating an account, you agree to our{' '}
+            <Link to="/terms" className="text-primary hover:underline">
+              Terms of Service
+            </Link>{' '}
+            and{' '}
+            <Link to="/privacy" className="text-primary hover:underline">
+              Privacy Policy
+            </Link>
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Demo version - Data stored locally in your browser
+          </p>
+        </div>
       </div>
     </div>
   );
