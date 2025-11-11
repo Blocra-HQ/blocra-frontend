@@ -1,485 +1,314 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
-  Users, 
-  Trophy, 
-  DollarSign, 
-  Activity, 
-  Shield, 
-  Ban, 
-  CheckCircle, 
-  XCircle,
-  Eye,
-  Edit,
-  Trash2,
-  AlertTriangle,
-  LogOut,
-  BarChart3
-} from "lucide-react";
-import { bountyService } from "@/services/BountyService";
-import { useToast } from "@/components/ui/use-toast";
-
-interface AdminStats {
-  totalUsers: number;
-  totalBounties: number;
-  totalRewards: number;
-  pendingApprovals: number;
-  flaggedContent: number;
-  activeReports: number;
-}
-
-interface User {
-  id: string;
-  email: string;
-  role: string;
-  status: 'active' | 'suspended' | 'banned';
-  joinDate: string;
-  lastActive: string;
-}
-
-interface Report {
-  id: string;
-  type: 'bounty' | 'user' | 'content';
-  targetId: string;
-  reason: string;
-  status: 'pending' | 'resolved' | 'dismissed';
-  reportedBy: string;
-  createdAt: string;
-}
+  Users, Activity, FileText, Download, BarChart3, 
+  TrendingUp, Calendar, Search, Filter, RefreshCw,
+  Shield, Database, AlertTriangle, Eye
+} from 'lucide-react';
+import { ActivityTrackingService } from '@/services/ActivityTrackingService';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
 
 export default function AdminDashboard() {
-  const navigate = useNavigate();
-  const { toast } = useToast();
-  const [adminSession, setAdminSession] = useState<any>(null);
-  const [stats, setStats] = useState<AdminStats>({
-    totalUsers: 0,
-    totalBounties: 0,
-    totalRewards: 0,
-    pendingApprovals: 0,
-    flaggedContent: 0,
-    activeReports: 0
-  });
-  const [users, setUsers] = useState<User[]>([]);
-  const [bounties, setBounties] = useState<any[]>([]);
-  const [reports, setReports] = useState<Report[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<any>(null);
+  const [activities, setActivities] = useState<any[]>([]);
+  const [topContracts, setTopContracts] = useState<any[]>([]);
+  const [activityTrends, setActivityTrends] = useState<any[]>([]);
+  const [filterUser, setFilterUser] = useState('');
+  const [filterAction, setFilterAction] = useState('all');
+  const [dateRange, setDateRange] = useState('7');
 
   useEffect(() => {
-    // Check admin session
-    const session = localStorage.getItem('adminSession');
-    if (session) {
-      const parsedSession = JSON.parse(session);
-      if (parsedSession.isAdmin) {
-        setAdminSession(parsedSession);
-        fetchAdminData();
-      } else {
-        navigate('/admin');
-      }
-    } else {
-      navigate('/admin');
-    }
-  }, [navigate]);
+    loadDashboardData();
+    
+    const interval = setInterval(loadDashboardData, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
-  const fetchAdminData = async () => {
-    try {
-      // Fetch bounties from API
-      const bountiesData = await bountyService.getBounties();
-      setBounties(bountiesData);
-
-      // Fetch users from API (would need backend endpoint)
-      // For now, fetch from localStorage or API
-      const usersResponse = await fetch('/api/admin/users', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        }
-      }).catch(() => null);
-
-      let fetchedUsers: User[] = [];
-      if (usersResponse?.ok) {
-        const data = await usersResponse.json();
-        fetchedUsers = data.users || [];
-      } else {
-        // Fallback: use demo users
-        fetchedUsers = [
-          {
-            id: '1',
-            email: 'analyst@starklytics.com',
-            role: 'analyst',
-            status: 'active',
-            joinDate: '2025-01-15',
-            lastActive: '2025-01-20'
-          },
-          {
-            id: '2',
-            email: 'creator@starklytics.com',
-            role: 'creator',
-            status: 'active',
-            joinDate: '2025-01-10',
-            lastActive: '2025-01-19'
-          }
-        ];
-      }
-      setUsers(fetchedUsers);
-
-      // Fetch reports from API
-      const reportsResponse = await fetch('/api/admin/reports', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        }
-      }).catch(() => null);
-
-      let fetchedReports: Report[] = [];
-      if (reportsResponse?.ok) {
-        const data = await reportsResponse.json();
-        fetchedReports = data.reports || [];
-      } else {
-        // Fallback: use demo reports
-        fetchedReports = [
-          {
-            id: '1',
-            type: 'bounty',
-            targetId: 'bounty-1',
-            reason: 'Inappropriate content',
-            status: 'pending',
-            reportedBy: 'user@example.com',
-            createdAt: '2025-01-20'
-          }
-        ];
-      }
-      setReports(fetchedReports);
-
-      // Calculate stats from real data
-      const totalRewards = bountiesData.reduce((sum, b) => sum + (b.reward?.amount || 0), 0);
-      const pendingBounties = bountiesData.filter(b => b.status === 'pending' || b.status === 'draft').length;
-      
-      setStats({
-        totalUsers: fetchedUsers.length,
-        totalBounties: bountiesData.length,
-        totalRewards,
-        pendingApprovals: pendingBounties,
-        flaggedContent: fetchedReports.filter(r => r.status === 'pending').length,
-        activeReports: fetchedReports.length
-      });
-    } catch (error) {
-      console.error('Error fetching admin data:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load admin data",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleUserAction = (userId: string, action: 'suspend' | 'activate' | 'ban') => {
-    setUsers(prev => prev.map(user => 
-      user.id === userId 
-        ? { ...user, status: action === 'activate' ? 'active' : action === 'suspend' ? 'suspended' : 'banned' }
-        : user
-    ));
-  };
-
-  const handleBountyAction = (bountyId: string, action: 'approve' | 'reject') => {
-    setBounties(prev => prev.map(bounty => 
-      bounty._id === bountyId 
-        ? { ...bounty, status: action === 'approve' ? 'active' : 'rejected' }
-        : bounty
-    ));
-  };
-
-  const handleReportAction = (reportId: string, action: 'resolve' | 'dismiss') => {
-    setReports(prev => prev.map(report => 
-      report.id === reportId 
-        ? { ...report, status: action === 'resolve' ? 'resolved' : 'dismissed' }
-        : report
-    ));
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('adminSession');
-    toast({
-      title: "Logged Out",
-      description: "Admin session ended",
+  const loadDashboardData = async () => {
+    const stats = await ActivityTrackingService.getActivityStats();
+    const activities = await ActivityTrackingService.getActivities(50);
+    
+    setStats({
+      totalUsers: stats.total,
+      dailyActiveUsers: stats.today,
+      weeklyActiveUsers: stats.week,
+      monthlyActiveUsers: stats.month,
+      totalAnalyses: stats.byType.analysis || 0,
+      totalReports: stats.byType.report || 0,
+      totalDashboards: stats.byType.dashboard || 0,
+      totalDownloads: stats.byType.download || 0
     });
-    navigate('/admin');
+    
+    setActivities(activities.map(a => ({
+      id: a.id,
+      action: a.type,
+      userEmail: 'user@example.com',
+      userId: a.id.slice(0, 8),
+      timestamp: new Date(a.timestamp),
+      details: a.details
+    })));
+    
+    setTopContracts([]);
+    setActivityTrends([]);
   };
 
-  if (!adminSession) {
+  const filteredActivities = activities.filter(activity => {
+    const matchesUser = !filterUser || 
+      activity.userEmail.toLowerCase().includes(filterUser.toLowerCase()) ||
+      activity.userId.toLowerCase().includes(filterUser.toLowerCase());
+    const matchesAction = filterAction === 'all' || activity.action === filterAction;
+    return matchesUser && matchesAction;
+  });
+
+  const getActionColor = (action: string) => {
+    const colors: { [key: string]: string } = {
+      'signup': 'bg-green-500',
+      'login': 'bg-blue-500',
+      'contract_analysis': 'bg-purple-500',
+      'dashboard_created': 'bg-indigo-500',
+      'report_generated': 'bg-orange-500',
+      'report_downloaded': 'bg-red-500',
+      'image_exported': 'bg-pink-500',
+      'alert_created': 'bg-yellow-500'
+    };
+    return colors[action] || 'bg-gray-500';
+  };
+
+  const getActionIcon = (action: string) => {
+    const icons: { [key: string]: any } = {
+      'signup': Users,
+      'login': Shield,
+      'contract_analysis': Activity,
+      'dashboard_created': BarChart3,
+      'report_generated': FileText,
+      'report_downloaded': Download,
+      'image_exported': Download,
+      'alert_created': AlertTriangle
+    };
+    const Icon = icons[action] || Eye;
+    return <Icon className="h-4 w-4" />;
+  };
+
+  const exportData = async () => {
+    const activities = await ActivityTrackingService.getActivities(1000);
+    const data = JSON.stringify(activities, null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `blodi_admin_data_${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  if (!stats) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <div className="text-center">
+          <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p>Loading admin dashboard...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="flex flex-col min-h-screen">
-        {/* Admin Header */}
-        <div className="h-16 border-b border-border/30 bg-gradient-to-r from-primary/5 to-accent/5 flex items-center justify-between px-6">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center shadow-lg">
-              <Shield className="w-5 h-5 text-primary-foreground" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                Starklytics Admin
-              </h1>
-              <p className="text-xs text-muted-foreground">Welcome, {adminSession.username}</p>
-            </div>
+    <div className="min-h-screen bg-background p-6">
+      <div className="max-w-7xl mx-auto space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">BloDI Admin Dashboard</h1>
+            <p className="text-muted-foreground">Monitor platform usage and user activities</p>
           </div>
-          <Button onClick={handleLogout} variant="outline" size="sm">
-            <LogOut className="w-4 h-4 mr-2" />
-            Logout
-          </Button>
+          <div className="flex space-x-2">
+            <Button onClick={loadDashboardData} variant="outline">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh
+            </Button>
+            <Button onClick={exportData}>
+              <Download className="h-4 w-4 mr-2" />
+              Export Data
+            </Button>
+          </div>
         </div>
-        
-        <main className="flex-1 p-6 space-y-6">
-          {/* Admin Stats */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <Card className="glass">
-              <CardContent className="p-4">
-                <div className="flex items-center space-x-2">
-                  <Users className="w-8 h-8 text-primary" />
-                  <div>
-                    <p className="text-2xl font-bold">{stats.totalUsers}</p>
-                    <p className="text-xs text-muted-foreground">Total Users</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className="glass">
-              <CardContent className="p-4">
-                <div className="flex items-center space-x-2">
-                  <Trophy className="w-8 h-8 text-chart-warning" />
-                  <div>
-                    <p className="text-2xl font-bold">{stats.totalBounties}</p>
-                    <p className="text-xs text-muted-foreground">Total Bounties</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className="glass">
-              <CardContent className="p-4">
-                <div className="flex items-center space-x-2">
-                  <DollarSign className="w-8 h-8 text-chart-success" />
-                  <div>
-                    <p className="text-2xl font-bold">{stats.totalRewards.toLocaleString()}</p>
-                    <p className="text-xs text-muted-foreground">Total Rewards (STRK)</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className="glass">
-              <CardContent className="p-4">
-                <div className="flex items-center space-x-2">
-                  <Activity className="w-8 h-8 text-chart-secondary" />
-                  <div>
-                    <p className="text-2xl font-bold">{stats.pendingApprovals}</p>
-                    <p className="text-xs text-muted-foreground">Pending Approvals</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className="glass">
-              <CardContent className="p-4">
-                <div className="flex items-center space-x-2">
-                  <AlertTriangle className="w-8 h-8 text-destructive" />
-                  <div>
-                    <p className="text-2xl font-bold">{stats.flaggedContent}</p>
-                    <p className="text-xs text-muted-foreground">Flagged Content</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className="glass">
-              <CardContent className="p-4">
-                <div className="flex items-center space-x-2">
-                  <Shield className="w-8 h-8 text-chart-primary" />
-                  <div>
-                    <p className="text-2xl font-bold">{stats.activeReports}</p>
-                    <p className="text-xs text-muted-foreground">Active Reports</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
 
-          {/* Admin Tabs */}
-          <Tabs defaultValue="users" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="users">Users</TabsTrigger>
-              <TabsTrigger value="bounties">Bounties</TabsTrigger>
-              <TabsTrigger value="reports">Reports</TabsTrigger>
-              <TabsTrigger value="system">System</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="users" className="space-y-4">
-              <Card className="glass">
-                <CardHeader>
-                  <CardTitle>User Management</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {users.map((user) => (
-                      <div key={user.id} className="flex items-center justify-between p-4 border border-border rounded-lg">
-                        <div>
-                          <h4 className="font-medium">{user.email}</h4>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Badge variant="outline" className="capitalize">{user.role}</Badge>
-                            <Badge variant={user.status === 'active' ? 'default' : 'destructive'}>
-                              {user.status}
-                            </Badge>
-                          </div>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Joined: {user.joinDate} | Last active: {user.lastActive}
-                          </p>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button size="sm" variant="outline" onClick={() => handleUserAction(user.id, 'activate')}>
-                            <CheckCircle className="w-4 h-4 mr-1" />
-                            Activate
-                          </Button>
-                          <Button size="sm" variant="outline" onClick={() => handleUserAction(user.id, 'suspend')}>
-                            <Ban className="w-4 h-4 mr-1" />
-                            Suspend
-                          </Button>
-                          <Button size="sm" variant="destructive" onClick={() => handleUserAction(user.id, 'ban')}>
-                            <XCircle className="w-4 h-4 mr-1" />
-                            Ban
-                          </Button>
-                        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
+          <Card>
+            <CardContent className="p-4 text-center">
+              <Users className="h-8 w-8 mx-auto mb-2 text-blue-600" />
+              <p className="text-2xl font-bold">{stats.totalUsers}</p>
+              <p className="text-sm text-muted-foreground">Total Users</p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-4 text-center">
+              <Activity className="h-8 w-8 mx-auto mb-2 text-green-600" />
+              <p className="text-2xl font-bold">{stats.dailyActiveUsers}</p>
+              <p className="text-sm text-muted-foreground">Daily Active</p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-4 text-center">
+              <BarChart3 className="h-8 w-8 mx-auto mb-2 text-purple-600" />
+              <p className="text-2xl font-bold">{stats.totalAnalyses}</p>
+              <p className="text-sm text-muted-foreground">Analyses</p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-4 text-center">
+              <FileText className="h-8 w-8 mx-auto mb-2 text-orange-600" />
+              <p className="text-2xl font-bold">{stats.totalReports}</p>
+              <p className="text-sm text-muted-foreground">Reports</p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-4 text-center">
+              <Database className="h-8 w-8 mx-auto mb-2 text-indigo-600" />
+              <p className="text-2xl font-bold">{stats.totalDashboards}</p>
+              <p className="text-sm text-muted-foreground">Dashboards</p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-4 text-center">
+              <Download className="h-8 w-8 mx-auto mb-2 text-red-600" />
+              <p className="text-2xl font-bold">{stats.totalDownloads}</p>
+              <p className="text-sm text-muted-foreground">Downloads</p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-4 text-center">
+              <Calendar className="h-8 w-8 mx-auto mb-2 text-yellow-600" />
+              <p className="text-2xl font-bold">{stats.weeklyActiveUsers}</p>
+              <p className="text-sm text-muted-foreground">Weekly Active</p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-4 text-center">
+              <TrendingUp className="h-8 w-8 mx-auto mb-2 text-pink-600" />
+              <p className="text-2xl font-bold">{stats.monthlyActiveUsers}</p>
+              <p className="text-sm text-muted-foreground">Monthly Active</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Activity Trends (Last {dateRange} days)</CardTitle>
+              <Select value={dateRange} onValueChange={setDateRange}>
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="7">7 days</SelectItem>
+                  <SelectItem value="30">30 days</SelectItem>
+                  <SelectItem value="90">90 days</SelectItem>
+                </SelectContent>
+              </Select>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={activityTrends}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" />
+                  <YAxis />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="activities" stroke="#8884d8" strokeWidth={2} />
+                </LineChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Most Analyzed Contracts</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={topContracts}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="count" fill="#8884d8" />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <span>Recent Activities</span>
+              <div className="flex space-x-2">
+                <Input
+                  placeholder="Filter by user..."
+                  value={filterUser}
+                  onChange={(e) => setFilterUser(e.target.value)}
+                  className="w-48"
+                />
+                <Select value={filterAction} onValueChange={setFilterAction}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Actions</SelectItem>
+                    <SelectItem value="signup">Sign Ups</SelectItem>
+                    <SelectItem value="login">Logins</SelectItem>
+                    <SelectItem value="contract_analysis">Contract Analysis</SelectItem>
+                    <SelectItem value="dashboard_created">Dashboard Created</SelectItem>
+                    <SelectItem value="report_generated">Report Generated</SelectItem>
+                    <SelectItem value="report_downloaded">Report Downloaded</SelectItem>
+                    <SelectItem value="image_exported">Image Exported</SelectItem>
+                    <SelectItem value="alert_created">Alert Created</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2 max-h-96 overflow-y-auto">
+              {filteredActivities.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">No activities found</p>
+              ) : (
+                filteredActivities.map(activity => (
+                  <div key={activity.id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      <Badge className={getActionColor(activity.action)}>
+                        {getActionIcon(activity.action)}
+                      </Badge>
+                      <div>
+                        <p className="font-medium">{activity.userEmail}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {activity.action.replace('_', ' ').toUpperCase()}
+                          {activity.details.contractName && ` - ${activity.details.contractName}`}
+                          {activity.details.dashboardName && ` - ${activity.details.dashboardName}`}
+                          {activity.details.fileName && ` - ${activity.details.fileName}`}
+                        </p>
                       </div>
-                    ))}
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-mono">{activity.timestamp.toLocaleString()}</p>
+                      <p className="text-xs text-muted-foreground">{activity.userId.slice(0, 8)}...</p>
+                    </div>
                   </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="bounties" className="space-y-4">
-              <Card className="glass">
-                <CardHeader>
-                  <CardTitle>Bounty Management</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {bounties.map((bounty) => (
-                      <div key={bounty._id} className="flex items-center justify-between p-4 border border-border rounded-lg">
-                        <div>
-                          <h4 className="font-medium">{bounty.title}</h4>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Badge variant="outline">{bounty.reward.amount} {bounty.reward.currency}</Badge>
-                            <Badge variant={bounty.status === 'active' ? 'default' : 'secondary'}>
-                              {bounty.status}
-                            </Badge>
-                          </div>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Created: {new Date(bounty.created_at).toLocaleDateString()}
-                          </p>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button size="sm" variant="outline">
-                            <Eye className="w-4 h-4 mr-1" />
-                            View
-                          </Button>
-                          <Button size="sm" variant="outline" onClick={() => handleBountyAction(bounty._id, 'approve')}>
-                            <CheckCircle className="w-4 h-4 mr-1" />
-                            Approve
-                          </Button>
-                          <Button size="sm" variant="destructive" onClick={() => handleBountyAction(bounty._id, 'reject')}>
-                            <XCircle className="w-4 h-4 mr-1" />
-                            Reject
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="reports" className="space-y-4">
-              <Card className="glass">
-                <CardHeader>
-                  <CardTitle>Content Reports</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {reports.map((report) => (
-                      <div key={report.id} className="flex items-center justify-between p-4 border border-border rounded-lg">
-                        <div>
-                          <h4 className="font-medium capitalize">{report.type} Report</h4>
-                          <p className="text-sm text-muted-foreground">{report.reason}</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Badge variant="outline">By: {report.reportedBy}</Badge>
-                            <Badge variant={report.status === 'pending' ? 'destructive' : 'default'}>
-                              {report.status}
-                            </Badge>
-                          </div>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Reported: {report.createdAt}
-                          </p>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button size="sm" variant="outline">
-                            <Eye className="w-4 h-4 mr-1" />
-                            Investigate
-                          </Button>
-                          <Button size="sm" variant="outline" onClick={() => handleReportAction(report.id, 'resolve')}>
-                            <CheckCircle className="w-4 h-4 mr-1" />
-                            Resolve
-                          </Button>
-                          <Button size="sm" variant="secondary" onClick={() => handleReportAction(report.id, 'dismiss')}>
-                            <XCircle className="w-4 h-4 mr-1" />
-                            Dismiss
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="system" className="space-y-4">
-              <Card className="glass">
-                <CardHeader>
-                  <CardTitle>System Management</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <Button variant="outline" className="h-20 flex-col">
-                      <Activity className="w-6 h-6 mb-2" />
-                      System Health
-                    </Button>
-                    <Button variant="outline" className="h-20 flex-col">
-                      <Shield className="w-6 h-6 mb-2" />
-                      Security Logs
-                    </Button>
-                    <Button variant="outline" className="h-20 flex-col">
-                      <DollarSign className="w-6 h-6 mb-2" />
-                      Financial Reports
-                    </Button>
-                    <Button variant="outline" className="h-20 flex-col">
-                      <Users className="w-6 h-6 mb-2" />
-                      User Analytics
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </main>
+                ))
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

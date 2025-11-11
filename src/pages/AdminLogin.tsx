@@ -8,8 +8,8 @@ import { Shield, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
 const ADMIN_CREDENTIALS = {
-  username: "Ndifreke000",
-  password: "123456789"
+  username: "Ndiiekanem41@gmail.com",
+  password: "Mkpanam200"
 };
 
 export default function AdminLogin() {

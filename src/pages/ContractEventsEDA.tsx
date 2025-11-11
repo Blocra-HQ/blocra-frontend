@@ -4,11 +4,18 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Download, BarChart3, PieChart, TrendingUp, FileText, ExternalLink, Bot, Activity, Users, Zap, Camera } from 'lucide-react';
+import { Download, BarChart3, PieChart, TrendingUp, FileText, ExternalLink, Bot, Activity, Users, Zap, Camera, Plus, X, Bell, Network } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { AIAnalysisService } from '@/services/AIAnalysisService';
 import { DocumentService } from '@/services/DocumentService';
 import { PDFReportService } from '@/services/PDFReportService';
+import { DatabaseService } from '@/services/DatabaseService';
+import { StateAnalysisService } from '@/services/StateAnalysisService';
+import { DependencyGraphService } from '@/services/DependencyGraphService';
+import { AdvancedAIService } from '@/services/AdvancedAIService';
+import { RealtimeService } from '@/services/RealtimeService';
+import { AlertPanel } from '@/components/AlertPanel';
+import { DependencyGraph } from '@/components/DependencyGraph';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPieChart, Cell, LineChart, Line, AreaChart, Area, Pie } from 'recharts';
 
 
@@ -287,8 +294,7 @@ async function fetchEvents(contractAddress: string) {
 }
 
 export default function ContractEventsEDA() {
-  const [address, setAddress] = useState('');
-  const [contractName, setContractName] = useState('');
+  const [contracts, setContracts] = useState([{ address: '', name: '' }]);
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -298,6 +304,11 @@ export default function ContractEventsEDA() {
   const [aiReport, setAiReport] = useState<any>(null);
   const [generatingReport, setGeneratingReport] = useState(false);
   const [exportingImage, setExportingImage] = useState(false);
+  const [dependencyGraph, setDependencyGraph] = useState<any>(null);
+  const [anomalies, setAnomalies] = useState<any[]>([]);
+  const [predictions, setPredictions] = useState<any[]>([]);
+  const [stateAnalysis, setStateAnalysis] = useState<any>(null);
+  const [realtimeEnabled, setRealtimeEnabled] = useState(false);
 
   const validateAddress = (addr: string) => {
     const cleaned = addr.trim();
@@ -307,36 +318,76 @@ export default function ContractEventsEDA() {
     return /^0x[0-9a-fA-F]{64}$/.test(cleaned);
   };
 
+  const addContract = () => {
+    setContracts([...contracts, { address: '', name: '' }]);
+  };
+
+  const removeContract = (index: number) => {
+    if (contracts.length > 1) {
+      setContracts(contracts.filter((_, i) => i !== index));
+    }
+  };
+
+  const updateContract = (index: number, field: 'address' | 'name', value: string) => {
+    const updated = contracts.map((contract, i) => 
+      i === index ? { ...contract, [field]: value } : contract
+    );
+    setContracts(updated);
+  };
+
   const handleFetch = async () => {
-    const cleanAddress = address.trim();
+    const validContracts = contracts.filter(c => c.address.trim());
     
-    if (!cleanAddress) {
-      setError('Please enter a contract address');
+    if (validContracts.length === 0) {
+      setError('Please enter at least one contract address');
       return;
     }
     
-    if (!validateAddress(cleanAddress)) {
-      setError('Invalid contract address format. Must be 0x followed by 64 hex characters.');
-      return;
+    for (const contract of validContracts) {
+      if (!validateAddress(contract.address.trim())) {
+        setError(`Invalid contract address format: ${contract.address}`);
+        return;
+      }
     }
     
     setLoading(true);
     setError('');
     setEvents([]);
     
+    // Initialize database
+    await DatabaseService.init();
+    
     try {
-      console.log('Fetching events for contract:', cleanAddress);
-      const result = await fetchEvents(cleanAddress);
-      console.log('Events found:', result.events.length);
-      console.log('Contract info:', result.contractInfo);
+      console.log('Fetching events for contracts:', validContracts.map(c => c.address));
       
-      setEvents(result.events);
-      setContractInfo(result.contractInfo);
-      setComprehensiveData(result.comprehensiveData);
+      // Fetch events from all contracts
+      const allResults = await Promise.all(
+        validContracts.map(contract => fetchEvents(contract.address.trim()))
+      );
+      
+      // Combine all events
+      const allEvents = allResults.flatMap(result => result.events);
+      const allContractInfo = allResults.map(result => result.contractInfo);
+      const allComprehensiveData = allResults.map(result => result.comprehensiveData);
+      
+      console.log('Total events found:', allEvents.length);
+      console.log('Contract info:', allContractInfo);
+      
+      setEvents(allEvents);
+      setContractInfo(allContractInfo[0]); // Use first contract info for display
+      setComprehensiveData({
+        transactions: allComprehensiveData.flatMap(d => d.transactions),
+        users: [...new Set(allComprehensiveData.flatMap(d => d.users))],
+        calls: allComprehensiveData.flatMap(d => d.calls),
+        blockRange: {
+          from: Math.min(...allComprehensiveData.map(d => d.blockRange.from)),
+          to: Math.max(...allComprehensiveData.map(d => d.blockRange.to))
+        }
+      });
       
       // Calculate comprehensive EDA stats
-      if (result.events.length > 0) {
-        const evs = result.events;
+      if (allEvents.length > 0) {
+        const evs = allEvents;
         const eventTypes = evs.reduce((acc: any, ev) => {
           const type = ev.event_name || 'Unknown';
           acc[type] = (acc[type] || 0) + 1;
@@ -364,10 +415,15 @@ export default function ContractEventsEDA() {
           return sum + amount;
         }, 0);
         
-        // Combine event data with comprehensive transaction data
-        const allTxs = result.comprehensiveData?.transactions || [];
-        const allUsers = result.comprehensiveData?.users || [];
-        const allCalls = result.comprehensiveData?.calls || [];
+        // Use combined comprehensive data
+        const combinedData = {
+          transactions: allComprehensiveData.flatMap(d => d.transactions),
+          users: [...new Set(allComprehensiveData.flatMap(d => d.users))],
+          calls: allComprehensiveData.flatMap(d => d.calls)
+        };
+        const allTxs = combinedData.transactions;
+        const allUsers = combinedData.users;
+        const allCalls = combinedData.calls;
         
         setStats({
           // Basic metrics
@@ -407,13 +463,30 @@ export default function ContractEventsEDA() {
           calls: allCalls
         });
         
-        setError(`✓ Successfully fetched ${evs.length} events from ${result.contractInfo.contractType}`);
+        setError(`✓ Successfully fetched ${evs.length} events from ${validContracts.length} contract(s)`);
         
-        // Report will be generated when user clicks Create Report button
+        // Generate advanced analytics
+        await generateAdvancedAnalytics(allEvents, stats, validContracts);
+        
+        // Cache the data
+        await DatabaseService.cacheContractData({
+          contractAddress: validContracts.map(c => c.address).join(','),
+          contractName: validContracts.map(c => c.name || 'Contract').join(','),
+          events: allEvents,
+          stats,
+          contractInfo: allContractInfo[0],
+          blockRange: { from: Math.min(...blocks), to: Math.max(...blocks) }
+        });
+        
+        // Enable real-time updates
+        if (validContracts.length === 1) {
+          const unsubscribe = RealtimeService.simulateRealtimeUpdates(validContracts[0].address);
+          setRealtimeEnabled(true);
+        }
       } else {
         setStats(null);
-        setContractInfo(result.contractInfo);
-        setError(`✓ Contract address is valid (${result.contractInfo.contractType}), but no events found in the last 50,000 blocks.`);
+        setContractInfo(allContractInfo[0]);
+        setError(`✓ Contract addresses are valid, but no events found in the last 50,000 blocks.`);
       }
     } catch (e: any) {
       console.error('Fetch error:', e);
@@ -427,6 +500,38 @@ export default function ContractEventsEDA() {
       setEvents([]);
     }
     setLoading(false);
+  };
+
+  const generateAdvancedAnalytics = async (events: any[], stats: any, contracts: any[]) => {
+    try {
+      // Generate dependency graph
+      const graph = DependencyGraphService.buildDependencyGraph(contracts, events);
+      setDependencyGraph(graph);
+      
+      // Detect anomalies
+      const detectedAnomalies = AdvancedAIService.detectAnomalies(events, stats);
+      setAnomalies(detectedAnomalies);
+      
+      // Generate predictions
+      const predictions = AdvancedAIService.generatePredictions(stats);
+      setPredictions(predictions);
+      
+      // Analyze contract state (for first contract)
+      if (contracts.length > 0) {
+        const { RpcProvider } = await import('starknet');
+        const provider = new RpcProvider({ nodeUrl: getRpcUrl() });
+        const latestBlock = await provider.getBlockNumber();
+        const historicalBlocks = await StateAnalysisService.getHistoricalBlocks(latestBlock);
+        const stateAnalysis = await StateAnalysisService.analyzeContractState(
+          contracts[0].address,
+          provider,
+          historicalBlocks
+        );
+        setStateAnalysis(stateAnalysis);
+      }
+    } catch (error) {
+      console.error('Advanced analytics error:', error);
+    }
   };
 
   const exportToCSV = () => {
@@ -449,7 +554,7 @@ export default function ContractEventsEDA() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `contract_events_${address.slice(0, 10)}.csv`;
+    a.download = `multi_contract_events_${Date.now()}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -461,7 +566,7 @@ export default function ContractEventsEDA() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `contract_events_${address.slice(0, 10)}.json`;
+    a.download = `multi_contract_events_${Date.now()}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -473,8 +578,8 @@ export default function ContractEventsEDA() {
       setError('🔄 Generating professional intelligence report...');
       
       const blob = await PDFReportService.generatePDFReport(
-        address,
-        contractName || contractInfo?.contractName || 'Smart Contract',
+        contracts.map(c => c.address).join(', '),
+        contracts.map(c => c.name || 'Contract').join(', ') || 'Multi-Contract Analysis',
         contractInfo,
         stats,
         aiReport
@@ -483,7 +588,7 @@ export default function ContractEventsEDA() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${contractName || contractInfo?.contractName || 'Contract'}_Intelligence_Report.pdf`;
+      a.download = `Multi_Contract_Intelligence_Report_${Date.now()}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
       
@@ -507,8 +612,8 @@ export default function ContractEventsEDA() {
       await new Promise(resolve => setTimeout(resolve, 3000));
       
       const report = await AIAnalysisService.generateBlockcraReport({
-        contractAddress: address,
-        contractName: contractName || contractInfo?.contractName || 'Smart Contract',
+        contractAddress: contracts.map(c => c.address).join(', '),
+        contractName: contracts.map(c => c.name || 'Contract').join(', ') || 'Multi-Contract Analysis',
         contractInfo,
         stats,
         events
@@ -621,9 +726,15 @@ export default function ContractEventsEDA() {
     <div className="min-h-screen bg-background text-foreground">
       <Header title="Contract Events EDA" subtitle="Basic event analysis for any Starknet contract" />
       <main className="p-6 space-y-6">
-            <Card className="glass max-w-xl mx-auto">
+            <Card className="glass max-w-2xl mx-auto">
               <CardHeader>
-                <CardTitle>Enter Mainnet Contract Address</CardTitle>
+                <CardTitle className="flex items-center justify-between">
+                  <span>Enter Contract Addresses</span>
+                  <Button onClick={addContract} variant="outline" size="sm">
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add Contract
+                  </Button>
+                </CardTitle>
                 {contractInfo && (
                   <div className="flex items-center space-x-2 mt-2">
                     <Badge variant="outline" className="px-3 py-1">
@@ -635,21 +746,35 @@ export default function ContractEventsEDA() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  <div className="space-y-2">
-                    <Input
-                      placeholder="0x07070d915635269ea0930fa1c538f2d026e02e5078884aeb007141c39f481eee"
-                      value={address}
-                      onChange={e => setAddress(e.target.value)}
-                      className="w-full font-mono text-sm"
-                      onKeyPress={(e) => e.key === 'Enter' && handleFetch()}
-                    />
-                    <Input
-                      placeholder="Contract Name (e.g., MyToken, DEX Contract, NFT Collection)"
-                      value={contractName}
-                      onChange={e => setContractName(e.target.value)}
-                      className="w-full text-sm"
-                      onKeyPress={(e) => e.key === 'Enter' && handleFetch()}
-                    />
+                  <div className="space-y-3">
+                    {contracts.map((contract, index) => (
+                      <div key={index} className="flex space-x-2 items-center">
+                        <div className="flex-1 space-y-2">
+                          <Input
+                            placeholder="0x07070d915635269ea0930fa1c538f2d026e02e5078884aeb007141c39f481eee"
+                            value={contract.address}
+                            onChange={e => updateContract(index, 'address', e.target.value)}
+                            className="w-full font-mono text-sm"
+                          />
+                          <Input
+                            placeholder="Contract Name (e.g., MyToken, DEX Contract)"
+                            value={contract.name}
+                            onChange={e => updateContract(index, 'name', e.target.value)}
+                            className="w-full text-sm"
+                          />
+                        </div>
+                        {contracts.length > 1 && (
+                          <Button
+                            onClick={() => removeContract(index)}
+                            variant="outline"
+                            size="sm"
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
                   </div>
                   <div className="flex space-x-2">
                     <Button 
@@ -696,7 +821,7 @@ export default function ContractEventsEDA() {
                 <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle className="flex items-center space-x-2">
                     <BarChart3 className="h-5 w-5" />
-                    <span>{contractName || contractInfo?.contractName || 'Contract Analytics Dashboard'}</span>
+                    <span>{contracts.map(c => c.name || 'Contract').join(', ') || 'Multi-Contract Analytics Dashboard'}</span>
                   </CardTitle>
                   <Button onClick={exportDashboardAsImage} disabled={exportingImage} variant="outline" size="sm">
                     <Camera className="h-4 w-4 mr-2" />
@@ -1098,45 +1223,133 @@ export default function ContractEventsEDA() {
             
 
 
-            {/* AI REPORT GENERATION - Above Basic Web3 Contract Analysis */}
+            {/* ADVANCED ANALYTICS SECTION */}
             {stats && (
-              <Card className="glass max-w-6xl mx-auto">
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Bot className="h-5 w-5 text-purple-600" />
-                    <span>AI Business Analysis</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="text-center space-y-4">
-                  <p className="text-muted-foreground mb-4">
-                    Generate comprehensive business intelligence report with AI-powered insights, 
-                    performance metrics, risk assessment, and strategic recommendations.
-                  </p>
-                  <div className="flex justify-center space-x-4 mb-4">
-                    <Button 
-                      onClick={generateAIReport} 
-                      disabled={generatingReport || !events.length} 
-                      className="bg-gradient-to-r from-purple-600 to-blue-600"
-                    >
-                      <FileText className="h-4 w-4 mr-2" />
-                      {generatingReport ? 'Creating Report...' : 'Generate PDF Report'}
-                    </Button>
+              <div className="space-y-6">
+                {/* Dependency Graph */}
+                {dependencyGraph && (
+                  <div className="max-w-6xl mx-auto">
+                    <DependencyGraph 
+                      nodes={dependencyGraph.nodes}
+                      edges={dependencyGraph.edges}
+                      metrics={dependencyGraph.metrics}
+                    />
                   </div>
-                  
-                  {/* Download buttons - only show after report is generated */}
-                  {aiReport && (
-                    <div className="border-t pt-4">
-                      <p className="text-sm text-green-600 mb-4">✅ Report generated successfully!</p>
-                      <div className="flex justify-center space-x-4">
-                        <Button onClick={downloadPDFReport} className="bg-gradient-to-r from-red-600 to-pink-600">
-                          <Download className="h-4 w-4 mr-2" />
-                          Download PDF
-                        </Button>
-                      </div>
-                    </div>
+                )}
+                
+                {/* Anomalies & Predictions */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-6xl mx-auto">
+                  {/* Anomaly Detection */}
+                  {anomalies.length > 0 && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center space-x-2">
+                          <Activity className="h-5 w-5 text-red-500" />
+                          <span>Anomaly Detection</span>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {anomalies.map((anomaly, index) => (
+                          <div key={index} className="p-3 border rounded-lg">
+                            <div className="flex items-center justify-between mb-2">
+                              <Badge className={anomaly.severity === 'high' ? 'bg-red-500' : anomaly.severity === 'medium' ? 'bg-yellow-500' : 'bg-blue-500'}>
+                                {anomaly.severity.toUpperCase()}
+                              </Badge>
+                              <span className="text-sm text-muted-foreground">
+                                {(anomaly.confidence * 100).toFixed(0)}% confidence
+                              </span>
+                            </div>
+                            <p className="text-sm">{anomaly.description}</p>
+                          </div>
+                        ))}
+                      </CardContent>
+                    </Card>
                   )}
-                </CardContent>
-              </Card>
+                  
+                  {/* Predictions */}
+                  {predictions.length > 0 && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center space-x-2">
+                          <TrendingUp className="h-5 w-5 text-green-500" />
+                          <span>AI Predictions</span>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {predictions.map((prediction, index) => (
+                          <div key={index} className="p-3 border rounded-lg">
+                            <div className="flex items-center justify-between mb-2">
+                              <h4 className="font-semibold">{prediction.metric}</h4>
+                              <Badge className={prediction.trend === 'increasing' ? 'bg-green-500' : prediction.trend === 'decreasing' ? 'bg-red-500' : 'bg-gray-500'}>
+                                {prediction.trend}
+                              </Badge>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 text-sm">
+                              <div>
+                                <p className="text-muted-foreground">Current</p>
+                                <p className="font-mono">{prediction.currentValue}</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground">Predicted ({prediction.timeframe})</p>
+                                <p className="font-mono">{prediction.predictedValue}</p>
+                              </div>
+                            </div>
+                            <div className="mt-2">
+                              <div className="w-full bg-gray-200 rounded-full h-2">
+                                <div className="bg-blue-600 h-2 rounded-full" style={{ width: `${prediction.confidence * 100}%` }}></div>
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-1">{(prediction.confidence * 100).toFixed(0)}% confidence</p>
+                            </div>
+                          </div>
+                        ))}
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+                
+                {/* Alert Panel */}
+                <div className="max-w-6xl mx-auto">
+                  <AlertPanel contractAddresses={contracts.map(c => c.address)} />
+                </div>
+                
+                {/* AI REPORT GENERATION */}
+                <Card className="glass max-w-6xl mx-auto">
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <Bot className="h-5 w-5 text-purple-600" />
+                      <span>AI Business Analysis</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-center space-y-4">
+                    <p className="text-muted-foreground mb-4">
+                      Generate comprehensive business intelligence report with AI-powered insights, 
+                      performance metrics, risk assessment, and strategic recommendations.
+                    </p>
+                    <div className="flex justify-center space-x-4 mb-4">
+                      <Button 
+                        onClick={generateAIReport} 
+                        disabled={generatingReport || !events.length} 
+                        className="bg-gradient-to-r from-purple-600 to-blue-600"
+                      >
+                        <FileText className="h-4 w-4 mr-2" />
+                        {generatingReport ? 'Creating Report...' : 'Generate PDF Report'}
+                      </Button>
+                    </div>
+                    
+                    {aiReport && (
+                      <div className="border-t pt-4">
+                        <p className="text-sm text-green-600 mb-4">✅ Report generated successfully!</p>
+                        <div className="flex justify-center space-x-4">
+                          <Button onClick={downloadPDFReport} className="bg-gradient-to-r from-red-600 to-pink-600">
+                            <Download className="h-4 w-4 mr-2" />
+                            Download PDF
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
             )}
       </main>
     </div>
