@@ -8,6 +8,11 @@ import AdminDashboard from '@/pages/AdminDashboard';
 const ADMIN_EMAIL = 'Ndiiekanem41@gmail.com';
 const ADMIN_PASSWORD = 'Mkpanam200';
 
+const logger = {
+  info: (message: string, data?: any) => console.log(`[INFO] ${message}`, data),
+  error: (message: string, error?: any) => console.error(`[ERROR] ${message}`, error)
+};
+
 export function AdminRoute() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [email, setEmail] = useState('');
@@ -15,16 +20,24 @@ export function AdminRoute() {
   const [error, setError] = useState('');
 
   const handleLogin = () => {
-    console.log('Login attempt:', { email, password });
-    console.log('Expected:', { ADMIN_EMAIL, ADMIN_PASSWORD });
-    
-    if (email.trim().toLowerCase() === ADMIN_EMAIL.toLowerCase() && password.trim() === ADMIN_PASSWORD) {
-      setIsAuthenticated(true);
-      setError('');
-    } else {
-      setError(`Invalid credentials. Expected: ${ADMIN_EMAIL} / ${ADMIN_PASSWORD}`);
-      setEmail('');
-      setPassword('');
+    try {
+      logger.info('Admin login attempt', { email });
+      
+      if (email.trim().toLowerCase() === ADMIN_EMAIL.toLowerCase() && password.trim() === ADMIN_PASSWORD) {
+        setIsAuthenticated(true);
+        setError('');
+        logger.info('Admin login successful', { email });
+      } else {
+        const errorMsg = 'Invalid admin credentials';
+        setError(errorMsg);
+        setEmail('');
+        setPassword('');
+        logger.error('Admin login failed', { email, reason: 'Invalid credentials' });
+      }
+    } catch (err) {
+      const errorMsg = 'Login system error occurred';
+      setError(errorMsg);
+      logger.error('Admin login system error', err);
     }
   };
 
