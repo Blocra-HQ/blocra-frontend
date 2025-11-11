@@ -49,7 +49,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Demo auth mode (local-only), everything else uses production API
+  // Production auth mode
   const isDemoAuth = false;
 
   const fetchProfile = async () => {

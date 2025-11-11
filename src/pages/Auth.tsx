@@ -91,21 +91,7 @@ export default function Auth() {
     setMessage('');
   }, [activeTab]);
 
-  // Create demo account if none exists
-  useEffect(() => {
-    const users = JSON.parse(localStorage.getItem('blodi_users') || '[]');
-    if (users.length === 0) {
-      const demoUser: User = {
-        id: 'demo-1',
-        email: 'demo@blodi.com',
-        name: 'demo',
-        password: 'demo123', // Store plain text for demo
-        role: 'analyst'
-      };
-      localStorage.setItem('blodi_users', JSON.stringify([demoUser]));
-    }
-    console.log('Current users:', users);
-  }, []);
+
 
   const handleSignIn = (e: React.FormEvent) => {
     e.preventDefault();
@@ -121,15 +107,12 @@ export default function Auth() {
     try {
       const users: User[] = JSON.parse(localStorage.getItem('blodi_users') || '[]');
       
-      if (users.length === 0) {
-        setError('No accounts found. Please create an account first.');
-        setLoading(false);
-        return;
-      }
 
+
+      const hashedPassword = hashPassword(signInPassword);
       const user = users.find(u => 
         (u.email === signInIdentifier.trim() || u.name === signInIdentifier.trim()) && 
-        u.password === signInPassword
+        u.password === hashedPassword
       );
 
       if (user) {
@@ -196,7 +179,7 @@ export default function Auth() {
         id: Date.now().toString(),
         email: trimmedEmail,
         name: trimmedName,
-        password: signUpPassword, // Store plain text for demo
+        password: hashPassword(signUpPassword),
         role
       };
 
@@ -271,29 +254,6 @@ export default function Auth() {
               )}
 
               <TabsContent value="signin">
-                <div className="mb-4 p-3 bg-muted rounded-lg">
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <p className="text-sm text-muted-foreground mb-1">Demo Account:</p>
-                      <p className="text-xs font-mono">Email/Name: demo | Password: demo123</p>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        localStorage.removeItem('blodi_users');
-                        localStorage.removeItem('blodi_current_user');
-                        localStorage.removeItem('demo_user');
-                        localStorage.removeItem('auth_token');
-                        window.location.reload();
-                      }}
-                      className="text-xs"
-                    >
-                      Clear Data
-                    </Button>
-                  </div>
-                </div>
                 <form onSubmit={handleSignIn} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="signin-identifier">Email or Name</Label>
@@ -332,6 +292,22 @@ export default function Auth() {
                   <Button type="submit" className="w-full glow-primary" disabled={loading}>
                     {loading ? 'Signing in...' : 'Sign In'}
                   </Button>
+                  <div className="text-center mt-4">
+                    <button
+                      type="button"
+                      className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                      onClick={() => {
+                        const users = JSON.parse(localStorage.getItem('blodi_users') || '[]');
+                        if (users.length > 0) {
+                          alert(`Registered users: ${users.map((u: any) => u.name || u.email).join(', ')}`);
+                        } else {
+                          alert('No registered users found. Please create an account.');
+                        }
+                      }}
+                    >
+                      View registered accounts
+                    </button>
+                  </div>
                 </form>
               </TabsContent>
 
@@ -453,7 +429,7 @@ export default function Auth() {
             </Link>
           </p>
           <p className="text-xs text-muted-foreground">
-            Demo version - Data stored locally in your browser
+            Secure authentication - Data stored locally in your browser
           </p>
         </div>
       </div>

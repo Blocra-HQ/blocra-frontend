@@ -5,614 +5,373 @@ import { AuthenticatedSidebar } from "@/components/layout/AuthenticatedSidebar";
 import { Header } from "@/components/layout/Header";
 import { useNavigate } from "react-router-dom";
 import { 
-  BookOpen, 
-  Code, 
-  Database, 
-  Zap, 
-  Shield, 
   BarChart3, 
-  Trophy,
-  Rocket,
-  Users,
-  Globe,
-  ExternalLink,
-  Github,
-  Star,
-  Download,
-  Copy,
-  Terminal,
-  Play,
+  Database, 
+  Activity,
   CheckCircle,
   ArrowRight,
-  Wallet,
-  Search,
-  Layout,
-  Activity
+  ExternalLink,
+  Github,
+  Globe,
+  FileText,
+  Zap,
+  Users,
+  Target,
+  TrendingUp,
+  PieChart,
+  Download
 } from "lucide-react";
 
 export default function Docs() {
   const navigate = useNavigate();
+  
   return (
     <div className="min-h-screen bg-background">
       <AuthenticatedSidebar />
       <div className="lg:ml-64">
-        <Header title="Documentation" subtitle="Complete guide to get started with Starklytics Suite" />
+        <Header title="Documentation" subtitle="Learn about BloDI - Blockchain Data Intelligence for Starknet" />
         <main className="p-6">
-          <div className="max-w-6xl mx-auto space-y-8">
+          <div className="max-w-4xl mx-auto space-y-8">
             
-            {/* Welcome Section */}
+            {/* What is BloDI */}
             <Card className="glass-card border-border/30">
-              <CardHeader className="text-center">
-                <div className="flex items-center justify-center space-x-2 mb-4">
+              <CardHeader>
+                <div className="flex items-center space-x-3 mb-4">
                   <div className="w-12 h-12 bg-gradient-to-br from-primary to-accent rounded-xl flex items-center justify-center shadow-lg">
                     <BarChart3 className="w-6 h-6 text-primary-foreground" />
                   </div>
                   <div>
-                    <CardTitle className="text-3xl bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                      Welcome to Starklytics Suite
-                    </CardTitle>
-                    <CardDescription className="text-lg">
-                      Your complete guide to Starknet analytics and bounty management
-                    </CardDescription>
+                    <CardTitle className="text-2xl">What is BloDI?</CardTitle>
+                    <CardDescription>Blockchain Data Intelligence for Starknet</CardDescription>
                   </div>
                 </div>
-                <div className="flex items-center justify-center space-x-2 mt-4">
-                  <Badge className="bg-green-100 text-green-800 border-green-200">
-                    Production Ready
-                  </Badge>
-                  <Badge variant="outline">
-                    MIT License
-                  </Badge>
-                  <Badge variant="outline">
-                    TypeScript
-                  </Badge>
+                <div className="flex items-center space-x-2">
+                  <Badge className="bg-green-100 text-green-800 border-green-200">Live Demo</Badge>
+                  <Badge variant="outline">Open Source</Badge>
+                  <Badge variant="outline">React + TypeScript</Badge>
                 </div>
               </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-muted-foreground leading-relaxed">
+                  BloDI (Blockchain Data Intelligence) is a web application that helps you analyze Starknet smart contracts 
+                  and their activity. Think of it as a specialized tool for understanding what's happening on the Starknet blockchain.
+                </p>
+                <p className="text-muted-foreground leading-relaxed">
+                  Instead of manually checking transactions and events, BloDI fetches real-time data from Starknet, 
+                  analyzes it, and presents it in easy-to-understand charts and reports. It's particularly useful for 
+                  developers, researchers, and anyone curious about how Starknet contracts are performing.
+                </p>
+              </CardContent>
             </Card>
 
-            {/* New Features Section */}
+            {/* What BloDI Actually Does */}
+            <Card className="glass-card border-border/30">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Target className="w-5 h-5 text-primary" />
+                  <span>What BloDI Actually Does</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <div className="flex items-start space-x-3">
+                      <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mt-1">
+                        <Activity className="w-4 h-4 text-blue-600" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold">Contract Event Analysis</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Enter any Starknet contract address and BloDI will fetch all its events, 
+                          decode them, and show you what's been happening.
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-start space-x-3">
+                      <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center mt-1">
+                        <Users className="w-4 h-4 text-green-600" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold">User Classification</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Automatically categorizes users as Whales (big holders), Bots (automated), 
+                          DAOs (organizations), or Regular Users based on their activity patterns.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div className="flex items-start space-x-3">
+                      <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center mt-1">
+                        <PieChart className="w-4 h-4 text-purple-600" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold">Visual Analytics</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Creates interactive charts showing transaction patterns, gas usage, 
+                          success rates, and user distribution over time.
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-start space-x-3">
+                      <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center mt-1">
+                        <FileText className="w-4 h-4 text-orange-600" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold">AI-Powered Reports</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Generates professional PDF reports with business insights, 
+                          risk assessments, and recommendations based on the contract data.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* How to Use BloDI */}
             <Card className="glass-card border-border/30">
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
                   <Zap className="w-5 h-5 text-primary" />
-                  <span>Latest Features</span>
+                  <span>How to Use BloDI (Step by Step)</span>
                 </CardTitle>
                 <CardDescription>
-                  Discover the newest capabilities in Starklytics Suite
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-3">
-                    <h3 className="font-semibold flex items-center gap-2">
-                      <Activity className="w-4 h-4 text-primary" />
-                      Real-Time Statistics
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      Live WebSocket updates for bounty metrics and participant activity
-                    </p>
-                  </div>
-                  <div className="space-y-3">
-                    <h3 className="font-semibold flex items-center gap-2">
-                      <Trophy className="w-4 h-4 text-primary" />
-                      Enhanced Bounty System
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      Improved bounty creation, participation tracking, and completion verification
-                    </p>
-                  </div>
-                  <div className="space-y-3">
-                    <h3 className="font-semibold flex items-center gap-2">
-                      <Shield className="w-4 h-4 text-primary" />
-                      Security Features
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      Rate limiting, input validation, and secure file upload handling
-                    </p>
-                  </div>
-                  <div className="space-y-3">
-                    <h3 className="font-semibold flex items-center gap-2">
-                      <Database className="w-4 h-4 text-primary" />
-                      Data Management
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      Monthly statistics, CSV exports, and comprehensive data exploration tools
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Quick Start Guide */}
-            <Card className="glass-card border-border/30">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Rocket className="w-5 h-5 text-primary" />
-                  <span>Quick Start - Get Up and Running in 5 Minutes</span>
-                </CardTitle>
-                <CardDescription>
-                  Follow these steps to start analyzing Starknet data and managing bounties
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="text-center space-y-3">
-                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center mx-auto">
-                      <span className="text-white font-bold">1</span>
-                    </div>
-                    <h3 className="font-semibold">Choose Your Role</h3>
-                    <p className="text-sm text-muted-foreground">Select Analyst, Creator, or Admin based on your goals</p>
-                    <Button size="sm" variant="outline" className="w-full" onClick={() => navigate('/profile')}>
-                      <Users className="w-4 h-4 mr-2" />
-                      Set Role
-                    </Button>
-                  </div>
-                  <div className="text-center space-y-3">
-                    <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center mx-auto">
-                      <span className="text-white font-bold">2</span>
-                    </div>
-                    <h3 className="font-semibold">Connect Wallet</h3>
-                    <p className="text-sm text-muted-foreground">Link your Argent X or Braavos wallet for DeFi features</p>
-                    <Button size="sm" variant="outline" className="w-full" onClick={() => navigate('/wallet')}>
-                      <Wallet className="w-4 h-4 mr-2" />
-                      Connect
-                    </Button>
-                  </div>
-                  <div className="text-center space-y-3">
-                    <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-full flex items-center justify-center mx-auto">
-                      <span className="text-white font-bold">3</span>
-                    </div>
-                    <h3 className="font-semibold">Start Exploring</h3>
-                    <p className="text-sm text-muted-foreground">Browse analytics, create queries, or join bounties</p>
-                    <Button size="sm" variant="outline" className="w-full" onClick={() => navigate('/analytics')}>
-                      <Play className="w-4 h-4 mr-2" />
-                      Explore
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Platform Overview */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card className="glass-card border-border/30">
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <BarChart3 className="w-5 h-5 text-primary" />
-                    <span>What is Starklytics Suite?</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="text-muted-foreground leading-relaxed">
-                    Starklytics Suite is a <strong>production-ready, enterprise-grade platform</strong> that revolutionizes how developers and analysts interact with the Starknet ecosystem.
-                  </p>
-                  <div className="space-y-2">
-                    <div className="flex items-center space-x-2">
-                      <CheckCircle className="w-4 h-4 text-green-500" />
-                      <span className="text-sm">Real-time Starknet analytics</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <CheckCircle className="w-4 h-4 text-green-500" />
-                      <span className="text-sm">Automated bounty management</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <CheckCircle className="w-4 h-4 text-green-500" />
-                      <span className="text-sm">AI-powered data insights</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <CheckCircle className="w-4 h-4 text-green-500" />
-                      <span className="text-sm">Enterprise-grade security</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="glass-card border-border/30">
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Trophy className="w-5 h-5 text-primary" />
-                    <span>Why Choose Starklytics?</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-3">
-                    <div className="flex items-start space-x-3">
-                      <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center mt-0.5">
-                        <Zap className="w-3 h-3 text-primary" />
-                      </div>
-                      <div>
-                        <h4 className="font-medium">Lightning Fast</h4>
-                        <p className="text-sm text-muted-foreground">Optimized performance with modern tech stack</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start space-x-3">
-                      <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center mt-0.5">
-                        <Shield className="w-3 h-3 text-primary" />
-                      </div>
-                      <div>
-                        <h4 className="font-medium">Secure by Design</h4>
-                        <p className="text-sm text-muted-foreground">Production-grade security and validation</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start space-x-3">
-                      <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center mt-0.5">
-                        <Users className="w-3 h-3 text-primary" />
-                      </div>
-                      <div>
-                        <h4 className="font-medium">Community Driven</h4>
-                        <p className="text-sm text-muted-foreground">Built for and by the Starknet community</p>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Core Features */}
-            <Card className="glass-card border-border/30">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Star className="w-5 h-5 text-primary" />
-                  <span>Core Platform Features</span>
-                </CardTitle>
-                <CardDescription>
-                  Everything you need to analyze Starknet data and manage bounties
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  <div className="text-center space-y-3">
-                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center mx-auto">
-                      <BarChart3 className="w-6 h-6 text-white" />
-                    </div>
-                    <h3 className="font-semibold">Real-Time Analytics</h3>
-                    <p className="text-sm text-muted-foreground">Live Starknet data with interactive visualizations</p>
-                  </div>
-                  <div className="text-center space-y-3">
-                    <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center mx-auto">
-                      <Database className="w-6 h-6 text-white" />
-                    </div>
-                    <h3 className="font-semibold">Query Editor</h3>
-                    <p className="text-sm text-muted-foreground">SQL-like interface for custom data analysis</p>
-                  </div>
-                  <div className="text-center space-y-3">
-                    <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center mx-auto">
-                      <Trophy className="w-6 h-6 text-white" />
-                    </div>
-                    <h3 className="font-semibold">Bounty System</h3>
-                    <p className="text-sm text-muted-foreground">Smart contract-based reward management</p>
-                  </div>
-                  <div className="text-center space-y-3">
-                    <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center mx-auto">
-                      <Layout className="w-6 h-6 text-white" />
-                    </div>
-                    <h3 className="font-semibold">Dashboard Builder</h3>
-                    <p className="text-sm text-muted-foreground">Create custom analytics dashboards</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Getting Started Tutorials */}
-            <Card className="glass-card border-border/30">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <BookOpen className="w-5 h-5 text-primary" />
-                  <span>Step-by-Step Tutorials</span>
-                </CardTitle>
-                <CardDescription>
-                  Learn how to use each feature with hands-on tutorials
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <h3 className="font-semibold flex items-center space-x-2">
-                      <BarChart3 className="w-4 h-4 text-primary" />
-                      <span>Analytics Tutorials</span>
-                    </h3>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => navigate('/query')}>
-                        <div>
-                          <h4 className="font-medium text-sm">Your First Query</h4>
-                          <p className="text-xs text-muted-foreground">Learn to query Starknet data</p>
-                        </div>
-                        <ArrowRight className="w-4 h-4 text-muted-foreground" />
-                      </div>
-                      <div className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => navigate('/builder')}>
-                        <div>
-                          <h4 className="font-medium text-sm">Building Dashboards</h4>
-                          <p className="text-xs text-muted-foreground">Create custom visualizations</p>
-                        </div>
-                        <ArrowRight className="w-4 h-4 text-muted-foreground" />
-                      </div>
-                      <div className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => navigate('/contract-events-eda')}>
-                        <div>
-                          <h4 className="font-medium text-sm">Contract Analysis</h4>
-                          <p className="text-xs text-muted-foreground">Analyze smart contract events</p>
-                        </div>
-                        <ArrowRight className="w-4 h-4 text-muted-foreground" />
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-4">
-                    <h3 className="font-semibold flex items-center space-x-2">
-                      <Trophy className="w-4 h-4 text-primary" />
-                      <span>Bounty Tutorials</span>
-                    </h3>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => navigate('/create-bounty')}>
-                        <div>
-                          <h4 className="font-medium text-sm">Creating Your First Bounty</h4>
-                          <p className="text-xs text-muted-foreground">Set up and fund a bounty</p>
-                        </div>
-                        <ArrowRight className="w-4 h-4 text-muted-foreground" />
-                      </div>
-                      <div className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => navigate('/bounties')}>
-                        <div>
-                          <h4 className="font-medium text-sm">Joining Bounties</h4>
-                          <p className="text-xs text-muted-foreground">Submit solutions and earn rewards</p>
-                        </div>
-                        <ArrowRight className="w-4 h-4 text-muted-foreground" />
-                      </div>
-                      <div className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => navigate('/bounties')}>
-                        <div>
-                          <h4 className="font-medium text-sm">Managing Submissions</h4>
-                          <p className="text-xs text-muted-foreground">Review and select winners</p>
-                        </div>
-                        <ArrowRight className="w-4 h-4 text-muted-foreground" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* User Roles & Permissions */}
-            <Card className="glass-card border-border/30">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Users className="w-5 h-5 text-primary" />
-                  <span>User Roles & What You Can Do</span>
-                </CardTitle>
-                <CardDescription>
-                  Choose the role that matches your goals and unlock specific features
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="border border-border rounded-lg p-4 space-y-3">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
-                        <Search className="w-4 h-4 text-white" />
-                      </div>
-                      <h3 className="font-semibold">Analyst</h3>
-                    </div>
-                    <p className="text-sm text-muted-foreground">Perfect for data analysts and researchers</p>
-                    <div className="space-y-2">
-                      <div className="flex items-center space-x-2">
-                        <CheckCircle className="w-3 h-3 text-green-500" />
-                        <span className="text-xs">Browse and join bounties</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <CheckCircle className="w-3 h-3 text-green-500" />
-                        <span className="text-xs">Access all analytics tools</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <CheckCircle className="w-3 h-3 text-green-500" />
-                        <span className="text-xs">Submit solutions</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <CheckCircle className="w-3 h-3 text-green-500" />
-                        <span className="text-xs">Earn rewards</span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="border border-border rounded-lg p-4 space-y-3">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center">
-                        <Trophy className="w-4 h-4 text-white" />
-                      </div>
-                      <h3 className="font-semibold">Creator</h3>
-                    </div>
-                    <p className="text-sm text-muted-foreground">Ideal for project managers and researchers</p>
-                    <div className="space-y-2">
-                      <div className="flex items-center space-x-2">
-                        <CheckCircle className="w-3 h-3 text-green-500" />
-                        <span className="text-xs">Create and fund bounties</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <CheckCircle className="w-3 h-3 text-green-500" />
-                        <span className="text-xs">Manage submissions</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <CheckCircle className="w-3 h-3 text-green-500" />
-                        <span className="text-xs">Select winners</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <CheckCircle className="w-3 h-3 text-green-500" />
-                        <span className="text-xs">All analyst features</span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="border border-border rounded-lg p-4 space-y-3">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center">
-                        <Shield className="w-4 h-4 text-white" />
-                      </div>
-                      <h3 className="font-semibold">Admin</h3>
-                    </div>
-                    <p className="text-sm text-muted-foreground">Full platform access and management</p>
-                    <div className="space-y-2">
-                      <div className="flex items-center space-x-2">
-                        <CheckCircle className="w-3 h-3 text-green-500" />
-                        <span className="text-xs">Platform management</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <CheckCircle className="w-3 h-3 text-green-500" />
-                        <span className="text-xs">User management</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <CheckCircle className="w-3 h-3 text-green-500" />
-                        <span className="text-xs">System monitoring</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <CheckCircle className="w-3 h-3 text-green-500" />
-                        <span className="text-xs">All features</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Common Use Cases */}
-            <Card className="glass-card border-border/30">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Activity className="w-5 h-5 text-primary" />
-                  <span>Common Use Cases & Examples</span>
-                </CardTitle>
-                <CardDescription>
-                  Real-world scenarios where Starklytics Suite adds value
+                  It's actually quite simple - here's how it works:
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
-                  <div className="border-l-4 border-primary pl-4">
-                    <h3 className="font-semibold mb-2">DeFi Protocol Analysis</h3>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      Track TVL changes, analyze user behavior, and monitor protocol health across Starknet DeFi protocols.
-                    </p>
-                    <div className="flex items-center space-x-2">
-                      <Badge variant="outline" className="text-xs">Analytics</Badge>
-                      <Badge variant="outline" className="text-xs">Query Editor</Badge>
-                      <Badge variant="outline" className="text-xs">Dashboards</Badge>
+                  <div className="flex items-start space-x-4">
+                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                      1
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-semibold mb-2">Find a Starknet Contract</h3>
+                      <p className="text-sm text-muted-foreground mb-3">
+                        Get the contract address from Starkscan, Voyager, or any Starknet explorer. 
+                        It looks like: <code className="bg-muted px-1 rounded">0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7</code>
+                      </p>
+                      <Button size="sm" variant="outline" onClick={() => window.open('https://starkscan.co', '_blank')}>
+                        <ExternalLink className="w-4 h-4 mr-2" />
+                        Open Starkscan
+                      </Button>
                     </div>
                   </div>
-                  
-                  <div className="border-l-4 border-green-500 pl-4">
-                    <h3 className="font-semibold mb-2">Security Research Bounties</h3>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      Create bounties for security audits, vulnerability research, and protocol analysis with automated rewards.
-                    </p>
-                    <div className="flex items-center space-x-2">
-                      <Badge variant="outline" className="text-xs">Bounties</Badge>
-                      <Badge variant="outline" className="text-xs">Smart Contracts</Badge>
-                      <Badge variant="outline" className="text-xs">Rewards</Badge>
+
+                  <div className="flex items-start space-x-4">
+                    <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                      2
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-semibold mb-2">Analyze the Contract</h3>
+                      <p className="text-sm text-muted-foreground mb-3">
+                        Go to "Contract Analysis" in BloDI, paste the address, give it a name, and click "Fetch Events". 
+                        BloDI will pull all the contract's activity and start analyzing it.
+                      </p>
+                      <Button size="sm" variant="outline" onClick={() => navigate('/contract-events-eda')}>
+                        <Activity className="w-4 h-4 mr-2" />
+                        Try Contract Analysis
+                      </Button>
                     </div>
                   </div>
-                  
-                  <div className="border-l-4 border-blue-500 pl-4">
-                    <h3 className="font-semibold mb-2">Network Growth Tracking</h3>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      Monitor transaction volumes, new user adoption, and ecosystem growth with real-time dashboards.
-                    </p>
-                    <div className="flex items-center space-x-2">
-                      <Badge variant="outline" className="text-xs">Real-time Data</Badge>
-                      <Badge variant="outline" className="text-xs">Visualizations</Badge>
-                      <Badge variant="outline" className="text-xs">AI Insights</Badge>
+
+                  <div className="flex items-start space-x-4">
+                    <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                      3
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-semibold mb-2">Explore the Results</h3>
+                      <p className="text-sm text-muted-foreground mb-3">
+                        You'll see charts showing user activity, transaction patterns, gas usage, and more. 
+                        Each chart tells you something different about how the contract is being used.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start space-x-4">
+                    <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                      4
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-semibold mb-2">Generate Reports (Optional)</h3>
+                      <p className="text-sm text-muted-foreground mb-3">
+                        Click "Generate PDF Report" to get a professional analysis document with business insights, 
+                        risk assessment, and recommendations. Great for sharing with teams or stakeholders.
+                      </p>
                     </div>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* FAQ Section */}
+            {/* Real Examples */}
             <Card className="glass-card border-border/30">
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
-                  <BookOpen className="w-5 h-5 text-primary" />
-                  <span>Frequently Asked Questions</span>
+                  <TrendingUp className="w-5 h-5 text-primary" />
+                  <span>Real Examples of What You'll Discover</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="border-l-4 border-blue-500 pl-4">
+                    <h3 className="font-semibold mb-1">DeFi Protocol Health</h3>
+                    <p className="text-sm text-muted-foreground">
+                      See if a DEX is growing or shrinking, identify the biggest traders, 
+                      and spot unusual activity patterns that might indicate problems or opportunities.
+                    </p>
+                  </div>
+                  
+                  <div className="border-l-4 border-green-500 pl-4">
+                    <h3 className="font-semibold mb-1">NFT Collection Performance</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Track minting activity, identify whale collectors, analyze trading patterns, 
+                      and understand which features drive the most engagement.
+                    </p>
+                  </div>
+                  
+                  <div className="border-l-4 border-purple-500 pl-4">
+                    <h3 className="font-semibold mb-1">Gaming Contract Usage</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Monitor player activity, identify power users vs casual players, 
+                      track in-game economy health, and spot potential bot activity.
+                    </p>
+                  </div>
+                  
+                  <div className="border-l-4 border-orange-500 pl-4">
+                    <h3 className="font-semibold mb-1">Token Distribution Analysis</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Understand how tokens are distributed, identify concentration risks, 
+                      track holder behavior, and analyze transfer patterns.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Technical Details */}
+            <Card className="glass-card border-border/30">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Database className="w-5 h-5 text-primary" />
+                  <span>How BloDI Works Technically</span>
                 </CardTitle>
                 <CardDescription>
-                  Quick answers to common questions about the platform
+                  For the curious minds who want to know what's happening under the hood
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="border border-border rounded-lg p-4">
-                    <h3 className="font-semibold mb-2">How do I get started with analytics?</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Simply navigate to the Analytics page, choose a pre-built query, or create your own using our SQL-like interface. All Starknet data is available in real-time.
-                    </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-3">
+                      <h3 className="font-semibold">Data Collection</h3>
+                      <ul className="text-sm text-muted-foreground space-y-1">
+                        <li>• Connects to Starknet RPC endpoints</li>
+                        <li>• Fetches contract events in real-time</li>
+                        <li>• Decodes event data automatically</li>
+                        <li>• Handles multiple RPC providers for reliability</li>
+                      </ul>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      <h3 className="font-semibold">Analysis Engine</h3>
+                      <ul className="text-sm text-muted-foreground space-y-1">
+                        <li>• Classifies users based on transaction patterns</li>
+                        <li>• Calculates performance metrics</li>
+                        <li>• Generates statistical insights</li>
+                        <li>• Creates time-series data for charts</li>
+                      </ul>
+                    </div>
                   </div>
                   
-                  <div className="border border-border rounded-lg p-4">
-                    <h3 className="font-semibold mb-2">What wallets are supported?</h3>
-                    <p className="text-sm text-muted-foreground">
-                      We support Argent X and Braavos wallets. Simply install the browser extension and connect through our wallet integration.
-                    </p>
-                  </div>
-                  
-                  <div className="border border-border rounded-lg p-4">
-                    <h3 className="font-semibold mb-2">How do bounty rewards work?</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Bounty creators fund rewards through smart contracts. When a winner is selected, payments are automatically distributed via AutoSwappr integration.
-                    </p>
-                  </div>
-                  
-                  <div className="border border-border rounded-lg p-4">
-                    <h3 className="font-semibold mb-2">Is my data secure?</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Yes! We use enterprise-grade security with input validation, rate limiting, and comprehensive error handling. All wallet interactions are non-custodial.
-                    </p>
+                  <div className="border-t pt-4">
+                    <h3 className="font-semibold mb-2">Built With</h3>
+                    <div className="flex flex-wrap gap-2">
+                      <Badge variant="outline">React</Badge>
+                      <Badge variant="outline">TypeScript</Badge>
+                      <Badge variant="outline">Vite</Badge>
+                      <Badge variant="outline">Tailwind CSS</Badge>
+                      <Badge variant="outline">Recharts</Badge>
+                      <Badge variant="outline">starknet.js</Badge>
+                    </div>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Next Steps */}
+            {/* Limitations & Future */}
             <Card className="glass-card border-border/30">
               <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Rocket className="w-5 h-5 text-primary" />
-                  <span>Ready to Get Started?</span>
-                </CardTitle>
+                <CardTitle>Current Limitations & Future Plans</CardTitle>
                 <CardDescription>
-                  Choose your path and start exploring Starknet data today
+                  Being transparent about what BloDI can and can't do right now
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <h3 className="font-semibold">For New Users</h3>
-                    <div className="space-y-3">
-                      <Button className="w-full justify-start" variant="outline" onClick={() => navigate('/analytics')}>
-                        <BarChart3 className="w-4 h-4 mr-2" />
-                        Explore Analytics Dashboard
-                      </Button>
-                      <Button className="w-full justify-start" variant="outline" onClick={() => navigate('/query')}>
-                        <Database className="w-4 h-4 mr-2" />
-                        Try Query Editor
-                      </Button>
-                      <Button className="w-full justify-start" variant="outline" onClick={() => navigate('/bounties')}>
-                        <Trophy className="w-4 h-4 mr-2" />
-                        Browse Active Bounties
-                      </Button>
-                    </div>
+                  <div className="space-y-3">
+                    <h3 className="font-semibold text-orange-600">Current Limitations</h3>
+                    <ul className="text-sm text-muted-foreground space-y-1">
+                      <li>• Only analyzes individual contracts (not cross-contract flows)</li>
+                      <li>• Limited to event data (doesn't analyze state changes)</li>
+                      <li>• AI reports are basic (room for improvement)</li>
+                      <li>• No historical data beyond what RPC provides</li>
+                      <li>• Performance depends on RPC endpoint reliability</li>
+                    </ul>
                   </div>
                   
-                  <div className="space-y-4">
-                    <h3 className="font-semibold">For Developers</h3>
-                    <div className="space-y-3">
-                      <Button className="w-full justify-start" variant="outline" onClick={() => window.open('https://github.com/starklytics/suite', '_blank')}>
-                        <Github className="w-4 h-4 mr-2" />
-                        View Source Code
-                      </Button>
-                      <Button className="w-full justify-start" variant="outline" onClick={() => navigate('/docs')}>
-                        <Code className="w-4 h-4 mr-2" />
-                        API Documentation
-                      </Button>
-                      <Button className="w-full justify-start" variant="outline" onClick={() => window.open('https://vercel.com/new/clone?repository-url=https://github.com/starklytics/suite', '_blank')}>
-                        <Download className="w-4 h-4 mr-2" />
-                        Deploy Your Own
-                      </Button>
-                    </div>
+                  <div className="space-y-3">
+                    <h3 className="font-semibold text-green-600">Planned Improvements</h3>
+                    <ul className="text-sm text-muted-foreground space-y-1">
+                      <li>• Cross-contract transaction flow analysis</li>
+                      <li>• Historical data caching and storage</li>
+                      <li>• More sophisticated AI insights</li>
+                      <li>• Custom alert system for contract activity</li>
+                      <li>• API for developers to integrate BloDI data</li>
+                    </ul>
                   </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Get Started */}
+            <Card className="glass-card border-border/30">
+              <CardHeader>
+                <CardTitle>Ready to Try BloDI?</CardTitle>
+                <CardDescription>
+                  Start analyzing Starknet contracts in under 2 minutes
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <Button className="h-auto p-4 flex flex-col items-center space-y-2" onClick={() => navigate('/contract-events-eda')}>
+                    <Activity className="w-6 h-6" />
+                    <div className="text-center">
+                      <div className="font-semibold">Analyze a Contract</div>
+                      <div className="text-xs opacity-75">Start with contract analysis</div>
+                    </div>
+                  </Button>
+                  
+                  <Button variant="outline" className="h-auto p-4 flex flex-col items-center space-y-2" onClick={() => window.open('https://github.com/Ndifreke000/BloDI', '_blank')}>
+                    <Github className="w-6 h-6" />
+                    <div className="text-center">
+                      <div className="font-semibold">View Source Code</div>
+                      <div className="text-xs opacity-75">Check out the code</div>
+                    </div>
+                  </Button>
+                  
+                  <Button variant="outline" className="h-auto p-4 flex flex-col items-center space-y-2" onClick={() => window.open('https://blodi-suite.vercel.app/', '_blank')}>
+                    <Globe className="w-6 h-6" />
+                    <div className="text-center">
+                      <div className="font-semibold">Live Demo</div>
+                      <div className="text-xs opacity-75">Try it online</div>
+                    </div>
+                  </Button>
                 </div>
               </CardContent>
             </Card>

@@ -5,8 +5,8 @@ import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode, command }) => {
-  // Production build with demo authentication only
-  console.log('Building production version with demo authentication');
+  // Production build configuration
+  console.log('Building production version');
 
   const config = {
     server: {
