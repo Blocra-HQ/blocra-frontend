@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Link } from 'react-router-dom';
 import { Header } from '@/components/layout/Header';
@@ -46,17 +46,27 @@ interface SubscriptionData {
 }
 
 const Settings = (): JSX.Element => {
-  const { user, profile, updateProfile, logout } = useAuth();
+  const { user, profile, updateProfile, signOut } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
 
   const [profileData, setProfileData] = useState({
-    firstName: profile?.firstName || '',
-    lastName: profile?.lastName || '',
-    email: profile?.email || '',
-    fullName: profile?.fullName || ''
+    firstName: user?.firstName || profile?.firstName || '',
+    lastName: user?.lastName || profile?.lastName || '',
+    email: user?.email || profile?.email || '',
+    fullName: profile?.fullName || `${user?.firstName || ''} ${user?.lastName || ''}`.trim()
   });
+
+  // Update profile data when user/profile changes
+  useEffect(() => {
+    setProfileData({
+      firstName: user?.firstName || profile?.firstName || '',
+      lastName: user?.lastName || profile?.lastName || '',
+      email: user?.email || profile?.email || '',
+      fullName: profile?.fullName || `${user?.firstName || ''} ${user?.lastName || ''}`.trim()
+    });
+  }, [user, profile]);
 
   const [connectedWallets] = useState<WalletData[]>([
     { name: 'Argent', address: '0x123...789', isConnected: true },
@@ -99,7 +109,7 @@ const Settings = (): JSX.Element => {
 
   const handleLogout = async (): Promise<void> => {
     try {
-      await logout();
+      await signOut();
       navigate('/auth');
     } catch (error) {
       console.error('Logout error:', error);
@@ -112,8 +122,9 @@ const Settings = (): JSX.Element => {
   };
 
   return (
-    <div className="container mx-auto py-6 space-y-8">
+    <div className="min-h-screen bg-background text-foreground">
       <Header title="Settings" subtitle="Manage your account and preferences" />
+      <main className="p-6 space-y-8">
 
       <Tabs defaultValue="profile" className="w-full">
         <TabsList className="grid grid-cols-5 w-full max-w-4xl">
@@ -151,9 +162,15 @@ const Settings = (): JSX.Element => {
             <CardContent className="space-y-4">
               <div className="flex items-center space-x-4">
                 <Avatar className="w-20 h-20">
-                  <AvatarFallback>{profileData.firstName?.charAt(0)}</AvatarFallback>
+                  <AvatarFallback>
+                    {(user?.firstName || profile?.firstName || user?.email || 'U').charAt(0).toUpperCase()}
+                  </AvatarFallback>
                 </Avatar>
-                <Button variant="outline">Change Avatar</Button>
+                <div>
+                  <h3 className="font-semibold">{user?.firstName || profile?.firstName || 'User'} {user?.lastName || profile?.lastName || ''}</h3>
+                  <p className="text-sm text-muted-foreground">{user?.email || profile?.email}</p>
+                  <Badge variant="outline" className="mt-1">{(user?.role || profile?.role || 'analyst').toUpperCase()}</Badge>
+                </div>
               </div>
               <div className="grid gap-4">
                 <div className="grid gap-2">
@@ -349,6 +366,7 @@ const Settings = (): JSX.Element => {
           </CardContent>
         </Card>
       </div>
+      </main>
     </div>
   );
 };

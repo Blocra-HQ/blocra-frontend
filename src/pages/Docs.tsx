@@ -19,18 +19,20 @@ import {
   Target,
   TrendingUp,
   PieChart,
-  Download
+  Download,
+  Bot,
+  Network,
+  Bell,
+  Camera
 } from "lucide-react";
 
 export default function Docs() {
   const navigate = useNavigate();
   
   return (
-    <div className="min-h-screen bg-background">
-      <AuthenticatedSidebar />
-      <div className="lg:ml-64">
-        <Header title="Documentation" subtitle="Learn about BloDI - Blockchain Data Intelligence for Starknet" />
-        <main className="p-6">
+    <div className="min-h-screen bg-background text-foreground">
+      <Header title="Documentation" subtitle="Learn about BloDI - Blockchain Data Intelligence for Starknet" />
+      <main className="p-6">
           <div className="max-w-4xl mx-auto space-y-8">
             
             {/* What is BloDI */}
@@ -108,10 +110,10 @@ export default function Docs() {
                         <PieChart className="w-4 h-4 text-purple-600" />
                       </div>
                       <div>
-                        <h3 className="font-semibold">Visual Analytics</h3>
+                        <h3 className="font-semibold">Multi-Contract Analytics</h3>
                         <p className="text-sm text-muted-foreground">
-                          Creates interactive charts showing transaction patterns, gas usage, 
-                          success rates, and user distribution over time.
+                          Analyze multiple contracts simultaneously with dependency graphs, 
+                          cross-contract interactions, and comprehensive dashboards.
                         </p>
                       </div>
                     </div>
@@ -121,10 +123,10 @@ export default function Docs() {
                         <FileText className="w-4 h-4 text-orange-600" />
                       </div>
                       <div>
-                        <h3 className="font-semibold">AI-Powered Reports</h3>
+                        <h3 className="font-semibold">Blocra Intelligence Engine</h3>
                         <p className="text-sm text-muted-foreground">
-                          Generates professional PDF reports with business insights, 
-                          risk assessments, and recommendations based on the contract data.
+                          Advanced AI analysis with anomaly detection, predictive analytics, 
+                          and professional PDF reports with 12 comprehensive sections.
                         </p>
                       </div>
                     </div>
@@ -304,40 +306,7 @@ export default function Docs() {
               </CardContent>
             </Card>
 
-            {/* Limitations & Future */}
-            <Card className="glass-card border-border/30">
-              <CardHeader>
-                <CardTitle>Current Limitations & Future Plans</CardTitle>
-                <CardDescription>
-                  Being transparent about what BloDI can and can't do right now
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-3">
-                    <h3 className="font-semibold text-orange-600">Current Limitations</h3>
-                    <ul className="text-sm text-muted-foreground space-y-1">
-                      <li>• Only analyzes individual contracts (not cross-contract flows)</li>
-                      <li>• Limited to event data (doesn't analyze state changes)</li>
-                      <li>• AI reports are basic (room for improvement)</li>
-                      <li>• No historical data beyond what RPC provides</li>
-                      <li>• Performance depends on RPC endpoint reliability</li>
-                    </ul>
-                  </div>
-                  
-                  <div className="space-y-3">
-                    <h3 className="font-semibold text-green-600">Planned Improvements</h3>
-                    <ul className="text-sm text-muted-foreground space-y-1">
-                      <li>• Cross-contract transaction flow analysis</li>
-                      <li>• Historical data caching and storage</li>
-                      <li>• More sophisticated AI insights</li>
-                      <li>• Custom alert system for contract activity</li>
-                      <li>• API for developers to integrate BloDI data</li>
-                    </ul>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+
 
             {/* Get Started */}
             <Card className="glass-card border-border/30">
@@ -378,7 +347,6 @@ export default function Docs() {
 
           </div>
         </main>
-      </div>
     </div>
   );
 }

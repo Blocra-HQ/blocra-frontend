@@ -428,9 +428,7 @@ export default function Auth() {
               Privacy Policy
             </Link>
           </p>
-          <p className="text-xs text-muted-foreground">
-            Secure authentication - Data stored locally in your browser
-          </p>
+
         </div>
       </div>
     </div>
