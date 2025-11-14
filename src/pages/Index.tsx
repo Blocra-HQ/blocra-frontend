@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Chart } from "@/components/ui/chart";
 import { StatCard } from "@/components/ui/stat-card";
 import { SpecializedChart } from "@/components/ui/specialized-chart";
-import { TransactionTypesChart } from "@/components/ui/transaction-types-chart";
+
 import { AIChatBox } from "@/components/ai/AIChatBox";
 import { AIFloatingButton } from "@/components/ai/AIFloatingButton";
 import { starknetRPC } from "@/services/StarknetRPCService";
@@ -284,11 +284,15 @@ const Index = () => {
 
             <Card className="glass">
               <CardHeader>
-                <CardTitle>Transaction Types</CardTitle>
-                <p className="text-sm text-muted-foreground">Distribution of transaction categories</p>
+                <CardTitle>Network Health</CardTitle>
+                <p className="text-sm text-muted-foreground">Real-time Starknet network status</p>
               </CardHeader>
               <CardContent>
-                <TransactionTypesChart endpoints={endpoints} />
+                <SpecializedChart
+                  title="Network Health"
+                  type="networkHealth"
+                  endpoints={endpoints}
+                />
               </CardContent>
             </Card>
             

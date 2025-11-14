@@ -51,13 +51,12 @@ export function AuthenticatedSidebar({ className }: AuthenticatedSidebarProps) {
       <div className="flex h-full flex-col">
         {/* Header */}
         <div className="flex h-16 items-center px-4 border-b border-border/30 bg-gradient-to-r from-primary/5 to-accent/5">
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center shadow-lg">
-              <BarChart3 className="w-5 h-5 text-primary-foreground" />
-            </div>
-            <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              BloDI
-            </span>
+          <div className="flex items-center">
+            <img 
+              src="/blodi-logo.png" 
+              alt="BloDI Logo" 
+              className="h-12 w-auto object-contain"
+            />
           </div>
         </div>
 
