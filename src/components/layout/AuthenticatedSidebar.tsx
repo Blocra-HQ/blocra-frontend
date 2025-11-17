@@ -3,7 +3,6 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { 
-  BarChart3, 
   Database, 
   Layout, 
   Trophy, 
@@ -50,14 +49,12 @@ export function AuthenticatedSidebar({ className }: AuthenticatedSidebarProps) {
     >
       <div className="flex h-full flex-col">
         {/* Header */}
-        <div className="flex h-16 items-center px-4 border-b border-border/30 bg-gradient-to-r from-primary/5 to-accent/5">
-          <div className="flex items-center">
-            <img 
-              src="/blodi-logo.png" 
-              alt="BloDI Logo" 
-              className="h-12 w-auto object-contain"
-            />
-          </div>
+        <div className="flex h-16 items-center justify-center px-4 border-b border-border/30 bg-gradient-to-r from-primary/5 to-accent/5">
+          <img 
+            src="/blodi-logo.png" 
+            alt="BloDI Logo" 
+            className="h-14 w-auto object-contain"
+          />
         </div>
 
         {/* Search */}

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { AuthenticatedSidebar } from "@/components/layout/AuthenticatedSidebar";
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -223,34 +224,39 @@ export default function CreateBounty() {
   if (profile?.role === 'analyst') {
     return (
       <div className="min-h-screen bg-background">
-        <Header title="Create Bounty" subtitle="Post analytics challenges for the community" />
-        
-        <main className="flex-1 p-6 flex items-center justify-center">
-          <Card className="glass border-border max-w-md">
-            <CardContent className="p-6 text-center">
-              <AlertCircle className="w-12 h-12 text-chart-warning mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Role Update Required</h3>
-              <p className="text-muted-foreground mb-4">
-                To create bounties, please update your profile role to "Bounty Creator".
-              </p>
-              <Button asChild>
-                <a href="/profile">Update Profile</a>
-              </Button>
-            </CardContent>
-          </Card>
-        </main>
+        <AuthenticatedSidebar />
+        <div className="lg:ml-64 flex flex-col min-h-screen">
+          <Header title="Create Bounty" subtitle="Post analytics challenges for the community" />
+          
+          <main className="flex-1 p-6 flex items-center justify-center">
+            <Card className="glass border-border max-w-md">
+              <CardContent className="p-6 text-center">
+                <AlertCircle className="w-12 h-12 text-chart-warning mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">Role Update Required</h3>
+                <p className="text-muted-foreground mb-4">
+                  To create bounties, please update your profile role to "Bounty Creator".
+                </p>
+                <Button asChild>
+                  <a href="/profile">Update Profile</a>
+                </Button>
+              </CardContent>
+            </Card>
+          </main>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-background">
-      <Header 
-        title="Create Bounty" 
-        subtitle="Post analytics challenges for the community"
-      />
-      <main className="p-6">
-        <div className="max-w-4xl mx-auto">
+      <AuthenticatedSidebar />
+      <div className="lg:ml-64 flex flex-col min-h-screen">
+        <Header 
+          title="Create Bounty" 
+          subtitle="Post analytics challenges for the community"
+        />
+        <main className="flex-1 p-6">
+          <div className="max-w-4xl mx-auto">
 
 
             <div className="grid gap-6 lg:grid-cols-3">
@@ -529,7 +535,8 @@ export default function CreateBounty() {
               </div>
             </div>
           </div>
-      </main>
+        </main>
+      </div>
     </div>
   );
 }

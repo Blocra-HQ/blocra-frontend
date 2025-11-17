@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { AuthenticatedSidebar } from "@/components/layout/AuthenticatedSidebar";
 import { Header } from '@/components/layout/Header';
 import { ProfileService } from '@/services/ProfileService';
 import { Button } from '@/components/ui/button';
@@ -166,12 +167,15 @@ export default function Profile() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header 
-        title="Profile" 
-        subtitle="Manage your account settings and view activity"
-      />
+      <AuthenticatedSidebar />
       
-      <main className="p-6 space-y-6">
+      <div className="lg:ml-64 flex flex-col min-h-screen">
+        <Header 
+          title="Profile" 
+          subtitle="Manage your account settings and view activity"
+        />
+        
+        <main className="flex-1 p-6 space-y-6">
 
 
           <div className="grid gap-6 lg:grid-cols-3">
@@ -394,6 +398,7 @@ export default function Profile() {
             </div>
           </div>
         </main>
+      </div>
     </div>
   );
 }
