@@ -10,13 +10,13 @@ import { SpecializedChart } from "@/components/ui/specialized-chart";
 import { AIChatBox } from "@/components/ai/AIChatBox";
 import { AIFloatingButton } from "@/components/ai/AIFloatingButton";
 import { starknetRPC } from "@/services/StarknetRPCService";
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
   PieChart,
   Pie,
@@ -69,39 +69,39 @@ const Index = () => {
     try {
       setLoading(true);
       console.log('Fetching RPC data...');
-      
+
       // Fetch real dashboard metrics
       const metrics = await starknetRPC.getDashboardMetrics();
       console.log('Metrics:', metrics);
-      
+
       // Fetch time series data
       const timeSeriesData = await starknetRPC.getTimeSeriesData();
       console.log('Time series:', timeSeriesData);
-      
+
       const hourlyLabels = ['4h ago', '3h ago', '2h ago', '1h ago', 'Now'];
-      
+
       const newBlockMetrics = hourlyLabels.map((time, index) => ({
         name: time,
         blockTime: metrics.avgBlockTime + (Math.random() - 0.5) * 2,
         txPerBlock: Math.max(1, Math.floor((metrics.totalTransactions / 20) + (Math.random() - 0.5) * 10))
       }));
-      
+
       const newWalletGrowth = hourlyLabels.map((time, index) => ({
         name: time,
         value: Math.floor(metrics.activeUsers * (0.8 + index * 0.05) + Math.random() * 20)
       }));
-      
+
       const newPendingConfirmed = hourlyLabels.map((time, index) => ({
         name: time,
         pending: Math.max(1, Math.floor(metrics.totalTransactions * 0.02 + Math.random() * 5)),
         confirmed: Math.max(5, Math.floor(metrics.totalTransactions * 0.8 + Math.random() * 20))
       }));
-      
+
       const newFailedRate = hourlyLabels.map((time, index) => ({
         name: time,
         value: Math.max(0.1, Math.min(8, metrics.failedTxRate + (Math.random() - 0.5) * 2))
       }));
-      
+
       const newValidators = [
         { name: 'Sequencer A', blocks: Math.floor(metrics.totalTransactions * 0.25), uptime: 99.8 },
         { name: 'Sequencer B', blocks: Math.floor(metrics.totalTransactions * 0.20), uptime: 99.5 },
@@ -109,7 +109,7 @@ const Index = () => {
         { name: 'Sequencer D', blocks: Math.floor(metrics.totalTransactions * 0.18), uptime: 99.2 },
         { name: 'Sequencer E', blocks: Math.floor(metrics.totalTransactions * 0.15), uptime: 99.7 }
       ];
-      
+
       setChartData({
         transactions: timeSeriesData.transactions?.length > 0 ? timeSeriesData.transactions : [{ name: 'Now', value: metrics.totalTransactions || 0 }],
         gasUsage: timeSeriesData.gasUsage?.length > 0 ? timeSeriesData.gasUsage : [{ name: 'Now', value: 0.1 }],
@@ -130,7 +130,7 @@ const Index = () => {
           latestBlock: metrics.latestBlock
         }
       });
-      
+
       console.log('Final chart data:', {
         transactions: timeSeriesData.transactions || [],
         stats: metrics
@@ -158,311 +158,311 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Header
-        title="BloDI Dashboard"
+        title="BlocRA Dashboard"
         subtitle="Blockchain Data Intelligence for Starknet"
       />
 
       <main className="p-6 space-y-6">
-          {/* Stats Cards */}
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5">
-            <Card className="glass">
-              <CardContent className="p-6">
-                <StatCard
-                  title="Total Transactions"
-                  subtitle="Recent blocks"
-                  method="starknet_getBlockWithTxs"
-                  endpoints={endpoints}
-                />
-              </CardContent>
-            </Card>
-            
-            <Card className="glass">
-              <CardContent className="p-6">
-                <StatCard
-                  title="Active Users"
-                  subtitle="Unique addresses"
-                  method="starknet_blockNumber"
-                  endpoints={endpoints}
-                  formatter={(v) => Math.floor(v * 0.7).toLocaleString()}
-                />
-              </CardContent>
-            </Card>
-            
-            <Card className="glass">
-              <CardContent className="p-6">
-                <StatCard
-                  title="Gas Used"
-                  subtitle="Total gas consumed"
-                  method="starknet_getStateUpdate"
-                  endpoints={endpoints}
-                  formatter={(v) => `${(v / 1000).toFixed(1)}M`}
-                />
-              </CardContent>
-            </Card>
-            
-            <Card className="glass">
-              <CardContent className="p-6">
-                <StatCard
-                  title="Volume"
-                  subtitle="Transaction volume"
-                  method="starknet_getBlockWithTxs"
-                  endpoints={endpoints}
-                  formatter={(v) => `$${(v * 50).toLocaleString()}`}
-                />
-              </CardContent>
-            </Card>
-            
-            <Card className="glass">
-              <CardContent className="p-6">
-                <StatCard
-                  title="TVL"
-                  subtitle="Total value locked"
-                  method="starknet_getStateUpdate"
-                  endpoints={endpoints}
-                  formatter={(v) => `$${Math.floor(v * 150 + 25000000).toLocaleString()}M`}
-                />
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Charts Section */}
-          <div className="grid gap-6 lg:grid-cols-2">
-            <Card className="glass glow-chart">
-              <CardHeader>
-                <CardTitle>Transaction Volume</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Chart
-                  title="Transaction Volume"
-                  type="line"
-                  method="starknet_getBlockWithTxs"
-                  data={[]} // required initial data
-                  xAxis="timestamp"
-                  yAxis="value"
-                  color="hsl(var(--chart-primary))"
-                  endpoints={endpoints}
-                  onDataUpdate={setRpcData}
-                />
-              </CardContent>
-            </Card>
-
-            <Card className="glass">
-              <CardHeader>
-                <CardTitle>Network Activity</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <SpecializedChart
-                  title="Network Activity"
-                  type="networkActivity"
-                  endpoints={endpoints}
-                />
-              </CardContent>
-            </Card>
-          </div>
-
-
-          {/* Charts Section */}
-          <div className="grid gap-6 lg:grid-cols-2">
-            <Card className="glass">
-              <CardHeader>
-                <CardTitle>Transaction Activity</CardTitle>
-                <p className="text-sm text-muted-foreground">Recent block transaction count</p>
-              </CardHeader>
-              <CardContent>
-                <Chart
-                  title="Transaction Activity"
-                  type="line"
-                  method="starknet_getBlockWithTxs"
-                  data={[]}
-                  xAxis="timestamp"
-                  yAxis="value"
-                  color="#3b82f6"
-                  endpoints={endpoints}
-                />
-              </CardContent>
-            </Card>
-
-            <Card className="glass">
-              <CardHeader>
-                <CardTitle>Network Health</CardTitle>
-                <p className="text-sm text-muted-foreground">Real-time Starknet network status</p>
-              </CardHeader>
-              <CardContent>
-                <SpecializedChart
-                  title="Network Health"
-                  type="networkHealth"
-                  endpoints={endpoints}
-                />
-              </CardContent>
-            </Card>
-            
-            <Card className="glass">
-              <CardHeader>
-                <CardTitle>Gas Usage Pattern</CardTitle>
-                <p className="text-sm text-muted-foreground">Recent block gas consumption</p>
-              </CardHeader>
-              <CardContent>
-                <Chart
-                  title="Gas Usage"
-                  type="bar"
-                  method="starknet_getBlockWithTxs"
-                  data={[]}
-                  xAxis="timestamp"
-                  yAxis="value"
-                  color="#10b981"
-                  endpoints={endpoints}
-                />
-              </CardContent>
-            </Card>
-            
-            <Card className="glass">
-              <CardHeader>
-                <CardTitle>Active Users</CardTitle>
-                <p className="text-sm text-muted-foreground">Recent block unique addresses</p>
-              </CardHeader>
-              <CardContent>
-                <Chart
-                  title="Active Users"
-                  type="line"
-                  method="starknet_blockNumber"
-                  data={[]}
-                  xAxis="timestamp"
-                  yAxis="value"
-                  color="#f59e0b"
-                  endpoints={endpoints}
-                />
-              </CardContent>
-            </Card>
-          </div>
-          
-          {/* Additional Analytics Charts */}
-          <div className="grid gap-6 lg:grid-cols-2">
-            <Card className="glass">
-              <CardHeader>
-                <CardTitle>Average Fee Trend</CardTitle>
-                <p className="text-sm text-muted-foreground">Recent block average fees</p>
-              </CardHeader>
-              <CardContent>
-                <SpecializedChart
-                  title="Average Fees"
-                  type="avgFees"
-                  endpoints={endpoints}
-                />
-              </CardContent>
-            </Card>
-
-            <Card className="glass">
-              <CardHeader>
-                <CardTitle>Top Contracts</CardTitle>
-                <p className="text-sm text-muted-foreground">Most active smart contracts by transaction count</p>
-              </CardHeader>
-              <CardContent>
-                <Chart
-                  title="Top Contracts"
-                  type="bar"
-                  method="starknet_getBlockWithTxs"
-                  data={[]}
-                  xAxis="timestamp"
-                  yAxis="value"
-                  color="#06b6d4"
-                  endpoints={endpoints}
-                />
-              </CardContent>
-            </Card>
-            
-            <Card className="glass">
-              <CardHeader>
-                <CardTitle>Block Metrics</CardTitle>
-                <p className="text-sm text-muted-foreground">Block time and transactions per block</p>
-              </CardHeader>
-              <CardContent>
-                <Chart
-                  title="Block Metrics"
-                  type="line"
-                  method="starknet_blockNumber"
-                  data={[]}
-                  xAxis="timestamp"
-                  yAxis="value"
-                  color="#10b981"
-                  endpoints={endpoints}
-                />
-              </CardContent>
-            </Card>
-            
-            <Card className="glass">
-              <CardHeader>
-                <CardTitle>Unique Wallet Growth</CardTitle>
-                <p className="text-sm text-muted-foreground">New unique addresses over time</p>
-              </CardHeader>
-              <CardContent>
-                <SpecializedChart
-                  title="Wallet Growth"
-                  type="walletGrowth"
-                  endpoints={endpoints}
-                />
-              </CardContent>
-            </Card>
-            
-            <Card className="glass">
-              <CardHeader>
-                <CardTitle>Pending vs Confirmed</CardTitle>
-                <p className="text-sm text-muted-foreground">Transaction status over time</p>
-              </CardHeader>
-              <CardContent>
-                <Chart
-                  title="Pending vs Confirmed"
-                  type="line"
-                  method="starknet_getBlockWithTxs"
-                  data={[]}
-                  xAxis="timestamp"
-                  yAxis="value"
-                  color="#10b981"
-                  endpoints={endpoints}
-                />
-              </CardContent>
-            </Card>
-            
-            <Card className="glass">
-              <CardHeader>
-                <CardTitle>Failed Transaction Rate</CardTitle>
-                <p className="text-sm text-muted-foreground">Percentage of failed transactions</p>
-              </CardHeader>
-              <CardContent>
-                <SpecializedChart
-                  title="Failed Rate"
-                  type="failedRate"
-                  endpoints={endpoints}
-                />
-              </CardContent>
-            </Card>
-          </div>
-          
-          {/* Data Info */}
+        {/* Stats Cards */}
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5">
           <Card className="glass">
             <CardContent className="p-6">
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <div>
-                  <p className="text-sm font-medium">Current Time</p>
-                  <p className="text-sm text-muted-foreground">{new Date().toLocaleString()}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium">Last Updated</p>
-                  <p className="text-sm text-muted-foreground">{new Date().toLocaleTimeString()}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium">Data Coverage</p>
-                  <p className="text-sm text-muted-foreground">Today until {new Date().toLocaleTimeString()}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium">Latest Block</p>
-                  <p className="text-sm text-muted-foreground">{loading ? '...' : chartData.stats.latestBlock?.toLocaleString() || 'N/A'}</p>
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground mt-4">
-                Data shows activity from 12AM to current time • Refreshes every 5 minutes
-              </p>
+              <StatCard
+                title="Total Transactions"
+                subtitle="Recent blocks"
+                method="starknet_getBlockWithTxs"
+                endpoints={endpoints}
+              />
             </CardContent>
           </Card>
+
+          <Card className="glass">
+            <CardContent className="p-6">
+              <StatCard
+                title="Active Users"
+                subtitle="Unique addresses"
+                method="starknet_blockNumber"
+                endpoints={endpoints}
+                formatter={(v) => Math.floor(v * 0.7).toLocaleString()}
+              />
+            </CardContent>
+          </Card>
+
+          <Card className="glass">
+            <CardContent className="p-6">
+              <StatCard
+                title="Gas Used"
+                subtitle="Total gas consumed"
+                method="starknet_getStateUpdate"
+                endpoints={endpoints}
+                formatter={(v) => `${(v / 1000).toFixed(1)}M`}
+              />
+            </CardContent>
+          </Card>
+
+          <Card className="glass">
+            <CardContent className="p-6">
+              <StatCard
+                title="Volume"
+                subtitle="Transaction volume"
+                method="starknet_getBlockWithTxs"
+                endpoints={endpoints}
+                formatter={(v) => `$${(v * 50).toLocaleString()}`}
+              />
+            </CardContent>
+          </Card>
+
+          <Card className="glass">
+            <CardContent className="p-6">
+              <StatCard
+                title="TVL"
+                subtitle="Total value locked"
+                method="starknet_getStateUpdate"
+                endpoints={endpoints}
+                formatter={(v) => `$${Math.floor(v * 150 + 25000000).toLocaleString()}M`}
+              />
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Charts Section */}
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Card className="glass glow-chart">
+            <CardHeader>
+              <CardTitle>Transaction Volume</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Chart
+                title="Transaction Volume"
+                type="line"
+                method="starknet_getBlockWithTxs"
+                data={[]} // required initial data
+                xAxis="timestamp"
+                yAxis="value"
+                color="hsl(var(--chart-primary))"
+                endpoints={endpoints}
+                onDataUpdate={setRpcData}
+              />
+            </CardContent>
+          </Card>
+
+          <Card className="glass">
+            <CardHeader>
+              <CardTitle>Network Activity</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <SpecializedChart
+                title="Network Activity"
+                type="networkActivity"
+                endpoints={endpoints}
+              />
+            </CardContent>
+          </Card>
+        </div>
+
+
+        {/* Charts Section */}
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Card className="glass">
+            <CardHeader>
+              <CardTitle>Transaction Activity</CardTitle>
+              <p className="text-sm text-muted-foreground">Recent block transaction count</p>
+            </CardHeader>
+            <CardContent>
+              <Chart
+                title="Transaction Activity"
+                type="line"
+                method="starknet_getBlockWithTxs"
+                data={[]}
+                xAxis="timestamp"
+                yAxis="value"
+                color="#3b82f6"
+                endpoints={endpoints}
+              />
+            </CardContent>
+          </Card>
+
+          <Card className="glass">
+            <CardHeader>
+              <CardTitle>Network Health</CardTitle>
+              <p className="text-sm text-muted-foreground">Real-time Starknet network status</p>
+            </CardHeader>
+            <CardContent>
+              <SpecializedChart
+                title="Network Health"
+                type="networkHealth"
+                endpoints={endpoints}
+              />
+            </CardContent>
+          </Card>
+
+          <Card className="glass">
+            <CardHeader>
+              <CardTitle>Gas Usage Pattern</CardTitle>
+              <p className="text-sm text-muted-foreground">Recent block gas consumption</p>
+            </CardHeader>
+            <CardContent>
+              <Chart
+                title="Gas Usage"
+                type="bar"
+                method="starknet_getBlockWithTxs"
+                data={[]}
+                xAxis="timestamp"
+                yAxis="value"
+                color="#10b981"
+                endpoints={endpoints}
+              />
+            </CardContent>
+          </Card>
+
+          <Card className="glass">
+            <CardHeader>
+              <CardTitle>Active Users</CardTitle>
+              <p className="text-sm text-muted-foreground">Recent block unique addresses</p>
+            </CardHeader>
+            <CardContent>
+              <Chart
+                title="Active Users"
+                type="line"
+                method="starknet_blockNumber"
+                data={[]}
+                xAxis="timestamp"
+                yAxis="value"
+                color="#f59e0b"
+                endpoints={endpoints}
+              />
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Additional Analytics Charts */}
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Card className="glass">
+            <CardHeader>
+              <CardTitle>Average Fee Trend</CardTitle>
+              <p className="text-sm text-muted-foreground">Recent block average fees</p>
+            </CardHeader>
+            <CardContent>
+              <SpecializedChart
+                title="Average Fees"
+                type="avgFees"
+                endpoints={endpoints}
+              />
+            </CardContent>
+          </Card>
+
+          <Card className="glass">
+            <CardHeader>
+              <CardTitle>Top Contracts</CardTitle>
+              <p className="text-sm text-muted-foreground">Most active smart contracts by transaction count</p>
+            </CardHeader>
+            <CardContent>
+              <Chart
+                title="Top Contracts"
+                type="bar"
+                method="starknet_getBlockWithTxs"
+                data={[]}
+                xAxis="timestamp"
+                yAxis="value"
+                color="#06b6d4"
+                endpoints={endpoints}
+              />
+            </CardContent>
+          </Card>
+
+          <Card className="glass">
+            <CardHeader>
+              <CardTitle>Block Metrics</CardTitle>
+              <p className="text-sm text-muted-foreground">Block time and transactions per block</p>
+            </CardHeader>
+            <CardContent>
+              <Chart
+                title="Block Metrics"
+                type="line"
+                method="starknet_blockNumber"
+                data={[]}
+                xAxis="timestamp"
+                yAxis="value"
+                color="#10b981"
+                endpoints={endpoints}
+              />
+            </CardContent>
+          </Card>
+
+          <Card className="glass">
+            <CardHeader>
+              <CardTitle>Unique Wallet Growth</CardTitle>
+              <p className="text-sm text-muted-foreground">New unique addresses over time</p>
+            </CardHeader>
+            <CardContent>
+              <SpecializedChart
+                title="Wallet Growth"
+                type="walletGrowth"
+                endpoints={endpoints}
+              />
+            </CardContent>
+          </Card>
+
+          <Card className="glass">
+            <CardHeader>
+              <CardTitle>Pending vs Confirmed</CardTitle>
+              <p className="text-sm text-muted-foreground">Transaction status over time</p>
+            </CardHeader>
+            <CardContent>
+              <Chart
+                title="Pending vs Confirmed"
+                type="line"
+                method="starknet_getBlockWithTxs"
+                data={[]}
+                xAxis="timestamp"
+                yAxis="value"
+                color="#10b981"
+                endpoints={endpoints}
+              />
+            </CardContent>
+          </Card>
+
+          <Card className="glass">
+            <CardHeader>
+              <CardTitle>Failed Transaction Rate</CardTitle>
+              <p className="text-sm text-muted-foreground">Percentage of failed transactions</p>
+            </CardHeader>
+            <CardContent>
+              <SpecializedChart
+                title="Failed Rate"
+                type="failedRate"
+                endpoints={endpoints}
+              />
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Data Info */}
+        <Card className="glass">
+          <CardContent className="p-6">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <div>
+                <p className="text-sm font-medium">Current Time</p>
+                <p className="text-sm text-muted-foreground">{new Date().toLocaleString()}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium">Last Updated</p>
+                <p className="text-sm text-muted-foreground">{new Date().toLocaleTimeString()}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium">Data Coverage</p>
+                <p className="text-sm text-muted-foreground">Today until {new Date().toLocaleTimeString()}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium">Latest Block</p>
+                <p className="text-sm text-muted-foreground">{loading ? '...' : chartData.stats.latestBlock?.toLocaleString() || 'N/A'}</p>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground mt-4">
+              Data shows activity from 12AM to current time • Refreshes every 5 minutes
+            </p>
+          </CardContent>
+        </Card>
 
       </main>
 

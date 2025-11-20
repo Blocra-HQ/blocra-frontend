@@ -41,11 +41,11 @@ export class AlertService {
 
   static async checkAlerts(contractAddress: string, newEvent: any, stats: any) {
     const rules = await DatabaseService.getAlertRules(contractAddress);
-    
+
     for (const rule of rules.filter(r => r.enabled)) {
       const condition: AlertCondition = JSON.parse(rule.condition);
       const shouldAlert = this.evaluateCondition(condition, newEvent, stats);
-      
+
       if (shouldAlert) {
         const alert: Alert = {
           id: `alert_${Date.now()}_${Math.random()}`,
@@ -56,7 +56,7 @@ export class AlertService {
           timestamp: new Date(),
           acknowledged: false
         };
-        
+
         this.triggerAlert(alert);
       }
     }
@@ -67,24 +67,24 @@ export class AlertService {
       case 'volume':
         const amount = parseInt(event.decoded_data?.amount || '0');
         return this.compareValues(amount, condition.operator, condition.threshold);
-      
+
       case 'frequency':
         const eventsPerHour = stats.avgEventsPerBlock * 300;
         return this.compareValues(eventsPerHour, condition.operator, condition.threshold);
-      
+
       case 'gas':
         const gasUsed = 75000;
         return this.compareValues(gasUsed, condition.operator, condition.threshold);
-      
+
       case 'new_user':
         const isNewUser = !stats.users?.includes(event.decoded_data?.from);
         return isNewUser && condition.threshold === 1;
-      
+
       case 'large_transfer':
         const transferAmount = parseInt(event.decoded_data?.amount || '0');
-        return event.event_name === 'Transfer' && 
-               this.compareValues(transferAmount, condition.operator, condition.threshold);
-      
+        return event.event_name === 'Transfer' &&
+          this.compareValues(transferAmount, condition.operator, condition.threshold);
+
       default:
         return false;
     }
@@ -92,7 +92,7 @@ export class AlertService {
 
   private static compareValues(value: number, operator: string, threshold: number | string): boolean {
     const numThreshold = typeof threshold === 'string' ? parseFloat(threshold) : threshold;
-    
+
     switch (operator) {
       case '>': return value > numThreshold;
       case '<': return value < numThreshold;
@@ -122,19 +122,19 @@ export class AlertService {
   private static calculateSeverity(condition: AlertCondition, event: any, stats: any): 'low' | 'medium' | 'high' {
     const amount = parseInt(event.decoded_data?.amount || '0');
     const threshold = typeof condition.threshold === 'number' ? condition.threshold : 0;
-    
+
     if (condition.type === 'large_transfer' || condition.type === 'volume') {
       if (amount > threshold * 10) return 'high';
       if (amount > threshold * 3) return 'medium';
       return 'low';
     }
-    
+
     return 'medium';
   }
 
   private static triggerAlert(alert: Alert) {
     this.alerts.push(alert);
-    
+
     this.subscribers.forEach(callback => {
       try {
         callback(alert);
@@ -142,9 +142,9 @@ export class AlertService {
         console.error('Error in alert callback:', error);
       }
     });
-    
+
     if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification(`BloDI Alert: ${alert.message}`, {
+      new Notification(`BlocRA Alert: ${alert.message}`, {
         icon: '/favicon.ico',
         badge: '/favicon.ico'
       });

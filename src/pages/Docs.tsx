@@ -1,352 +1,225 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { AuthenticatedSidebar } from "@/components/layout/AuthenticatedSidebar";
 import { Header } from "@/components/layout/Header";
 import { useNavigate } from "react-router-dom";
-import { 
-  BarChart3, 
-  Database, 
+import {
+  BarChart3,
+  Database,
   Activity,
-  CheckCircle,
-  ArrowRight,
-  ExternalLink,
   Github,
   Globe,
   FileText,
   Zap,
   Users,
-  Target,
-  TrendingUp,
-  PieChart,
-  Download,
-  Bot,
-  Network,
-  Bell,
-  Camera
+  Search,
+  Code,
+  Book
 } from "lucide-react";
 
 export default function Docs() {
   const navigate = useNavigate();
-  
+
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <Header title="Documentation" subtitle="Learn about BloDI - Blockchain Data Intelligence for Starknet" />
-      <main className="p-6">
-          <div className="max-w-4xl mx-auto space-y-8">
-            
-            {/* What is BloDI */}
-            <Card className="glass-card border-border/30">
-              <CardHeader>
-                <div className="flex items-center space-x-3 mb-4">
-                  <div className="w-12 h-12 bg-gradient-to-br from-primary to-accent rounded-xl flex items-center justify-center shadow-lg">
-                    <BarChart3 className="w-6 h-6 text-primary-foreground" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-2xl">What is BloDI?</CardTitle>
-                    <CardDescription>Blockchain Data Intelligence for Starknet</CardDescription>
-                  </div>
+      <Header title="Documentation" subtitle="Learn about BlocRA - Blockchain Data Intelligence for Starknet" />
+
+      <div className="max-w-4xl mx-auto pb-12 space-y-8 p-6">
+
+        <section id="introduction" className="space-y-4">
+          <Card className="glass border-border overflow-hidden">
+            <CardHeader className="bg-gradient-to-r from-primary/5 to-accent/5 border-b border-border/50">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-primary/10 rounded-lg">
+                  <Book className="w-6 h-6 text-primary" />
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Badge className="bg-green-100 text-green-800 border-green-200">Live Demo</Badge>
-                  <Badge variant="outline">Open Source</Badge>
-                  <Badge variant="outline">React + TypeScript</Badge>
+                <div>
+                  <CardTitle className="text-2xl">What is BlocRA?</CardTitle>
+                  <CardDescription>The ultimate toolkit for Starknet analytics</CardDescription>
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-muted-foreground leading-relaxed">
-                  BloDI (Blockchain Data Intelligence) is a web application that helps you analyze Starknet smart contracts 
-                  and their activity. Think of it as a specialized tool for understanding what's happening on the Starknet blockchain.
-                </p>
-                <p className="text-muted-foreground leading-relaxed">
-                  Instead of manually checking transactions and events, BloDI fetches real-time data from Starknet, 
-                  analyzes it, and presents it in easy-to-understand charts and reports. It's particularly useful for 
-                  developers, researchers, and anyone curious about how Starknet contracts are performing.
-                </p>
-              </CardContent>
-            </Card>
+              </div>
+            </CardHeader>
+            <CardContent className="p-6 space-y-4">
+              <p className="text-lg leading-relaxed text-muted-foreground">
+                <strong className="text-foreground">BlocRA (Blockchain Data Intelligence)</strong> is a web application that helps you analyze Starknet smart contracts
+                without needing to write code or understand complex blockchain data structures.
+              </p>
+              <p className="text-lg leading-relaxed text-muted-foreground">
+                Instead of manually checking transactions and events, <strong className="text-foreground">BlocRA</strong> fetches real-time data from Starknet,
+                processes it, and gives you clear insights about who is using a contract and how.
+              </p>
+            </CardContent>
+          </Card>
+        </section>
 
-            {/* What BloDI Actually Does */}
-            <Card className="glass-card border-border/30">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Target className="w-5 h-5 text-primary" />
-                  <span>What BloDI Actually Does</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <div className="flex items-start space-x-3">
-                      <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center mt-1">
-                        <Activity className="w-4 h-4 text-blue-600" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold">Contract Event Analysis</h3>
-                        <p className="text-sm text-muted-foreground">
-                          Enter any Starknet contract address and BloDI will fetch all its events, 
-                          decode them, and show you what's been happening.
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-start space-x-3">
-                      <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center mt-1">
-                        <Users className="w-4 h-4 text-green-600" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold">User Classification</h3>
-                        <p className="text-sm text-muted-foreground">
-                          Automatically categorizes users as Whales (big holders), Bots (automated), 
-                          DAOs (organizations), or Regular Users based on their activity patterns.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-4">
-                    <div className="flex items-start space-x-3">
-                      <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center mt-1">
-                        <PieChart className="w-4 h-4 text-purple-600" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold">Multi-Contract Analytics</h3>
-                        <p className="text-sm text-muted-foreground">
-                          Analyze multiple contracts simultaneously with dependency graphs, 
-                          cross-contract interactions, and comprehensive dashboards.
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-start space-x-3">
-                      <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center mt-1">
-                        <FileText className="w-4 h-4 text-orange-600" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold">Blocra Intelligence Engine</h3>
-                        <p className="text-sm text-muted-foreground">
-                          Advanced AI analysis with anomaly detection, predictive analytics, 
-                          and professional PDF reports with 12 comprehensive sections.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* How to Use BloDI */}
-            <Card className="glass-card border-border/30">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Zap className="w-5 h-5 text-primary" />
-                  <span>How to Use BloDI (Step by Step)</span>
-                </CardTitle>
-                <CardDescription>
-                  It's actually quite simple - here's how it works:
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  <div className="flex items-start space-x-4">
-                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                      1
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold mb-2">Find a Starknet Contract</h3>
-                      <p className="text-sm text-muted-foreground mb-3">
-                        Get the contract address from Starkscan, Voyager, or any Starknet explorer. 
-                        It looks like: <code className="bg-muted px-1 rounded">0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7</code>
-                      </p>
-                      <Button size="sm" variant="outline" onClick={() => window.open('https://starkscan.co', '_blank')}>
-                        <ExternalLink className="w-4 h-4 mr-2" />
-                        Open Starkscan
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start space-x-4">
-                    <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                      2
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold mb-2">Analyze the Contract</h3>
-                      <p className="text-sm text-muted-foreground mb-3">
-                        Go to "Contract Analysis" in BloDI, paste the address, give it a name, and click "Fetch Events". 
-                        BloDI will pull all the contract's activity and start analyzing it.
-                      </p>
-                      <Button size="sm" variant="outline" onClick={() => navigate('/contract-events-eda')}>
-                        <Activity className="w-4 h-4 mr-2" />
-                        Try Contract Analysis
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start space-x-4">
-                    <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                      3
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold mb-2">Explore the Results</h3>
-                      <p className="text-sm text-muted-foreground mb-3">
-                        You'll see charts showing user activity, transaction patterns, gas usage, and more. 
-                        Each chart tells you something different about how the contract is being used.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start space-x-4">
-                    <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                      4
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold mb-2">Generate Reports (Optional)</h3>
-                      <p className="text-sm text-muted-foreground mb-3">
-                        Click "Generate PDF Report" to get a professional analysis document with business insights, 
-                        risk assessment, and recommendations. Great for sharing with teams or stakeholders.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Real Examples */}
-            <Card className="glass-card border-border/30">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <TrendingUp className="w-5 h-5 text-primary" />
-                  <span>Real Examples of What You'll Discover</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="border-l-4 border-blue-500 pl-4">
-                    <h3 className="font-semibold mb-1">DeFi Protocol Health</h3>
-                    <p className="text-sm text-muted-foreground">
-                      See if a DEX is growing or shrinking, identify the biggest traders, 
-                      and spot unusual activity patterns that might indicate problems or opportunities.
-                    </p>
-                  </div>
-                  
-                  <div className="border-l-4 border-green-500 pl-4">
-                    <h3 className="font-semibold mb-1">NFT Collection Performance</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Track minting activity, identify whale collectors, analyze trading patterns, 
-                      and understand which features drive the most engagement.
-                    </p>
-                  </div>
-                  
-                  <div className="border-l-4 border-purple-500 pl-4">
-                    <h3 className="font-semibold mb-1">Gaming Contract Usage</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Monitor player activity, identify power users vs casual players, 
-                      track in-game economy health, and spot potential bot activity.
-                    </p>
-                  </div>
-                  
-                  <div className="border-l-4 border-orange-500 pl-4">
-                    <h3 className="font-semibold mb-1">Token Distribution Analysis</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Understand how tokens are distributed, identify concentration risks, 
-                      track holder behavior, and analyze transfer patterns.
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Technical Details */}
-            <Card className="glass-card border-border/30">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Database className="w-5 h-5 text-primary" />
-                  <span>How BloDI Works Technically</span>
-                </CardTitle>
-                <CardDescription>
-                  For the curious minds who want to know what's happening under the hood
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-3">
-                      <h3 className="font-semibold">Data Collection</h3>
-                      <ul className="text-sm text-muted-foreground space-y-1">
-                        <li>• Connects to Starknet RPC endpoints</li>
-                        <li>• Fetches contract events in real-time</li>
-                        <li>• Decodes event data automatically</li>
-                        <li>• Handles multiple RPC providers for reliability</li>
-                      </ul>
-                    </div>
-                    
-                    <div className="space-y-3">
-                      <h3 className="font-semibold">Analysis Engine</h3>
-                      <ul className="text-sm text-muted-foreground space-y-1">
-                        <li>• Classifies users based on transaction patterns</li>
-                        <li>• Calculates performance metrics</li>
-                        <li>• Generates statistical insights</li>
-                        <li>• Creates time-series data for charts</li>
-                      </ul>
-                    </div>
-                  </div>
-                  
-                  <div className="border-t pt-4">
-                    <h3 className="font-semibold mb-2">Built With</h3>
-                    <div className="flex flex-wrap gap-2">
-                      <Badge variant="outline">React</Badge>
-                      <Badge variant="outline">TypeScript</Badge>
-                      <Badge variant="outline">Vite</Badge>
-                      <Badge variant="outline">Tailwind CSS</Badge>
-                      <Badge variant="outline">Recharts</Badge>
-                      <Badge variant="outline">starknet.js</Badge>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-
-
-            {/* Get Started */}
-            <Card className="glass-card border-border/30">
-              <CardHeader>
-                <CardTitle>Ready to Try BloDI?</CardTitle>
-                <CardDescription>
-                  Start analyzing Starknet contracts in under 2 minutes
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <Button className="h-auto p-4 flex flex-col items-center space-y-2" onClick={() => navigate('/contract-events-eda')}>
-                    <Activity className="w-6 h-6" />
-                    <div className="text-center">
-                      <div className="font-semibold">Analyze a Contract</div>
-                      <div className="text-xs opacity-75">Start with contract analysis</div>
-                    </div>
-                  </Button>
-                  
-                  <Button variant="outline" className="h-auto p-4 flex flex-col items-center space-y-2" onClick={() => window.open('https://github.com/Ndifreke000/BloDI', '_blank')}>
-                    <Github className="w-6 h-6" />
-                    <div className="text-center">
-                      <div className="font-semibold">View Source Code</div>
-                      <div className="text-xs opacity-75">Check out the code</div>
-                    </div>
-                  </Button>
-                  
-                  <Button variant="outline" className="h-auto p-4 flex flex-col items-center space-y-2" onClick={() => window.open('https://blodi-suite.vercel.app/', '_blank')}>
-                    <Globe className="w-6 h-6" />
-                    <div className="text-center">
-                      <div className="font-semibold">Live Demo</div>
-                      <div className="text-xs opacity-75">Try it online</div>
-                    </div>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
+        <section id="features" className="space-y-4">
+          <div className="flex items-center space-x-2 mb-2">
+            <Search className="w-5 h-5 text-primary" />
+            <h2 className="text-xl font-semibold">What BlocRA Actually Does</h2>
           </div>
-        </main>
+
+          <div className="grid gap-6 md:grid-cols-2">
+            <Card className="glass border-border hover:border-primary/50 transition-colors">
+              <CardHeader>
+                <CardTitle className="flex items-center text-lg">
+                  <Database className="w-5 h-5 mr-2 text-blue-500" />
+                  Fetches Events
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">
+                  Enter any Starknet contract address and BlocRA will fetch all its events,
+                  decoding them into readable formats automatically.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="glass border-border hover:border-primary/50 transition-colors">
+              <CardHeader>
+                <CardTitle className="flex items-center text-lg">
+                  <Users className="w-5 h-5 mr-2 text-green-500" />
+                  Identifies Users
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">
+                  It looks at who is interacting with the contract and classifies them as
+                  Whales, Bots, DAOs, or Regular Users.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="glass border-border hover:border-primary/50 transition-colors">
+              <CardHeader>
+                <CardTitle className="flex items-center text-lg">
+                  <BarChart3 className="w-5 h-5 mr-2 text-purple-500" />
+                  Visualizes Data
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">
+                  See activity trends over time, user retention rates, and gas usage
+                  statistics in beautiful, interactive charts.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="glass border-border hover:border-primary/50 transition-colors">
+              <CardHeader>
+                <CardTitle className="flex items-center text-lg">
+                  <FileText className="w-5 h-5 mr-2 text-orange-500" />
+                  Generates Reports
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">
+                  Create professional PDF intelligence reports with AI-powered insights
+                  and strategic recommendations.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        </section>
+
+        <section id="how-to-use" className="space-y-4">
+          <div className="flex items-center space-x-2 mb-2">
+            <Zap className="w-5 h-5 text-primary" />
+            <h2 className="text-xl font-semibold">How to Use BlocRA (Step by Step)</h2>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex gap-4 p-4 rounded-xl bg-card border border-border">
+              <div className="flex-none flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-bold">
+                1
+              </div>
+              <div>
+                <h3 className="font-semibold mb-1">Enter Contract Address</h3>
+                <p className="text-muted-foreground">
+                  Go to "Contract Analysis" in BlocRA, paste the address, give it a name, and click "Fetch Events".
+                  BlocRA will pull all the contract's activity and start analyzing it.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-4 p-4 rounded-xl bg-card border border-border">
+              <div className="flex-none flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-bold">
+                2
+              </div>
+              <div>
+                <h3 className="font-semibold mb-1">Explore the Dashboard</h3>
+                <p className="text-muted-foreground">
+                  View the "Analytics Dashboard" to see charts and graphs. You can filter by date,
+                  event type, or user segment to dig deeper into the data.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-4 p-4 rounded-xl bg-card border border-border">
+              <div className="flex-none flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-bold">
+                3
+              </div>
+              <div>
+                <h3 className="font-semibold mb-1">Generate Report</h3>
+                <p className="text-muted-foreground">
+                  Click "Generate Report" to get a comprehensive PDF analysis. This includes
+                  AI-driven insights about the contract's performance and risks.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="technical" className="space-y-4">
+          <div className="flex items-center space-x-2 mb-2">
+            <Code className="w-5 h-5 text-primary" />
+            <h2 className="text-xl font-semibold">How BlocRA Works Technically</h2>
+          </div>
+
+          <Card className="glass border-border">
+            <CardContent className="p-6">
+              <div className="grid gap-6 md:grid-cols-3">
+                <div className="space-y-2">
+                  <h3 className="font-semibold text-primary">Frontend</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Built with React, TypeScript, and Tailwind CSS for a fast, responsive experience.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <h3 className="font-semibold text-primary">Data Layer</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Uses Starknet.js to communicate directly with the blockchain via RPC nodes.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <h3 className="font-semibold text-primary">Intelligence</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Advanced algorithms classify users and detect patterns in transaction data.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+
+        <section id="cta" className="pt-8">
+          <div className="bg-gradient-to-r from-primary/10 via-accent/10 to-primary/10 rounded-2xl p-8 text-center border border-primary/20">
+            <CardTitle className="text-3xl mb-4">Ready to Try BlocRA?</CardTitle>
+            <p className="text-muted-foreground mb-8 max-w-2xl mx-auto">
+              Start analyzing Starknet contracts today and get deep insights into your dApp's usage and performance.
+            </p>
+            <div className="flex justify-center gap-4">
+              <Button size="lg" className="glow-primary" onClick={() => window.location.href = '/'}>
+                Go to Dashboard
+              </Button>
+              <Button variant="outline" className="h-auto p-4 flex flex-col items-center space-y-2" onClick={() => window.open('https://github.com/Ndifreke000/BlocRA', '_blank')}>
+                <Github className="w-5 h-5 mr-2" />
+                View on GitHub
+              </Button>
+            </div>
+          </div>
+        </section>
+
+      </div>
     </div>
   );
 }

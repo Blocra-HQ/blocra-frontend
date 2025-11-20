@@ -39,7 +39,7 @@ const validatePassword = (password: string): { isValid: boolean; message?: strin
   const hasLower = /[a-z]/.test(password);
   const hasNumber = /\d/.test(password);
   const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
-  
+
   const score = [hasUpper, hasLower, hasNumber, hasSpecial].filter(Boolean).length;
   if (score >= 3) return { isValid: true, message: 'Strong password', strength: 'strong' };
   return { isValid: true, message: 'Medium strength password', strength: 'medium' };
@@ -105,13 +105,13 @@ export default function Auth() {
     }
 
     try {
-      const users: User[] = JSON.parse(localStorage.getItem('blodi_users') || '[]');
-      
+      const users: User[] = JSON.parse(localStorage.getItem('blocra_users') || '[]');
+
 
 
       const hashedPassword = hashPassword(signInPassword);
-      const user = users.find(u => 
-        (u.email === signInIdentifier.trim() || u.name === signInIdentifier.trim()) && 
+      const user = users.find(u =>
+        (u.email === signInIdentifier.trim() || u.name === signInIdentifier.trim()) &&
         u.password === hashedPassword
       );
 
@@ -167,8 +167,8 @@ export default function Auth() {
     }
 
     try {
-      const users: User[] = JSON.parse(localStorage.getItem('blodi_users') || '[]');
-      
+      const users: User[] = JSON.parse(localStorage.getItem('blocra_users') || '[]');
+
       if (users.find(u => u.email === trimmedEmail || u.name === trimmedName)) {
         setError('User with this email or name already exists');
         setLoading(false);
@@ -184,11 +184,11 @@ export default function Auth() {
       };
 
       users.push(newUser);
-      localStorage.setItem('blodi_users', JSON.stringify(users));
-      
+      localStorage.setItem('blocra_users', JSON.stringify(users));
+
       setMessage('Account created successfully! You can now sign in.');
       setActiveTab('signin');
-      
+
       // Clear form
       setSignUpEmail('');
       setSignUpName('');
@@ -211,10 +211,10 @@ export default function Auth() {
               <BarChart3 className="w-7 h-7 text-primary-foreground" />
             </div>
             <span className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-              BloDI
+              BlocRA
             </span>
           </Link>
-          <h1 className="text-3xl font-bold mb-2">Welcome to BloDI</h1>
+          <h1 className="text-3xl font-bold mb-2">Welcome to BlocRA</h1>
           <p className="text-muted-foreground mb-4">
             Join the premier blockchain data intelligence platform for Starknet
           </p>
@@ -297,7 +297,7 @@ export default function Auth() {
                       type="button"
                       className="text-sm text-muted-foreground hover:text-primary transition-colors"
                       onClick={() => {
-                        const users = JSON.parse(localStorage.getItem('blodi_users') || '[]');
+                        const users = JSON.parse(localStorage.getItem('blocra_users') || '[]');
                         if (users.length > 0) {
                           alert(`Registered users: ${users.map((u: any) => u.name || u.email).join(', ')}`);
                         } else {
@@ -416,7 +416,7 @@ export default function Auth() {
             </Tabs>
           </CardContent>
         </Card>
-        
+
         <div className="text-center mt-6 space-y-2">
           <p className="text-sm text-muted-foreground">
             By creating an account, you agree to our{' '}

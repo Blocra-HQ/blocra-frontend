@@ -1,24 +1,24 @@
 <div align="center">
 
-# 🚀 BloDI
+# 🚀 BlocRA
 
 ### Enterprise-Grade Analytics & Intelligence Platform for Starknet
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Production Ready](https://img.shields.io/badge/Status-Production%20Ready-brightgreen.svg)](https://blodi-suite.vercel.app/)
+[![Production Ready](https://img.shields.io/badge/Status-Production%20Ready-brightgreen.svg)](https://blocra-suite.vercel.app/)
 [![Starknet](https://img.shields.io/badge/Built%20for-Starknet-black?logo=ethereum)](https://starknet.io/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-20232A?logo=react&logoColor=61DAFB)](https://reactjs.org/)
 
-[🌐 **Live Demo**](https://blodi-suite.vercel.app/) • [📖 **Documentation**](#-features) • [🚀 **Deploy Now**](#-quick-deploy) • [🛡️ **Admin Access**](#-admin-dashboard)
+[🌐 **Live Demo**](https://blocra-suite.vercel.app/) • [📖 **Documentation**](#-features) • [🚀 **Deploy Now**](#-quick-deploy) • [🛡️ **Admin Access**](#-admin-dashboard)
 
 </div>
 
 ---
 
-## 🌟 **What is BloDI?**
+## 🌟 **What is BlocRA?**
 
-**BloDI (Blockchain Data Intelligence)** is a production-ready, enterprise-grade platform that revolutionizes how developers, analysts, and businesses interact with the Starknet ecosystem. Combining powerful real-time analytics with AI-powered intelligence reports and comprehensive admin monitoring, it's the ultimate toolkit for blockchain data analysis and business intelligence.
+**BlocRA (Blockchain Data Intelligence)** is a production-ready, enterprise-grade platform that revolutionizes how developers, analysts, and businesses interact with the Starknet ecosystem. Combining powerful real-time analytics with AI-powered intelligence reports and comprehensive admin monitoring, it's the ultimate toolkit for blockchain data analysis and business intelligence.
 
 ### 🎯 **Core Value Propositions**
 
@@ -96,8 +96,8 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/Ndifreke000/BloDI.git
-cd BloDI
+git clone https://github.com/Ndifreke000/BlocRA.git
+cd BlocRA
 
 # Install dependencies
 pnpm install
@@ -124,7 +124,7 @@ VITE_STARKNET_RPC_URL=https://starknet-mainnet.public.blastapi.io
 
 ---
 
-## 🎮 **How to Use BloDI**
+## 🎮 **How to Use BlocRA**
 
 ### 1. **Multi-Contract Analysis**
 ```
@@ -204,7 +204,7 @@ graph TB
 
 ## 📊 **Intelligence Report Sections**
 
-BloDI generates comprehensive 12-section reports:
+BlocRA generates comprehensive 12-section reports:
 
 - **📋 Contract Information**: Address, type, deployment details, current status
 - **📈 Executive Summary**: Key performance indicators and strategic assessment  
@@ -223,7 +223,7 @@ BloDI generates comprehensive 12-section reports:
 
 ## 🎯 **User Segments Explained**
 
-BloDI automatically classifies contract users with detailed explanations:
+BlocRA automatically classifies contract users with detailed explanations:
 
 - **🐋 Whale**: Large holder/investor making high-value transactions with substantial token holdings
 - **🤖 Bot**: Automated trading program performing programmatic transactions for arbitrage or market making  
@@ -263,7 +263,7 @@ BloDI automatically classifies contract users with detailed explanations:
 
 ### One-Click Deployment
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Ndifreke000/BloDI)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Ndifreke000/BlocRA)
 
 ### Manual Deployment
 
@@ -318,7 +318,7 @@ src/
 │   ├── RealtimeService.ts      # Live update management
 │   └── StateAnalysisService.ts # Historical state tracking
 ├── lib/                # Utility functions
-└── styles/             # Global styles and themes
+│   └── styles/             # Global styles and themes
 ```
 
 ### Key Services
@@ -348,7 +348,7 @@ We welcome contributions! Here's how to get started:
 ```
 MIT License
 
-Copyright (c) 2025 BloDI - Blockchain Data Intelligence
+Copyright (c) 2025 BlocRA - Blockchain Data Intelligence
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -375,8 +375,8 @@ SOFTWARE.
 
 **Built with ❤️ for the Starknet Community**
 
-[🌐 Website](https://blodi-suite.vercel.app/) • [📖 Docs](#-features) • [🛡️ Admin](/admin) • [🐦 Twitter](https://twitter.com/blodi_suite) • [💬 Discord](https://discord.gg/blodi)
+[🌐 Website](https://blocra-suite.vercel.app/) • [📖 Docs](#-features) • [🛡️ Admin](/admin) • [🐦 Twitter](https://twitter.com/blocra_suite) • [💬 Discord](https://discord.gg/blocra)
 
-⭐ **Star us on GitHub** if you find BloDI useful for your blockchain analytics!
+⭐ **Star us on GitHub** if you find BlocRA useful for your blockchain analytics!
 
 </div>

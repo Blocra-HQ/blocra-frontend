@@ -2,11 +2,11 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
-import { 
-  Database, 
-  Layout, 
-  Trophy, 
-  Settings, 
+import {
+  Database,
+  Layout,
+  Trophy,
+  Settings,
   Search,
   Home,
   Plus,
@@ -50,9 +50,9 @@ export function AuthenticatedSidebar({ className }: AuthenticatedSidebarProps) {
       <div className="flex h-full flex-col">
         {/* Header */}
         <div className="flex h-16 items-center justify-center px-4 border-b border-border/30 bg-gradient-to-r from-primary/5 to-accent/5">
-          <img 
-            src="/blodi-logo.png" 
-            alt="BloDI Logo" 
+          <img
+            src="/blocra-logo.png"
+            alt="BlocRA Logo"
             className="h-14 w-auto object-contain"
           />
         </div>
@@ -132,7 +132,7 @@ export function AuthenticatedSidebar({ className }: AuthenticatedSidebarProps) {
                 </div>
               </div>
             )}
-            
+
             <Button
               variant="outline"
               size="sm"

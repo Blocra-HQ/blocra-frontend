@@ -6,7 +6,7 @@ export interface ActivityData {
 }
 
 export class ActivityTrackingService {
-  private static readonly DB_NAME = 'BloDI_ActivityDB';
+  private static readonly DB_NAME = 'BlocRA_ActivityDB';
   private static readonly STORE_NAME = 'activities';
 
   static async trackActivity(type: ActivityData['type'], details: Record<string, any> = {}) {
@@ -33,7 +33,7 @@ export class ActivityTrackingService {
       const transaction = db.transaction([this.STORE_NAME], 'readonly');
       const store = transaction.objectStore(this.STORE_NAME);
       const request = store.getAll();
-      
+
       return new Promise((resolve, reject) => {
         request.onsuccess = () => {
           const activities = request.result
@@ -71,10 +71,10 @@ export class ActivityTrackingService {
   private static openDB(): Promise<IDBDatabase> {
     return new Promise((resolve, reject) => {
       const request = indexedDB.open(this.DB_NAME, 1);
-      
+
       request.onerror = () => reject(request.error);
       request.onsuccess = () => resolve(request.result);
-      
+
       request.onupgradeneeded = (event) => {
         const db = (event.target as IDBOpenDBRequest).result;
         if (!db.objectStoreNames.contains(this.STORE_NAME)) {

@@ -4,8 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
-  Users, Activity, FileText, Download, BarChart3, 
+import {
+  Users, Activity, FileText, Download, BarChart3,
   TrendingUp, Calendar, Search, Filter, RefreshCw,
   Shield, Database, AlertTriangle, Eye
 } from 'lucide-react';
@@ -23,7 +23,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     loadDashboardData();
-    
+
     const interval = setInterval(loadDashboardData, 30000);
     return () => clearInterval(interval);
   }, []);
@@ -31,7 +31,7 @@ export default function AdminDashboard() {
   const loadDashboardData = async () => {
     const stats = await ActivityTrackingService.getActivityStats();
     const activities = await ActivityTrackingService.getActivities(50);
-    
+
     setStats({
       totalUsers: stats.total,
       dailyActiveUsers: stats.today,
@@ -42,7 +42,7 @@ export default function AdminDashboard() {
       totalDashboards: stats.byType.dashboard || 0,
       totalDownloads: stats.byType.download || 0
     });
-    
+
     setActivities(activities.map(a => ({
       id: a.id,
       action: a.type,
@@ -51,13 +51,13 @@ export default function AdminDashboard() {
       timestamp: new Date(a.timestamp),
       details: a.details
     })));
-    
+
     setTopContracts([]);
     setActivityTrends([]);
   };
 
   const filteredActivities = activities.filter(activity => {
-    const matchesUser = !filterUser || 
+    const matchesUser = !filterUser ||
       activity.userEmail.toLowerCase().includes(filterUser.toLowerCase()) ||
       activity.userId.toLowerCase().includes(filterUser.toLowerCase());
     const matchesAction = filterAction === 'all' || activity.action === filterAction;
@@ -121,7 +121,7 @@ export default function AdminDashboard() {
       <div className="max-w-7xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold">BloDI Admin Dashboard</h1>
+            <h1 className="text-3xl font-bold">BlocRA Admin Dashboard</h1>
             <p className="text-muted-foreground">Monitor platform usage and user activities</p>
           </div>
           <div className="flex space-x-2">
@@ -144,7 +144,7 @@ export default function AdminDashboard() {
               <p className="text-sm text-muted-foreground">Total Users</p>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardContent className="p-4 text-center">
               <Activity className="h-8 w-8 mx-auto mb-2 text-green-600" />
@@ -152,7 +152,7 @@ export default function AdminDashboard() {
               <p className="text-sm text-muted-foreground">Daily Active</p>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardContent className="p-4 text-center">
               <BarChart3 className="h-8 w-8 mx-auto mb-2 text-purple-600" />
@@ -160,7 +160,7 @@ export default function AdminDashboard() {
               <p className="text-sm text-muted-foreground">Analyses</p>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardContent className="p-4 text-center">
               <FileText className="h-8 w-8 mx-auto mb-2 text-orange-600" />
@@ -168,7 +168,7 @@ export default function AdminDashboard() {
               <p className="text-sm text-muted-foreground">Reports</p>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardContent className="p-4 text-center">
               <Database className="h-8 w-8 mx-auto mb-2 text-indigo-600" />
@@ -176,7 +176,7 @@ export default function AdminDashboard() {
               <p className="text-sm text-muted-foreground">Dashboards</p>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardContent className="p-4 text-center">
               <Download className="h-8 w-8 mx-auto mb-2 text-red-600" />
@@ -184,7 +184,7 @@ export default function AdminDashboard() {
               <p className="text-sm text-muted-foreground">Downloads</p>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardContent className="p-4 text-center">
               <Calendar className="h-8 w-8 mx-auto mb-2 text-yellow-600" />
@@ -192,7 +192,7 @@ export default function AdminDashboard() {
               <p className="text-sm text-muted-foreground">Weekly Active</p>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardContent className="p-4 text-center">
               <TrendingUp className="h-8 w-8 mx-auto mb-2 text-pink-600" />
