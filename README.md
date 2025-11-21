@@ -2,7 +2,7 @@
 
 # 🚀 BlocRA
 
-### Enterprise-Grade Analytics & Intelligence Platform for Starknet
+### Enterprise-Grade Multi-Chain Analytics & Intelligence Platform
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Production Ready](https://img.shields.io/badge/Status-Production%20Ready-brightgreen.svg)](https://blocra-suite.vercel.app/)
@@ -18,10 +18,12 @@
 
 ## 🌟 **What is BlocRA?**
 
-**BlocRA (Blockchain Data Intelligence)** is a production-ready, enterprise-grade platform that revolutionizes how developers, analysts, and businesses interact with the Starknet ecosystem. Combining powerful real-time analytics with AI-powered intelligence reports and comprehensive admin monitoring, it's the ultimate toolkit for blockchain data analysis and business intelligence.
+**BlocRA (Blockchain Data Intelligence)** is a production-ready, enterprise-grade multi-chain platform that revolutionizes how developers, analysts, and businesses interact with blockchain ecosystems. Supporting **20+ blockchains** including Starknet, Ethereum, BSC, Polygon, Solana, and more, it combines powerful real-time analytics with AI-powered intelligence reports and comprehensive admin monitoring.
 
 ### 🎯 **Core Value Propositions**
 
+- 🌐 **Multi-Chain Support**: Seamlessly switch between 20+ blockchains (EVM, Starknet, Solana, Cosmos, Substrate)
+- 🔍 **Smart Address Validation**: Chain-aware validation automatically adapts to each blockchain's address format
 - 📊 **Real-Time Analytics**: Live multi-contract analysis with interactive visualizations and comprehensive dashboards
 - 🤖 **AI-Powered Intelligence**: Blocra Intelligence Engine with anomaly detection, predictive analytics, and pattern recognition
 - 📄 **Professional Reports**: Export detailed PDF intelligence reports with risk assessment and strategic recommendations
@@ -38,6 +40,8 @@
 <td width="50%">
 
 ### 🔍 **Advanced Contract Intelligence**
+- **Multi-Chain Support**: 20+ blockchains including Ethereum, BSC, Polygon, Arbitrum, Optimism, Starknet, Solana, and more
+- **Smart Address Validation**: Automatically validates addresses based on selected blockchain (EVM, Starknet, Solana, etc.)
 - **Multi-Contract Analysis**: Analyze entire project ecosystems with up to 10+ contracts
 - **Real-Time Event Monitoring**: Live contract event monitoring and decoding
 - **User Segmentation**: Whale, Bot, DAO, and Regular User classification with explanations
@@ -112,27 +116,31 @@ pnpm run build
 ### Environment Variables
 
 ```env
-# Starknet RPC Configuration
-VITE_STARKNET_RPC_URL=https://starknet-mainnet.public.blastapi.io
+# Multi-Chain RPC Configuration
+# The app automatically manages RPC endpoints for 20+ blockchains
+# with automatic failover and chain switching
 
-# The app automatically uses multiple RPC endpoints with failover:
-# - https://starknet-mainnet.public.blastapi.io
-# - https://free-rpc.nethermind.io/mainnet-juno
-# - https://starknet-mainnet.reddio.com/rpc/v0_7
-# - https://rpc.starknet.lava.build
+# Example chains supported:
+# - Starknet: https://starknet-mainnet.public.blastapi.io
+# - Ethereum: https://eth.drpc.org
+# - BSC: https://bsc-dataseed.bnbchain.org
+# - Polygon: https://polygon-rpc.com
+# - Solana: https://solana.publicnode.dev
+# And 15+ more...
 ```
 
 ---
 
 ## 🎮 **How to Use BlocRA**
 
-### 1. **Multi-Contract Analysis**
+### 1. **Multi-Chain Contract Analysis**
 ```
-1. 🔍 Enter Contract Addresses → Add multiple contracts using the + button
-2. 📝 Add Contract Names → Provide custom names for each contract
-3. 🚀 Fetch Events → Retrieve and analyze events from all contracts
-4. 📊 View Dashboard → Explore cross-contract analytics and dependency graphs
-5. 🔍 Monitor Alerts → Set up custom alert conditions for real-time monitoring
+1. 🌐 Select Blockchain → Choose from 20+ chains (Ethereum, BSC, Starknet, Solana, etc.)
+2. 🔍 Enter Contract Addresses → Add multiple contracts (validation adapts to chain)
+3. 📝 Add Contract Names → Provide custom names for each contract
+4. 🚀 Fetch Events → Retrieve and analyze events from all contracts
+5. 📊 View Dashboard → Explore cross-contract analytics and dependency graphs
+6. 🔍 Monitor Alerts → Set up custom alert conditions for real-time monitoring
 ```
 
 ### 2. **Generate Intelligence Reports**
@@ -308,6 +316,8 @@ src/
 │   ├── ContractEventsEDA.tsx   # Multi-contract analysis
 │   └── AdminDashboard.tsx      # Admin monitoring panel
 ├── services/           # Business logic and API services
+│   ├── AddressValidationService.ts # Chain-aware address validation
+│   ├── MultiChainRPCService.ts     # Multi-chain RPC management
 │   ├── AIAnalysisService.ts    # Blocra Intelligence Engine
 │   ├── AdvancedAIService.ts    # Anomaly detection & predictions
 │   ├── ActivityTrackingService.ts # Admin activity monitoring
@@ -323,6 +333,8 @@ src/
 
 ### Key Services
 
+- **AddressValidationService**: Chain-aware validation for EVM, Starknet, Solana, Cosmos, and Substrate addresses
+- **MultiChainRPCService**: Manages RPC connections for 20+ blockchains with automatic failover
 - **ActivityTrackingService**: Comprehensive user activity monitoring for admin dashboard
 - **AdvancedAIService**: Anomaly detection, predictive analytics, and pattern recognition
 - **AlertService**: Custom alert conditions with real-time browser notifications
