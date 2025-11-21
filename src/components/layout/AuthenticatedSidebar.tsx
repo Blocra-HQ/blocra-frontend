@@ -2,6 +2,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
+import { ChainSelector } from "@/components/ChainSelector";
 import {
   Database,
   Layout,
@@ -49,12 +50,17 @@ export function AuthenticatedSidebar({ className }: AuthenticatedSidebarProps) {
     >
       <div className="flex h-full flex-col">
         {/* Header */}
-        <div className="flex h-16 items-center justify-center px-4 border-b border-border/30 bg-gradient-to-r from-primary/5 to-accent/5">
+        <div className="flex h-16 items-center justify-between px-4 border-b border-border/30 bg-gradient-to-r from-primary/5 to-accent/5">
           <img
             src="/blocra-logo.png"
             alt="BlocRA Logo"
-            className="h-14 w-auto object-contain"
+            className="h-10 w-auto object-contain"
           />
+        </div>
+
+        {/* Chain Selector */}
+        <div className="p-4 border-b border-border/30">
+          <ChainSelector />
         </div>
 
         {/* Search */}

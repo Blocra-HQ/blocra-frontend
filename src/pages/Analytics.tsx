@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { QueryEditor } from '@/components/query/QueryEditor';
 import { QueryVisualizer } from '@/components/query/QueryVisualizer';
 import { BarChart3, Database, TrendingUp, Plus } from 'lucide-react';
+import { useChain } from '@/contexts/ChainContext';
 
 interface Query {
   id: string;
@@ -14,6 +15,7 @@ interface Query {
 }
 
 export default function Analytics() {
+  const { currentChain } = useChain();
   const [queries, setQueries] = useState<Query[]>([]);
   const [activeQuery, setActiveQuery] = useState<Query | null>(null);
   const [activeTab, setActiveTab] = useState('query');
@@ -41,8 +43,8 @@ export default function Analytics() {
   return (
     <div className="min-h-screen bg-background">
       <Header 
-        title="Analytics Workspace" 
-        subtitle="Query, visualize, and build dashboards in one place"
+        title={`Analytics Workspace - ${currentChain.name}`}
+        subtitle={`Query, visualize, and build dashboards for ${currentChain.name} blockchain`}
       />
       
       <main className="flex-1 p-6">
