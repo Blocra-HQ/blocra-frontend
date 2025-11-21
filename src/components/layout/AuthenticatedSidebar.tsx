@@ -50,12 +50,15 @@ export function AuthenticatedSidebar({ className }: AuthenticatedSidebarProps) {
     >
       <div className="flex h-full flex-col">
         {/* Header */}
-        <div className="flex h-16 items-center justify-between px-4 border-b border-border/30 bg-gradient-to-r from-primary/5 to-accent/5">
+        <div className="flex h-16 items-center justify-start gap-3 px-4 border-b border-border/30 bg-gradient-to-r from-primary/5 to-accent/5">
           <img
             src="/blocra-logo.png"
             alt="BlocRA Logo"
             className="h-10 w-auto object-contain"
           />
+          <span className="text-lg font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent whitespace-nowrap">
+            BlocRA
+          </span>
         </div>
 
         {/* Chain Selector */}

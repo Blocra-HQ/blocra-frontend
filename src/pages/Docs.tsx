@@ -22,7 +22,7 @@ export default function Docs() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <Header title="Documentation" subtitle="Learn about BlocRA - Blockchain Data Intelligence for Starknet" />
+      <Header title="Documentation" subtitle="Learn about BlocRA - Blockchain Research Analysis" />
 
       <div className="max-w-4xl mx-auto pb-12 space-y-8 p-6">
 
@@ -41,7 +41,7 @@ export default function Docs() {
             </CardHeader>
             <CardContent className="p-6 space-y-4">
               <p className="text-lg leading-relaxed text-muted-foreground">
-                <strong className="text-foreground">BlocRA (Blockchain Data Intelligence)</strong> is a web application that helps you analyze Starknet smart contracts
+                <strong className="text-foreground">BlocRA (Blockchain Research Analysis)</strong> is a web application that helps you analyze blockchain data across multiple chains
                 without needing to write code or understand complex blockchain data structures.
               </p>
               <p className="text-lg leading-relaxed text-muted-foreground">

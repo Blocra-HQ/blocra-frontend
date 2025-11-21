@@ -216,7 +216,7 @@ export default function Auth() {
           </Link>
           <h1 className="text-3xl font-bold mb-2">Welcome to BlocRA</h1>
           <p className="text-muted-foreground mb-4">
-            Join the premier blockchain data intelligence platform for Starknet
+            Join the premier blockchain research and analysis platform
           </p>
         </div>
 

@@ -159,7 +159,7 @@ const Index = () => {
     <div className="min-h-screen bg-background text-foreground">
       <Header
         title="BlocRA Dashboard"
-        subtitle="Blockchain Data Intelligence for Starknet"
+        subtitle="Blockchain Research Analysis"
       />
 
       <main className="p-6 space-y-6">
