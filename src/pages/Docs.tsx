@@ -217,8 +217,8 @@ export default function Docs() {
                 <div className="space-y-2">
                   <h3 className="font-semibold text-primary">Multi-Chain RPC</h3>
                   <p className="text-sm text-muted-foreground">
-                    Connects to 20+ blockchains with automatic failover and instant chain switching (<500ms).
-                  </p>
+                      Connects to 20+ blockchains with automatic failover and instant chain switching (&lt;500ms).
+                    </p>
                 </div>
                 <div className="space-y-2">
                   <h3 className="font-semibold text-primary">Mobile-First</h3>
