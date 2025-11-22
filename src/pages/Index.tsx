@@ -6,10 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Chart } from "@/components/ui/chart";
 import { StatCard } from "@/components/ui/stat-card";
 import { SpecializedChart } from "@/components/ui/specialized-chart";
+import { Badge } from "@/components/ui/badge";
 
 import { AIChatBox } from "@/components/ai/AIChatBox";
 import { AIFloatingButton } from "@/components/ai/AIFloatingButton";
-import { starknetRPC } from "@/services/StarknetRPCService";
+import { multiChainRPC } from "@/services/MultiChainRPCService";
+import { useChain } from "@/contexts/ChainContext";
 import {
   BarChart,
   Bar,
@@ -29,6 +31,7 @@ import {
 } from "recharts";
 
 const Index = () => {
+  const { currentChain } = useChain();
   const [rpcData, setRpcData] = useState<any>(null);
   const [chatOpen, setChatOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -68,14 +71,15 @@ const Index = () => {
   const fetchRealTimeData = async () => {
     try {
       setLoading(true);
-      console.log('Fetching RPC data...');
+      console.log('Fetching RPC data for chain:', currentChain.name);
 
-      // Fetch real dashboard metrics
-      const metrics = await starknetRPC.getDashboardMetrics();
+      // Fetch real dashboard metrics using multichain service
+      const metrics = await multiChainRPC.getDashboardMetrics();
       console.log('Metrics:', metrics);
 
-      // Fetch time series data
-      const timeSeriesData = await starknetRPC.getTimeSeriesData();
+      // Note: getTimeSeriesData not yet implemented in multiChainRPC
+      // Using empty data for now - can be added to MultiChainRPCService later
+      const timeSeriesData = { transactions: [], gasUsage: [], activeUsers: [], avgFee: [], blockMetrics: [], walletGrowth: [], pendingConfirmed: [], failedRate: [] };
       console.log('Time series:', timeSeriesData);
 
       const hourlyLabels = ['4h ago', '3h ago', '2h ago', '1h ago', 'Now'];
@@ -146,7 +150,7 @@ const Index = () => {
     fetchRealTimeData();
     const interval = setInterval(fetchRealTimeData, 10000); // Update every 10 seconds
     return () => clearInterval(interval);
-  }, []);
+  }, [currentChain.id]); // Re-fetch when chain changes
 
   const endpoints = [
     "https://starknet-mainnet.public.blastapi.io",
@@ -162,11 +166,23 @@ const Index = () => {
         subtitle="Blockchain Research Analysis"
       />
 
-      <main className="p-6 space-y-6">
+      <main className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
+        {/* Chain Indicator */}
+        <div className="flex items-center gap-3 p-3 sm:p-4 glass-card rounded-lg border border-border">
+          <Badge variant="outline" className="text-xs sm:text-sm px-2 sm:px-3 py-1">
+            {currentChain.type.toUpperCase()}
+          </Badge>
+          <div>
+            <p className="text-sm sm:text-base font-semibold">{currentChain.name}</p>
+            <p className="text-xs text-muted-foreground">Native: {currentChain.nativeCurrency}</p>
+          </div>
+          {loading && <div className="ml-auto text-xs sm:text-sm text-muted-foreground animate-pulse">Loading...</div>}
+        </div>
+
         {/* Stats Cards */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5">
           <Card className="glass">
-            <CardContent className="p-6">
+            <CardContent className="p-3 sm:p-4 md:p-6">
               <StatCard
                 title="Total Transactions"
                 subtitle="Recent blocks"
@@ -229,7 +245,7 @@ const Index = () => {
         <div className="grid gap-6 lg:grid-cols-2">
           <Card className="glass glow-chart">
             <CardHeader>
-              <CardTitle>Transaction Volume</CardTitle>
+              <CardTitle className="text-base sm:text-lg md:text-xl">Transaction Volume</CardTitle>
             </CardHeader>
             <CardContent>
               <Chart
@@ -248,7 +264,7 @@ const Index = () => {
 
           <Card className="glass">
             <CardHeader>
-              <CardTitle>Network Activity</CardTitle>
+              <CardTitle className="text-base sm:text-lg md:text-xl">Network Activity</CardTitle>
             </CardHeader>
             <CardContent>
               <SpecializedChart
@@ -265,8 +281,8 @@ const Index = () => {
         <div className="grid gap-6 lg:grid-cols-2">
           <Card className="glass">
             <CardHeader>
-              <CardTitle>Transaction Activity</CardTitle>
-              <p className="text-sm text-muted-foreground">Recent block transaction count</p>
+              <CardTitle className="text-base sm:text-lg md:text-xl">Transaction Activity</CardTitle>
+              <p className="text-xs sm:text-sm text-muted-foreground">Recent block transaction count</p>
             </CardHeader>
             <CardContent>
               <Chart
@@ -284,8 +300,8 @@ const Index = () => {
 
           <Card className="glass">
             <CardHeader>
-              <CardTitle>Network Health</CardTitle>
-              <p className="text-sm text-muted-foreground">Real-time Starknet network status</p>
+              <CardTitle className="text-base sm:text-lg md:text-xl">Network Health</CardTitle>
+              <p className="text-xs sm:text-sm text-muted-foreground">Real-time Starknet network status</p>
             </CardHeader>
             <CardContent>
               <SpecializedChart
@@ -298,8 +314,8 @@ const Index = () => {
 
           <Card className="glass">
             <CardHeader>
-              <CardTitle>Gas Usage Pattern</CardTitle>
-              <p className="text-sm text-muted-foreground">Recent block gas consumption</p>
+              <CardTitle className="text-base sm:text-lg md:text-xl">Gas Usage Pattern</CardTitle>
+              <p className="text-xs sm:text-sm text-muted-foreground">Recent block gas consumption</p>
             </CardHeader>
             <CardContent>
               <Chart
@@ -317,8 +333,8 @@ const Index = () => {
 
           <Card className="glass">
             <CardHeader>
-              <CardTitle>Active Users</CardTitle>
-              <p className="text-sm text-muted-foreground">Recent block unique addresses</p>
+              <CardTitle className="text-base sm:text-lg md:text-xl">Active Users</CardTitle>
+              <p className="text-xs sm:text-sm text-muted-foreground">Recent block unique addresses</p>
             </CardHeader>
             <CardContent>
               <Chart
@@ -339,8 +355,8 @@ const Index = () => {
         <div className="grid gap-6 lg:grid-cols-2">
           <Card className="glass">
             <CardHeader>
-              <CardTitle>Average Fee Trend</CardTitle>
-              <p className="text-sm text-muted-foreground">Recent block average fees</p>
+              <CardTitle className="text-base sm:text-lg md:text-xl">Average Fee Trend</CardTitle>
+              <p className="text-xs sm:text-sm text-muted-foreground">Recent block average fees</p>
             </CardHeader>
             <CardContent>
               <SpecializedChart
@@ -353,8 +369,8 @@ const Index = () => {
 
           <Card className="glass">
             <CardHeader>
-              <CardTitle>Top Contracts</CardTitle>
-              <p className="text-sm text-muted-foreground">Most active smart contracts by transaction count</p>
+              <CardTitle className="text-base sm:text-lg md:text-xl">Top Contracts</CardTitle>
+              <p className="text-xs sm:text-sm text-muted-foreground">Most active smart contracts by transaction count</p>
             </CardHeader>
             <CardContent>
               <Chart
@@ -372,8 +388,8 @@ const Index = () => {
 
           <Card className="glass">
             <CardHeader>
-              <CardTitle>Block Metrics</CardTitle>
-              <p className="text-sm text-muted-foreground">Block time and transactions per block</p>
+              <CardTitle className="text-base sm:text-lg md:text-xl">Block Metrics</CardTitle>
+              <p className="text-xs sm:text-sm text-muted-foreground">Block time and transactions per block</p>
             </CardHeader>
             <CardContent>
               <Chart
@@ -391,8 +407,8 @@ const Index = () => {
 
           <Card className="glass">
             <CardHeader>
-              <CardTitle>Unique Wallet Growth</CardTitle>
-              <p className="text-sm text-muted-foreground">New unique addresses over time</p>
+              <CardTitle className="text-base sm:text-lg md:text-xl">Unique Wallet Growth</CardTitle>
+              <p className="text-xs sm:text-sm text-muted-foreground">New unique addresses over time</p>
             </CardHeader>
             <CardContent>
               <SpecializedChart
@@ -405,8 +421,8 @@ const Index = () => {
 
           <Card className="glass">
             <CardHeader>
-              <CardTitle>Pending vs Confirmed</CardTitle>
-              <p className="text-sm text-muted-foreground">Transaction status over time</p>
+              <CardTitle className="text-base sm:text-lg md:text-xl">Pending vs Confirmed</CardTitle>
+              <p className="text-xs sm:text-sm text-muted-foreground">Transaction status over time</p>
             </CardHeader>
             <CardContent>
               <Chart
@@ -424,8 +440,8 @@ const Index = () => {
 
           <Card className="glass">
             <CardHeader>
-              <CardTitle>Failed Transaction Rate</CardTitle>
-              <p className="text-sm text-muted-foreground">Percentage of failed transactions</p>
+              <CardTitle className="text-base sm:text-lg md:text-xl">Failed Transaction Rate</CardTitle>
+              <p className="text-xs sm:text-sm text-muted-foreground">Percentage of failed transactions</p>
             </CardHeader>
             <CardContent>
               <SpecializedChart
@@ -439,7 +455,7 @@ const Index = () => {
 
         {/* Data Info */}
         <Card className="glass">
-          <CardContent className="p-6">
+          <CardContent className="p-3 sm:p-4 md:p-6">
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               <div>
                 <p className="text-sm font-medium">Current Time</p>
@@ -458,7 +474,7 @@ const Index = () => {
                 <p className="text-sm text-muted-foreground">{loading ? '...' : chartData.stats.latestBlock?.toLocaleString() || 'N/A'}</p>
               </div>
             </div>
-            <p className="text-xs text-muted-foreground mt-4">
+            <p className="text-[10px] sm:text-xs text-muted-foreground mt-4">
               Data shows activity from 12AM to current time • Refreshes every 5 minutes
             </p>
           </CardContent>

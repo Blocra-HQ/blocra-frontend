@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { connect, disconnect } from 'starknetkit';
 
 interface DetectedWallets {
   argent: boolean;
@@ -36,10 +35,10 @@ export function useWallet() {
     const hasArgent = !!(window as any).starknet_argentX;
     const hasBraavos = !!(window as any).starknet_braavos;
     const available = [];
-    
+
     if (hasArgent) available.push('argent');
     if (hasBraavos) available.push('braavos');
-    
+
     return {
       argent: hasArgent,
       braavos: hasBraavos,
@@ -54,20 +53,28 @@ export function useWallet() {
 
       // Get the wallet provider
       const provider = (window as any)[walletType === 'argent' ? 'starknet_argentX' : 'starknet_braavos'];
-      
+
       if (!provider) {
         throw new Error(`${walletType} wallet not detected. Please install it first.`);
       }
 
-      // Connect to wallet
-      const result = await provider.request({ method: 'wallet_requestAccounts' });
-      
+      // Add timeout for mobile browsers that may be slow
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Wallet connection timed out. Please try again.')), 30000)
+      );
+
+      // Connect to wallet with timeout
+      const result = await Promise.race([
+        provider.request({ method: 'wallet_requestAccounts' }),
+        timeoutPromise
+      ]) as string[];
+
       if (!result || result.length === 0) {
         throw new Error('No accounts found in wallet');
       }
 
       const address = result[0];
-      
+
       // Get chain ID
       const chainIdResult = await provider.request({ method: 'starknet_chainId' });
       const chainId = chainIdResult || 'SN_MAINNET';
@@ -99,7 +106,7 @@ export function useWallet() {
   const disconnectWallet = async () => {
     try {
       setIsLoading(true);
-      
+
       // Disconnect from wallet
       if (walletType) {
         const provider = (window as any)[walletType === 'argent' ? 'starknet_argentX' : 'starknet_braavos'];
@@ -131,7 +138,7 @@ export function useWallet() {
 
     try {
       const provider = (window as any)[walletType === 'argent' ? 'starknet_argentX' : 'starknet_braavos'];
-      
+
       if (!provider?.request) return null;
 
       // Get STRK balance (example)
@@ -156,7 +163,7 @@ export function useWallet() {
 
     try {
       const provider = (window as any)[walletType === 'argent' ? 'starknet_argentX' : 'starknet_braavos'];
-      
+
       if (!provider?.request) return null;
 
       const signature = await provider.request({

@@ -22,7 +22,8 @@ export const ChainProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setIsLoading(true);
       setCurrentChain(chain);
       localStorage.setItem('selectedChain', chainId);
-      setTimeout(() => window.location.reload(), 100);
+      // Removed window.location.reload() - components will re-fetch via useEffect
+      setTimeout(() => setIsLoading(false), 500); // Brief loading state for UX
     }
   };
 
