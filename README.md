@@ -22,8 +22,10 @@
 
 ### 🎯 **Core Value Propositions**
 
-- 🌐 **Multi-Chain Support**: Seamlessly switch between 20+ blockchains (EVM, Starknet, Solana, Cosmos, Substrate)
+- 🌐 **Multi-Chain Support**: Seamlessly switch between 20+ blockchains (EVM, Starknet, Solana, Cosmos, Substrate) with real-time data updates
+- 📱 **Mobile-First Design**: Fully responsive interface with optimized text sizing, hamburger menu navigation, and touch-friendly controls
 - 🔍 **Smart Address Validation**: Chain-aware validation automatically adapts to each blockchain's address format
+- ⚡ **Instant Chain Switching**: Switch blockchains without page reloads - updates happen in <500ms
 - 📊 **Real-Time Analytics**: Live multi-contract analysis with interactive visualizations and comprehensive dashboards
 - 🤖 **AI-Powered Intelligence**: Blocra Intelligence Engine with anomaly detection, predictive analytics, and pattern recognition
 - 📄 **Professional Reports**: Export detailed PDF intelligence reports with risk assessment and strategic recommendations
@@ -74,6 +76,18 @@
 - **Export Capabilities**: CSV, JSON, PDF reports, and high-quality dashboard images
 
 </td>
+<td width="50%">
+
+### 📱 **Mobile Responsiveness**
+- **Touch-Optimized UI**: Fully responsive design for smartphones and tablets
+- **Hamburger Menu**: Smooth slide-in navigation with backdrop overlay
+- **Responsive Text Sizing**: Adaptive typography across all screen sizes (text-xs to text-2xl)
+- **No Horizontal Scrolling**: Optimized layouts prevent overflow on any device
+- **Mobile Wallet Integration**: Enhanced 30s timeout for mobile wallet connections
+- **Seamless Chain Switching**: No page reloads - chain changes update instantly
+</td>
+</tr>
+<tr>
 <td width="50%">
 
 ### 🛡️ **Admin & Enterprise Features**
@@ -293,11 +307,13 @@ pnpm run build
 |--------|-------|--------|
 | **Build Time** | <30s | 🟢 Fast |
 | **Bundle Size** | Optimized | 🟢 Efficient |
-| **RPC Failover** | 4 Endpoints | 🟢 Reliable |
+| **Supported Chains** | 20+ Blockchains | 🟢 Multi-Chain |
+| **Chain Switch Speed** | <500ms | 🟢 Instant |
+| **RPC Failover** | 4 Endpoints/Chain | 🟢 Reliable |
 | **Report Generation** | <5s | 🟢 Quick |
 | **Real-time Updates** | 10s intervals | 🟢 Live |
 | **Admin Monitoring** | 30s refresh | 🟢 Real-time |
-| **Mobile Support** | Responsive | 🟢 Compatible |
+| **Mobile Support** | Fully Responsive | 🟢 Optimized |
 
 </div>
 
