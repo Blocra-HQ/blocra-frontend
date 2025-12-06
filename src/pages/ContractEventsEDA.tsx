@@ -109,29 +109,7 @@ async function estimateBlockFromTwoWeeksAgo() {
   return result;
 }
 
-async function getComprehensiveContractData(contractAddress: string, provider: any) {
-  // Simplified version - generate mock data to avoid heavy RPC calls
-  return {
-    transactions: Array.from({ length: Math.floor(Math.random() * 100) + 50 }, (_, i) => ({
-      hash: `0x${Math.random().toString(16).substr(2, 64)}`,
-      block: 700000 + i,
-      from: `0x${Math.random().toString(16).substr(2, 64)}`,
-      to: contractAddress,
-      type: 'INVOKE',
-      status: 'success'
-    })),
-    users: Array.from({ length: Math.floor(Math.random() * 50) + 20 }, () =>
-      `0x${Math.random().toString(16).substr(2, 64)}`
-    ),
-    calls: Array.from({ length: Math.floor(Math.random() * 80) + 30 }, (_, i) => ({
-      hash: `0x${Math.random().toString(16).substr(2, 64)}`,
-      block: 700000 + i,
-      function: ['transfer', 'approve', 'swap', 'deposit'][Math.floor(Math.random() * 4)],
-      calldata: ['0x1', '0x2', '0x3']
-    })),
-    blockRange: { from: 650000, to: 700000 }
-  };
-}
+
 
 async function getContractInfo(contractAddress: string, provider: any) {
   try {
@@ -197,16 +175,9 @@ async function fetchEvents(contractAddress: string) {
       const contractInfo = await getContractInfo(contractAddress, provider);
 
       const latest = await provider.getBlockNumber();
-      const fromBlock = Math.max(0, latest - 50000);
+      const fromBlock = Math.max(0, latest - 2000); // Fetch last 2000 blocks for responsiveness
 
       console.log('Fetching events from block:', fromBlock, 'to', latest);
-
-      console.log('Query params:', {
-        address: contractAddress,
-        from_block: { block_number: fromBlock },
-        to_block: { block_number: latest },
-        chunk_size: 100
-      });
 
       const events = await provider.getEvents({
         address: contractAddress,
@@ -217,10 +188,20 @@ async function fetchEvents(contractAddress: string) {
 
       console.log('Events found:', events.events?.length || 0);
 
+      // Fetch timestamps for first and last block to interpolate
+      const latestTimestamp = await getBlockTimestamp(latest) || Math.floor(Date.now() / 1000);
+      const fromTimestamp = await getBlockTimestamp(fromBlock) || (latestTimestamp - 2000 * 15); // Assume 15s block time if fail
+
       // Enhanced event decoding with meaningful data extraction
       const decodedEvents = (events.events || []).map(event => {
         let eventName = 'Unknown Event';
         let decodedData: any = {};
+
+        // Interpolate timestamp based on block number
+        const blockDiff = latest - event.block_number;
+        const totalDiff = latest - fromBlock;
+        const timeDiff = latestTimestamp - fromTimestamp;
+        const estimatedTimestamp = latestTimestamp - (blockDiff / totalDiff) * timeDiff;
 
         if (event.keys && event.keys.length > 0) {
           const eventKey = event.keys[0];
@@ -275,14 +256,12 @@ async function fetchEvents(contractAddress: string) {
           ...event,
           event_name: eventName,
           decoded_data: decodedData,
-          timestamp: new Date().toISOString() // Add timestamp
+          timestamp: new Date(estimatedTimestamp * 1000).toISOString(),
+          timestamp_raw: estimatedTimestamp
         };
       });
 
-      // Generate comprehensive data after events are fetched
-      const comprehensiveData = await getComprehensiveContractData(contractAddress, provider);
-
-      return { events: decodedEvents, contractInfo, comprehensiveData };
+      return { events: decodedEvents, contractInfo };
     } catch (error) {
       console.error('RPC failed:', getRpcUrl(), error);
       switchToNextRpc();
@@ -363,36 +342,21 @@ export default function ContractEventsEDA() {
       // Use multi-chain RPC service
       const dashboardMetrics = await multiChainRPC.getDashboardMetrics();
 
-      // Generate mock events for visualization (adapt based on chain type)
-      const mockEvents = Array.from({ length: dashboardMetrics.totalTransactions }, (_, i) => ({
-        block_number: dashboardMetrics.latestBlock - i,
-        transaction_hash: `0x${Math.random().toString(16).substr(2, 64)}`,
-        event_name: ['Transfer', 'Approval', 'Swap', 'Deposit'][Math.floor(Math.random() * 4)],
-        decoded_data: {
-          from: `0x${Math.random().toString(16).substr(2, 64)}`,
-          to: `0x${Math.random().toString(16).substr(2, 64)}`,
-          amount: Math.floor(Math.random() * 1000000).toString()
-        }
-      }));
+      // REAL DATA FETCHING
+      let allEvents: any[] = [];
+      let fetchedContractInfo: any = null;
 
-      const allEvents = mockEvents;
-      const allContractInfo = [{ contractType: `${currentChain.name} Contract`, contractName: `${currentChain.name} Contract` }];
-      const allComprehensiveData = [dashboardMetrics];
+      // Fetch real events for the first contract (primary focus)
+      const primaryContract = validContracts[0];
+      const result = await fetchEvents(primaryContract.address);
+      allEvents = result.events;
+      fetchedContractInfo = result.contractInfo;
 
       console.log('Total events found:', allEvents.length);
-      console.log('Contract info:', allContractInfo);
+      console.log('Contract info:', fetchedContractInfo);
 
       setEvents(allEvents);
-      setContractInfo(allContractInfo[0]); // Use first contract info for display
-      setComprehensiveData({
-        transactions: allComprehensiveData.flatMap(d => d.transactions),
-        users: [...new Set(allComprehensiveData.flatMap(d => d.users))],
-        calls: allComprehensiveData.flatMap(d => d.calls),
-        blockRange: {
-          from: Math.min(...allComprehensiveData.map(d => d.blockRange.from)),
-          to: Math.max(...allComprehensiveData.map(d => d.blockRange.to))
-        }
-      });
+      setContractInfo(fetchedContractInfo);
 
       // Calculate comprehensive EDA stats
       if (allEvents.length > 0) {
@@ -424,32 +388,71 @@ export default function ContractEventsEDA() {
           return sum + amount;
         }, 0);
 
-        // Use combined comprehensive data
-        const combinedData = {
-          transactions: allComprehensiveData.flatMap(d => d.transactions),
-          users: [...new Set(allComprehensiveData.flatMap(d => d.users))],
-          calls: allComprehensiveData.flatMap(d => d.calls)
-        };
-        const allTxs = combinedData.transactions;
-        const allUsers = combinedData.users;
-        const allCalls = combinedData.calls;
+        // Calculate volume over time for chart
+        const volumeOverTime = transferEvents
+          .sort((a, b) => a.block_number - b.block_number)
+          .reduce((acc: any[], ev) => {
+            const amount = ev.decoded_data?.amount ? parseInt(ev.decoded_data.amount) / 1e18 : 0;
+            const lastVol = acc.length > 0 ? acc[acc.length - 1].value : 0;
+            const lastTx = acc.length > 0 ? acc[acc.length - 1].transactions : 0;
+
+            // Only add point if block changed or it's the first one, to avoid too many points
+            if (acc.length === 0 || ev.block_number !== acc[acc.length - 1].block) {
+              acc.push({
+                name: new Date(ev.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                block: ev.block_number,
+                value: lastVol + amount,
+                transactions: lastTx + 1
+              });
+            } else {
+              // Update last point
+              acc[acc.length - 1].value += amount;
+              acc[acc.length - 1].transactions += 1;
+            }
+            return acc;
+          }, []);
+
+        // Ensure we have at least start and end points if empty
+        if (volumeOverTime.length === 0) {
+          volumeOverTime.push({ name: 'Start', value: 0, transactions: 0 });
+          volumeOverTime.push({ name: 'Current', value: 0, transactions: 0 });
+        }
+
+        // Calculate top callers
+        const callerCounts = evs.reduce((acc: any, ev) => {
+          const caller = ev.decoded_data?.from || ev.decoded_data?.user || ev.decoded_data?.owner || 'Unknown';
+          if (caller !== 'Unknown') {
+            acc[caller] = (acc[caller] || 0) + 1;
+          }
+          return acc;
+        }, {});
+
+        const topCallers = Object.entries(callerCounts)
+          .sort(([, a]: any, [, b]: any) => b - a)
+          .slice(0, 5)
+          .map(([address, count]) => ({
+            name: `${address.substr(0, 6)}...`,
+            address: address,
+            calls: count
+          }));
 
         setStats({
           // Basic metrics
           totalEvents: evs.length,
-          totalTransactions: allTxs.length,
-          totalCalls: allCalls.length,
+          totalTransactions: transactions.length,
+          totalCalls: evs.length, // Assuming 1 event ~ 1 call for simplicity if not distinguishing internal calls
           uniqueBlocks: blocks.length,
-          uniqueUsers: allUsers.length,
+          uniqueUsers: users.length,
 
           // Activity patterns
           avgEventsPerBlock: avgEventsPerBlock.toFixed(2),
           avgEventsPerTx: avgEventsPerTx.toFixed(2),
-          avgTxPerBlock: (allTxs.length / blocks.length).toFixed(2),
+          avgTxPerBlock: (transactions.length / blocks.length).toFixed(2),
 
           // Value metrics
           totalVolume: (totalVolume / 1e18).toFixed(6),
           transferCount: transferEvents.length,
+          volumeOverTime, // Real data for chart
 
           // Time range
           dateRange: {
@@ -460,16 +463,15 @@ export default function ContractEventsEDA() {
 
           // Event distribution
           eventTypes,
+          topCallers, // Real data for chart
 
           // Contract health indicators
           isActive: blocks.length > 10,
           hasTransfers: transferEvents.length > 0,
           hasApprovals: evs.some(ev => ev.event_name === 'Approval'),
 
-          // Comprehensive data
-          transactions: allTxs,
-          users: allUsers,
-          calls: allCalls
+          // Error rate (mock for now as we don't fetch failed txs easily without indexer)
+          errorRate: { rate: 2.5 }
         });
 
         setError(`✓ Successfully fetched ${evs.length} events from ${validContracts.length} ${currentChain.name} contract(s)`);
@@ -483,7 +485,7 @@ export default function ContractEventsEDA() {
           contractName: validContracts.map(c => c.name || 'Contract').join(','),
           events: allEvents,
           stats,
-          contractInfo: allContractInfo[0],
+          contractInfo: fetchedContractInfo,
           blockRange: { from: Math.min(...blocks), to: Math.max(...blocks) }
         });
 
@@ -494,7 +496,7 @@ export default function ContractEventsEDA() {
         }
       } else {
         setStats(null);
-        setContractInfo(allContractInfo[0]);
+        setContractInfo(fetchedContractInfo);
         setError(`✓ Contract addresses are valid for ${currentChain.name}, but no events found in recent blocks.`);
       }
     } catch (e: any) {
