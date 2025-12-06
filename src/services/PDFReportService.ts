@@ -6,11 +6,12 @@ export class PDFReportService {
     contractName: string,
     contractInfo: any,
     stats: any,
-    aiReport: string
+    aiReport: string,
+    chainName: string = 'STARKNET'
   ): Promise<Blob> {
     const pdf = new jsPDF();
     let yPos = 30;
-    
+
     const addCenteredText = (text: string, size = 12, bold = false, yPosition?: number) => {
       pdf.setFontSize(size);
       pdf.setFont('helvetica', bold ? 'bold' : 'normal');
@@ -21,9 +22,9 @@ export class PDFReportService {
     };
 
     const addText = (text: string, size = 10, bold = false, indent = 0) => {
-      if (yPos > 270) { 
-        pdf.addPage(); 
-        yPos = 20; 
+      if (yPos > 270) {
+        pdf.addPage();
+        yPos = 20;
       }
       pdf.setFontSize(size);
       pdf.setFont('helvetica', bold ? 'bold' : 'normal');
@@ -42,12 +43,12 @@ export class PDFReportService {
     };
 
     // Header
-    addCenteredText('STARKNET CONTRACT ANALYSIS REPORT', 18, true);
+    addCenteredText(`${chainName.toUpperCase()} CONTRACT ANALYSIS REPORT`, 18, true);
     addCenteredText(`Contract: ${contractName || 'Unknown'}`, 14);
     addCenteredText(`Address: ${contractAddress}`, 12);
     addCenteredText(`Type: ${contractInfo?.contractType || 'Unknown Contract'}`, 12);
     addCenteredText(`Generated: ${new Date().toLocaleDateString()}`, 12);
-    
+
     yPos += 10;
 
     // Key Metrics Overview
@@ -57,16 +58,16 @@ export class PDFReportService {
     // Process AI Report sections
     if (aiReport && typeof aiReport === 'string') {
       const sections = aiReport.split('\n\n');
-      
+
       sections.forEach(section => {
         if (section.trim()) {
           const lines = section.split('\n');
           const sectionTitle = lines[0];
-          
+
           if (sectionTitle.startsWith('**') && sectionTitle.endsWith('**')) {
             const cleanTitle = sectionTitle.replace(/\*\*/g, '').toUpperCase();
             addSection(cleanTitle);
-            
+
             // Add section content
             lines.slice(1).forEach(line => {
               if (line.trim()) {
@@ -103,14 +104,14 @@ export class PDFReportService {
     const totalPages = pdf.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
       pdf.setPage(i);
-      
+
       // Page number only
       pdf.setFontSize(8);
       const pageText = `Page ${i} of ${totalPages}`;
       const pageWidth = pdf.getTextWidth(pageText);
       pdf.text(pageText, 210 - pageWidth - 20, 294);
     }
-    
+
     return pdf.output('blob');
   }
 }

@@ -9,10 +9,11 @@ interface ChainData {
   latestBlock: number;
   avgBlockTime: number;
   failedTxRate: number;
-  contractActivity: Array<{name: string, value: number}>;
-  transactionTypes: Array<{name: string, value: number}>;
+  contractActivity: Array<{ name: string, value: number }>;
+  transactionTypes: Array<{ name: string, value: number }>;
   pendingTxs: number;
   confirmedTxs: number;
+  blockRange: { from: number; to: number };
 }
 
 class MultiChainRPCService {
@@ -23,7 +24,7 @@ class MultiChainRPCService {
 
   private async makeRPCCall(method: string, params: any[] = []): Promise<any> {
     const chain = this.getCurrentChain();
-    
+
     for (const rpc of chain.rpcs) {
       try {
         const response = await fetch(rpc, {
@@ -38,10 +39,10 @@ class MultiChainRPCService {
         });
 
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        
+
         const data = await response.json();
         if (data.error) throw new Error(data.error.message);
-        
+
         return data.result;
       } catch (error) {
         console.warn(`RPC call failed on ${rpc}:`, error);
@@ -75,19 +76,19 @@ class MultiChainRPCService {
 
   async getLatestBlockNumber(): Promise<number> {
     const chain = this.getCurrentChain();
-    
+
     switch (chain.type) {
       case 'starknet':
         const starknetResult = await this.makeRPCCall('starknet_blockNumber');
         return parseInt(starknetResult, 16);
-      
+
       case 'evm':
         const evmResult = await this.makeRPCCall('eth_blockNumber');
         return parseInt(evmResult, 16);
-      
+
       case 'solana':
         return await this.makeRPCCall('getSlot');
-      
+
       default:
         throw new Error(`Unsupported chain type: ${chain.type}`);
     }
@@ -95,17 +96,17 @@ class MultiChainRPCService {
 
   async getBlock(blockNumber: number): Promise<any> {
     const chain = this.getCurrentChain();
-    
+
     switch (chain.type) {
       case 'starknet':
         return await this.makeRPCCall('starknet_getBlockWithTxs', [{ block_number: blockNumber }]);
-      
+
       case 'evm':
         return await this.makeRPCCall('eth_getBlockByNumber', [`0x${blockNumber.toString(16)}`, true]);
-      
+
       case 'solana':
         return await this.makeRPCCall('getBlock', [blockNumber, { transactionDetails: 'full' }]);
-      
+
       default:
         throw new Error(`Unsupported chain type: ${chain.type}`);
     }
@@ -115,7 +116,7 @@ class MultiChainRPCService {
     try {
       const chain = this.getCurrentChain();
       const latestBlock = await this.getLatestBlockNumber();
-      
+
       // Get recent blocks for analysis
       const blocks = [];
       for (let i = 0; i < 5; i++) {
@@ -151,7 +152,7 @@ class MultiChainRPCService {
     const totalTxs = blocks.reduce((sum, block) => sum + (block.transactions?.length || 0), 0);
     const uniqueAddresses = new Set();
     const contractCalls = new Map();
-    
+
     blocks.forEach(block => {
       block.transactions?.forEach((tx: any) => {
         if (tx.sender_address) uniqueAddresses.add(tx.sender_address);
@@ -163,7 +164,7 @@ class MultiChainRPCService {
     });
 
     const topContracts = Array.from(contractCalls.entries())
-      .sort(([,a], [,b]) => b - a)
+      .sort(([, a], [, b]) => b - a)
       .slice(0, 5)
       .map(([addr, count], index) => ({
         name: `Contract ${index + 1}`,
@@ -188,14 +189,15 @@ class MultiChainRPCService {
         { name: 'Other', value: 5 }
       ],
       pendingTxs: Math.floor(totalTxs * 0.05),
-      confirmedTxs: Math.floor(totalTxs * 0.95)
+      confirmedTxs: Math.floor(totalTxs * 0.95),
+      blockRange: { from: latestBlock - 5, to: latestBlock }
     };
   }
 
   private processEVMData(blocks: any[], latestBlock: number): ChainData {
     const totalTxs = blocks.reduce((sum, block) => sum + (block.transactions?.length || 0), 0);
     const uniqueAddresses = new Set();
-    
+
     blocks.forEach(block => {
       block.transactions?.forEach((tx: any) => {
         if (tx.from) uniqueAddresses.add(tx.from);
@@ -227,13 +229,14 @@ class MultiChainRPCService {
         { name: 'Other', value: 5 }
       ],
       pendingTxs: Math.floor(totalTxs * 0.03),
-      confirmedTxs: Math.floor(totalTxs * 0.97)
+      confirmedTxs: Math.floor(totalTxs * 0.97),
+      blockRange: { from: latestBlock - 5, to: latestBlock }
     };
   }
 
   private processSolanaData(blocks: any[], latestBlock: number): ChainData {
     const totalTxs = blocks.reduce((sum, block) => sum + (block.transactions?.length || 0), 0);
-    
+
     return {
       totalTransactions: totalTxs,
       activeUsers: Math.floor(totalTxs * 0.7),
@@ -258,7 +261,8 @@ class MultiChainRPCService {
         { name: 'Other', value: 2 }
       ],
       pendingTxs: Math.floor(totalTxs * 0.01),
-      confirmedTxs: Math.floor(totalTxs * 0.99)
+      confirmedTxs: Math.floor(totalTxs * 0.99),
+      blockRange: { from: latestBlock - 5, to: latestBlock }
     };
   }
 
@@ -275,7 +279,8 @@ class MultiChainRPCService {
       contractActivity: [],
       transactionTypes: [],
       pendingTxs: 0,
-      confirmedTxs: 0
+      confirmedTxs: 0,
+      blockRange: { from: 0, to: 0 }
     };
   }
 }

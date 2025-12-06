@@ -591,13 +591,14 @@ export default function ContractEventsEDA() {
         contracts.map(c => c.name || 'Contract').join(', ') || 'Multi-Contract Analysis',
         contractInfo,
         stats,
-        aiReport
+        aiReport,
+        currentChain.name
       );
 
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `Multi_Contract_Intelligence_Report_${Date.now()}.pdf`;
+      a.download = `${currentChain.name}_Contract_Intelligence_Report_${Date.now()}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
 
@@ -825,11 +826,11 @@ export default function ContractEventsEDA() {
 
         {/* 1. BASIC WEB3 CONTRACT EDA - Universal Metrics */}
         {stats && (
-          <Card className="glass max-w-6xl mx-auto" id="contract-dashboard">
+          <Card className="glass w-full mx-auto" id="contract-dashboard">
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="flex items-center space-x-2">
                 <BarChart3 className="h-5 w-5" />
-                <span>{contracts.map(c => c.name || 'Contract').join(', ') || 'Multi-Contract Analytics Dashboard'}</span>
+                <span>{contracts.map(c => c.name || 'Contract').join(', ') || 'Analytics Dashboard'}</span>
               </CardTitle>
               <Button onClick={exportDashboardAsImage} disabled={exportingImage} variant="outline" size="sm">
                 <Camera className="h-4 w-4 mr-2" />
@@ -967,16 +968,16 @@ export default function ContractEventsEDA() {
                     </h4>
                     <div className="h-full flex flex-col">
                       <ResponsiveContainer width="100%" height={220}>
-                        <LineChart data={events.slice(-15).map((e, i) => ({
-                          block: e.block_number,
-                          events: Math.floor(Math.random() * 5) + 1,
-                          index: i
+                        <LineChart data={events.slice(0, 50).reverse().map((e, i) => ({
+                          time: new Date(e.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                          events: 1,
+                          block: e.block_number
                         }))}>
                           <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="index" />
+                          <XAxis dataKey="time" />
                           <YAxis />
-                          <Tooltip labelFormatter={(value) => `Block ${events[events.length - 15 + value]?.block_number}`} />
-                          <Line type="monotone" dataKey="events" stroke="#8884d8" strokeWidth={3} dot={{ r: 4 }} />
+                          <Tooltip labelFormatter={(value) => `Time: ${value}`} />
+                          <Line type="monotone" dataKey="events" stroke="#8884d8" strokeWidth={2} dot={false} />
                         </LineChart>
                       </ResponsiveContainer>
                       <div className="mt-4 grid grid-cols-3 gap-3">
@@ -998,16 +999,16 @@ export default function ContractEventsEDA() {
                 )}
               </div>
 
-              {/* Advanced Analytics with Visuals */}
+              {/* Performance Deep Dive */}
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mb-6">
                 {/* Gas Usage Bar Chart */}
                 <Card className="p-6">
                   <h4 className="font-semibold mb-4 text-blue-800 dark:text-blue-300">Gas Usage Analysis</h4>
                   <ResponsiveContainer width="100%" height={220}>
                     <BarChart data={[
-                      { name: 'Min', value: Math.floor(stats.totalTransactions * 45000 / 100), efficiency: 'Low' },
-                      { name: 'Avg', value: Math.floor(stats.totalTransactions * 75000 / 100), efficiency: 'Medium' },
-                      { name: 'Max', value: Math.floor(stats.totalTransactions * 120000 / 100), efficiency: 'High' }
+                      { name: 'Min', value: 2000, efficiency: 'Low' },
+                      { name: 'Avg', value: 5000, efficiency: 'Medium' },
+                      { name: 'Max', value: 15000, efficiency: 'High' }
                     ]}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="name" />
@@ -1079,16 +1080,11 @@ export default function ContractEventsEDA() {
                   <h4 className="font-semibold mb-4 text-orange-800 dark:text-orange-300">Top Callers</h4>
                   <div className="flex flex-col h-full">
                     <ResponsiveContainer width="100%" height={240}>
-                      <BarChart data={[
-                        { name: 'Whale', calls: Math.floor(stats.totalTransactions * 0.35), address: stats.users?.[0] || '0x1234...' },
-                        { name: 'Bot', calls: Math.floor(stats.totalTransactions * 0.25), address: stats.users?.[1] || '0x5678...' },
-                        { name: 'DAO', calls: Math.floor(stats.totalTransactions * 0.22), address: stats.users?.[2] || '0x9abc...' },
-                        { name: 'User', calls: Math.floor(stats.totalTransactions * 0.18), address: stats.users?.[3] || '0xdef0...' }
-                      ]}>
+                      <BarChart data={stats.topCallers || []}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="name" />
                         <YAxis />
-                        <Tooltip formatter={(value, name, props) => [`${value} calls`, `${props.payload.name} (${props.payload.address.slice(0, 8)}...)`]} />
+                        <Tooltip formatter={(value, name, props) => [`${value} calls`, `${props.payload.address}`]} />
                         <Bar dataKey="calls" fill="#f97316" radius={[6, 6, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
@@ -1106,15 +1102,11 @@ export default function ContractEventsEDA() {
                 <Card className="p-6">
                   <h4 className="font-semibold mb-4 text-indigo-800 dark:text-indigo-300">Value Flow</h4>
                   <ResponsiveContainer width="100%" height={220}>
-                    <AreaChart data={[
-                      { name: 'Start', value: 0, transactions: 0 },
-                      { name: 'Mid', value: (stats.totalTransactions * 0.0001).toFixed(6), transactions: Math.floor(stats.totalTransactions * 0.6) },
-                      { name: 'Current', value: (stats.totalTransactions * 0.00015).toFixed(6), transactions: stats.totalTransactions }
-                    ]}>
+                    <AreaChart data={stats.volumeOverTime || []}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="name" />
                       <YAxis />
-                      <Tooltip formatter={(value, name) => name === 'value' ? [`${value} ETH`, 'Volume'] : [`${value}`, 'Transactions']} />
+                      <Tooltip formatter={(value, name) => name === 'value' ? [`${Number(value).toFixed(4)}`, 'Volume'] : [`${value}`, 'Transactions']} />
                       <Area type="monotone" dataKey="value" stroke="#6366f1" fill="#6366f1" fillOpacity={0.3} />
                     </AreaChart>
                   </ResponsiveContainer>
@@ -1128,36 +1120,26 @@ export default function ContractEventsEDA() {
                       <p className="text-xs text-muted-foreground">Transfers</p>
                     </div>
                     <div className="p-3 bg-purple-50 dark:bg-purple-950/20 rounded text-center">
-                      <p className="text-xl font-bold">{((stats.totalTransactions * 0.00015) / stats.totalTransactions * 1000000).toFixed(0)}</p>
-                      <p className="text-xs text-muted-foreground">Avg per TX (wei)</p>
+                      <p className="text-xl font-bold">{(stats.totalVolume / (stats.totalTransactions || 1)).toFixed(6)}</p>
+                      <p className="text-xs text-muted-foreground">Avg per TX</p>
                     </div>
                   </div>
                 </Card>
 
-                {/* Cross-Contract Interactions */}
+                {/* Cross-Contract Interactions - Placeholder for now as we don't have this data from simple events */}
                 <Card className="p-6">
-                  <h4 className="font-semibold mb-4 text-rose-800 dark:text-rose-300">Cross-Contract Calls</h4>
+                  <h4 className="font-semibold mb-4 text-rose-800 dark:text-rose-300">Top Interacting Addresses</h4>
                   <ResponsiveContainer width="100%" height={220}>
-                    <BarChart data={[
-                      { name: 'ETH Token', calls: Math.floor(stats.totalCalls * 0.6), address: '0x049d3657...' },
-                      { name: 'STRK Token', calls: Math.floor(stats.totalCalls * 0.4), address: '0x04718f5a...' }
-                    ]}>
+                    <BarChart data={stats.topCallers?.slice(0, 3) || []}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="name" />
                       <YAxis />
-                      <Tooltip formatter={(value, name, props) => [`${value} calls`, `${props.payload.name} (${props.payload.address})`]} />
+                      <Tooltip formatter={(value, name, props) => [`${value} calls`, `${props.payload.address}`]} />
                       <Bar dataKey="calls" fill="#ec4899" radius={[6, 6, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
-                  <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-                    <div className="p-2 bg-pink-50 dark:bg-pink-950/20 rounded text-center">
-                      <p className="font-semibold">{Math.floor(stats.totalCalls * 0.6)}</p>
-                      <p className="text-xs text-muted-foreground">ETH Interactions</p>
-                    </div>
-                    <div className="p-2 bg-purple-50 dark:bg-purple-950/20 rounded text-center">
-                      <p className="font-semibold">{Math.floor(stats.totalCalls * 0.4)}</p>
-                      <p className="text-xs text-muted-foreground">STRK Interactions</p>
-                    </div>
+                  <div className="mt-3 text-center text-sm text-muted-foreground">
+                    <p>Most active addresses interacting with this contract</p>
                   </div>
                 </Card>
               </div>
@@ -1231,7 +1213,7 @@ export default function ContractEventsEDA() {
 
 
 
-        {/* ADVANCED ANALYTICS SECTION */}
+        {/* PERFORMANCE DEEP DIVE SECTION */}
         {stats && (
           <div className="space-y-6">
             {/* Dependency Graph */}
@@ -1253,7 +1235,7 @@ export default function ContractEventsEDA() {
                   <CardHeader>
                     <CardTitle className="flex items-center space-x-2">
                       <Activity className="h-5 w-5 text-red-500" />
-                      <span>Anomaly Detection</span>
+                      <span>Unusual Activity</span>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
@@ -1280,7 +1262,7 @@ export default function ContractEventsEDA() {
                   <CardHeader>
                     <CardTitle className="flex items-center space-x-2">
                       <TrendingUp className="h-5 w-5 text-green-500" />
-                      <span>AI Predictions</span>
+                      <span>Trend Forecasts</span>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
@@ -1325,12 +1307,12 @@ export default function ContractEventsEDA() {
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
                   <Bot className="h-5 w-5 text-purple-600" />
-                  <span>AI Business Analysis</span>
+                  <span>Business Analysis Report</span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="text-center space-y-4">
                 <p className="text-muted-foreground mb-4">
-                  Generate comprehensive business intelligence report with AI-powered insights,
+                  Generate comprehensive business intelligence report with insights,
                   performance metrics, risk assessment, and strategic recommendations.
                 </p>
                 <div className="flex justify-center space-x-4 mb-4">
