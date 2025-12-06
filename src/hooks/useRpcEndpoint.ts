@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react';
 
 const RPC_ENDPOINTS = [
-  'https://starknet-mainnet.public.blastapi.io',
-  'https://free-rpc.nethermind.io/mainnet-juno',
-  'https://starknet-mainnet.g.alchemy.com/v2/demo',
   'https://rpc.starknet.lava.build',
+  'https://starknet-mainnet.g.alchemy.com/v2/demo',
 ];
 
 export function useRpcEndpoint() {
@@ -38,7 +36,7 @@ export function useRpcEndpoint() {
 
     const connectToEndpoint = async () => {
       setStatus('connecting');
-      
+
       // Try each endpoint in sequence until one works
       for (const endpoint of RPC_ENDPOINTS) {
         if (await checkEndpoint(endpoint)) {

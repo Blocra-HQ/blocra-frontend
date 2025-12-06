@@ -285,10 +285,8 @@ export function QueryEditor({ onQueryComplete }: QueryEditorProps) {
   // REAL RPC QUERY EXECUTION
   const executeRPCQuery = async (sql: string): Promise<QueryResult[]> => {
     const endpoints = [
-      import.meta.env.VITE_STARKNET_RPC_URL || "https://starknet-mainnet.public.blastapi.io",
-      "https://free-rpc.nethermind.io/mainnet-juno",
+      import.meta.env.VITE_STARKNET_RPC_URL || "https://rpc.starknet.lava.build",
       "https://starknet-mainnet.g.alchemy.com/v2/demo",
-      "https://rpc.starknet.lava.build",
     ].filter(Boolean);
 
     // Parse SQL to determine what blockchain data to fetch

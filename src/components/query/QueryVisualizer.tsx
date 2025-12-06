@@ -21,7 +21,7 @@ export function QueryVisualizer({ data, onVisualizationSave }: QueryVisualizerPr
   const [xAxis, setXAxis] = useState('');
   const [yAxis, setYAxis] = useState('');
   const [method, setMethod] = useState('starknet_getBlockWithTxs');
-  const [endpoint, setEndpoint] = useState('https://starknet-mainnet.public.blastapi.io/rpc/v0_6');
+  const [endpoint, setEndpoint] = useState('https://rpc.starknet.lava.build/rpc/v0_6');
 
   const columns = useMemo(() => (data.length ? Object.keys(data[0]) : []), [data]);
   const numericColumns = useMemo(

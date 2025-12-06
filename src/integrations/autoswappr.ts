@@ -8,7 +8,7 @@
 
 export const AUTOSWAPPR_CONFIG = {
   CONTRACT_ADDRESS: '0x05582ad635c43b4c14dbfa53cbde0df32266164a0d1b36e5b510e5b34aeb364b',
-  RPC_URL: 'https://starknet-mainnet.public.blastapi.io',
+  RPC_URL: 'https://rpc.starknet.lava.build',
 };
 
 // These functions should be implemented on the backend

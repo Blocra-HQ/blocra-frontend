@@ -28,8 +28,8 @@ export class AutoSwapprService {
   private apiKey: string;
 
   constructor() {
-    this.provider = new RpcProvider({ 
-      nodeUrl: import.meta.env.VITE_STARKNET_RPC_URL || 'https://starknet-mainnet.public.blastapi.io'
+    this.provider = new RpcProvider({
+      nodeUrl: import.meta.env.VITE_STARKNET_RPC_URL || 'https://rpc.starknet.lava.build'
     });
     this.contractAddress = import.meta.env.VITE_BOUNTY_CONTRACT_ADDRESS || '0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7';
     this.apiUrl = import.meta.env.VITE_AUTOSWAPPR_API_URL || 'https://api.autoswappr.com';
@@ -120,16 +120,16 @@ export class AutoSwapprService {
     try {
       // Get transaction receipt from Starknet
       const receipt = await this.provider.getTransactionReceipt(txHash);
-      
+
       if (!receipt) {
         return { status: 'pending' };
       }
 
-      const status = receipt.status === 'ACCEPTED_ON_L2' || receipt.status === 'ACCEPTED_ON_L1' 
-        ? 'confirmed' 
-        : receipt.status === 'REJECTED' 
-        ? 'failed' 
-        : 'pending';
+      const status = receipt.status === 'ACCEPTED_ON_L2' || receipt.status === 'ACCEPTED_ON_L1'
+        ? 'confirmed'
+        : receipt.status === 'REJECTED'
+          ? 'failed'
+          : 'pending';
 
       return {
         status,

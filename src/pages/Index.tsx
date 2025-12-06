@@ -153,10 +153,8 @@ const Index = () => {
   }, [currentChain.id]); // Re-fetch when chain changes
 
   const endpoints = [
-    "https://starknet-mainnet.public.blastapi.io",
-    "https://free-rpc.nethermind.io/mainnet-juno",
-    "https://starknet-mainnet.g.alchemy.com/v2/demo",
     "https://rpc.starknet.lava.build",
+    "https://starknet-mainnet.g.alchemy.com/v2/demo"
   ];
 
   return (

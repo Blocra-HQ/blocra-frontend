@@ -11,19 +11,19 @@ export const BOUNTY_CONTRACT_ABI = [
     "name": "create_bounty",
     "type": "function",
     "inputs": [
-      {"name": "title", "type": "felt252"},
-      {"name": "description", "type": "felt252"},
-      {"name": "reward_amount", "type": "u256"},
-      {"name": "deadline", "type": "u64"},
-      {"name": "max_participants", "type": "u32"}
+      { "name": "title", "type": "felt252" },
+      { "name": "description", "type": "felt252" },
+      { "name": "reward_amount", "type": "u256" },
+      { "name": "deadline", "type": "u64" },
+      { "name": "max_participants", "type": "u32" }
     ],
-    "outputs": [{"type": "u256"}],
+    "outputs": [{ "type": "u256" }],
     "state_mutability": "external"
   },
   {
     "name": "join_bounty",
     "type": "function",
-    "inputs": [{"name": "bounty_id", "type": "u256"}],
+    "inputs": [{ "name": "bounty_id", "type": "u256" }],
     "outputs": [],
     "state_mutability": "external"
   },
@@ -31,8 +31,8 @@ export const BOUNTY_CONTRACT_ABI = [
     "name": "submit_solution",
     "type": "function",
     "inputs": [
-      {"name": "bounty_id", "type": "u256"},
-      {"name": "solution_hash", "type": "felt252"}
+      { "name": "bounty_id", "type": "u256" },
+      { "name": "solution_hash", "type": "felt252" }
     ],
     "outputs": [],
     "state_mutability": "external"
@@ -41,8 +41,8 @@ export const BOUNTY_CONTRACT_ABI = [
     "name": "select_winner",
     "type": "function",
     "inputs": [
-      {"name": "bounty_id", "type": "u256"},
-      {"name": "winner", "type": "ContractAddress"}
+      { "name": "bounty_id", "type": "u256" },
+      { "name": "winner", "type": "ContractAddress" }
     ],
     "outputs": [],
     "state_mutability": "external"
@@ -50,15 +50,15 @@ export const BOUNTY_CONTRACT_ABI = [
   {
     "name": "get_bounty",
     "type": "function",
-    "inputs": [{"name": "bounty_id", "type": "u256"}],
-    "outputs": [{"type": "BountyContract::Bounty"}],
+    "inputs": [{ "name": "bounty_id", "type": "u256" }],
+    "outputs": [{ "type": "BountyContract::Bounty" }],
     "state_mutability": "view"
   },
   {
     "name": "get_bounty_count",
     "type": "function",
     "inputs": [],
-    "outputs": [{"type": "u256"}],
+    "outputs": [{ "type": "u256" }],
     "state_mutability": "view"
   }
 ];
@@ -67,7 +67,7 @@ export class BountyContractService {
   private contract: Contract;
   private provider: RpcProvider;
 
-  constructor(providerUrl: string = 'https://starknet-mainnet.public.blastapi.io') {
+  constructor(providerUrl: string = 'https://rpc.starknet.lava.build') {
     this.provider = new RpcProvider({ nodeUrl: providerUrl });
     this.contract = new Contract(BOUNTY_CONTRACT_ABI, BOUNTY_CONTRACT_ADDRESS, this.provider);
   }

@@ -10,6 +10,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "backend": "cd backend && npm run dev",
+    "start": "vite preview --port $PORT --host",
     "start:full": "concurrently \"npm run backend\" \"npm run dev\""
   },
   "dependencies": {

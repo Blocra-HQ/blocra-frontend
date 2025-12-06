@@ -36,7 +36,7 @@ class StarknetDataService {
 
   constructor() {
     this.provider = new RpcProvider({
-      nodeUrl: import.meta.env.VITE_STARKNET_RPC_URL || 'https://starknet-mainnet.public.blastapi.io'
+      nodeUrl: import.meta.env.VITE_STARKNET_RPC_URL || 'https://rpc.starknet.lava.build'
     });
   }
 
@@ -67,18 +67,18 @@ class StarknetDataService {
       for (let hour = 0; hour < 24; hour += 3) {
         // Skip future hours
         if (hour > currentHour) break;
-        
+
         const time = `${hour.toString().padStart(2, '0')}:00`;
         const hourStart = new Date(startOfDay.getTime() + hour * 60 * 60 * 1000);
-        
+
         try {
           // Get block data for this hour
           const blockNumber = await this.provider.getBlockNumber();
           const block = await this.provider.getBlock(blockNumber - Math.floor(Math.random() * 100));
-          
+
           // Generate realistic data based on time of day
           const timeMultiplier = this.getTimeMultiplier(hour);
-          
+
           activity.push({
             time,
             transactions: Math.floor((Math.random() * 300 + 200) * timeMultiplier),
@@ -89,7 +89,7 @@ class StarknetDataService {
         } catch (error) {
           // Fallback data if RPC fails
           const timeMultiplier = this.getTimeMultiplier(hour);
-          
+
           activity.push({
             time,
             transactions: Math.floor((Math.random() * 300 + 200) * timeMultiplier),
@@ -122,16 +122,16 @@ class StarknetDataService {
       for (let i = 0; i < 5; i++) {
         try {
           const block = await this.provider.getBlock(blockNumber - i);
-          
+
           if (block.transactions && block.transactions.length > 0) {
             // Analyze transactions for interesting patterns
             block.transactions.slice(0, 3).forEach((tx: any, index: number) => {
               const gasUsed = Math.floor(Math.random() * 1000000) + 100000;
               const value = Math.floor(Math.random() * 1000) + 1;
-              
+
               let type: DiscoveryTransaction['type'] = 'unusual_pattern';
               let description = 'Unusual transaction pattern detected';
-              
+
               if (gasUsed > 800000) {
                 type = 'high_gas';
                 description = 'High gas consumption transaction';
@@ -145,7 +145,7 @@ class StarknetDataService {
 
               // Only show transactions from the last 2 hours
               const txTimestamp = now - (i * 15 * 60000) - (index * 5 * 60000) - Math.random() * 10 * 60000;
-              
+
               discoveries.push({
                 hash: `0x${Math.random().toString(16).substr(2, 64)}`,
                 from: `0x${Math.random().toString(16).substr(2, 40)}`,
@@ -189,7 +189,7 @@ class StarknetDataService {
     try {
       const blockNumber = await this.provider.getBlockNumber();
       const block = await this.provider.getBlock(blockNumber);
-      
+
       const metrics: StarknetMetrics = {
         timestamp: new Date().toISOString(),
         blockNumber,
@@ -220,13 +220,13 @@ class StarknetDataService {
     const now = new Date();
     const currentHour = now.getHours();
     const activity: DailyActivity[] = [];
-    
+
     for (let hour = 0; hour < 24; hour += 3) {
       // Only show data for hours that have passed
       if (hour > currentHour) break;
-      
+
       const timeMultiplier = this.getTimeMultiplier(hour);
-      
+
       activity.push({
         time: `${hour.toString().padStart(2, '0')}:00`,
         transactions: Math.floor((Math.random() * 300 + 200) * timeMultiplier),
@@ -248,15 +248,15 @@ class StarknetDataService {
     };
 
     const now = Date.now();
-    
+
     return Array.from({ length: 8 }, (_, i) => {
       const type = types[Math.floor(Math.random() * types.length)];
       const desc = descriptions[type][Math.floor(Math.random() * descriptions[type].length)];
-      
+
       // Generate timestamps within the last 2 hours
       const maxAgeMinutes = 120; // 2 hours
       const timestampOffset = Math.random() * maxAgeMinutes * 60000; // Random time within last 2 hours
-      
+
       return {
         hash: `0x${Math.random().toString(16).substr(2, 64)}`,
         from: `0x${Math.random().toString(16).substr(2, 40)}`,

@@ -12,10 +12,8 @@ export const SUPPORTED_CHAINS: ChainConfig[] = [
     id: 'starknet',
     name: 'Starknet',
     rpcs: [
-      'https://starknet-mainnet.public.blastapi.io',
-      'https://free-rpc.nethermind.io/mainnet-juno',
-      'https://starknet-mainnet.reddio.com/rpc/v0_7',
-      'https://rpc.starknet.lava.build'
+      'https://rpc.starknet.lava.build',
+      'https://starknet-mainnet.g.alchemy.com/v2/demo'
     ],
     type: 'starknet',
     nativeCurrency: 'ETH',
