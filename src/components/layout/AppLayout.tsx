@@ -1,7 +1,6 @@
 import { ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import { AuthenticatedSidebar } from './AuthenticatedSidebar';
-import { SidebarProvider } from '@/contexts/SidebarContext';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -11,7 +10,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   const location = useLocation();
 
   // Pages that don't need sidebar
-  const noSidebarPages = ['/auth', '/docs', '/admin', '/admin/dashboard', '/settings'];
+  const noSidebarPages = ['/auth', '/docs', '/admin', '/admin/dashboard'];
   const shouldShowSidebar = !noSidebarPages.some(page => location.pathname.startsWith(page));
 
   if (!shouldShowSidebar) {
@@ -19,13 +18,11 @@ export function AppLayout({ children }: AppLayoutProps) {
   }
 
   return (
-    <SidebarProvider>
-      <div className="min-h-screen bg-background text-foreground">
-        <AuthenticatedSidebar />
-        <main className="ml-0 lg:ml-64 min-h-screen transition-all duration-300">
-          {children}
-        </main>
-      </div>
-    </SidebarProvider>
+    <div className="min-h-screen bg-background text-foreground">
+      <AuthenticatedSidebar />
+      <main className="ml-0 lg:ml-64 min-h-screen transition-all duration-300">
+        {children}
+      </main>
+    </div>
   );
 }

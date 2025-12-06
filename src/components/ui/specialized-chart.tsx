@@ -8,14 +8,14 @@ interface SpecializedChartProps {
 }
 
 export function SpecializedChart({ title, type, endpoints }: SpecializedChartProps) {
-  const [data, setData] = useState<Array<{name: string, value: number}>>([]);
+  const [data, setData] = useState<Array<{ name: string, value: number }>>([]);
   const [status, setStatus] = useState("Loading...");
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         let latestBlock = 700000; // Fallback block number
-        
+
         // Try to get latest block from any endpoint
         for (const endpoint of endpoints) {
           try {
@@ -29,7 +29,7 @@ export function SpecializedChart({ title, type, endpoints }: SpecializedChartPro
                 id: Date.now()
               })
             });
-            
+
             if (response.ok) {
               const data = await response.json();
               if (data.result) {
@@ -41,11 +41,11 @@ export function SpecializedChart({ title, type, endpoints }: SpecializedChartPro
             continue;
           }
         }
-        
+
         // Generate mock data based on block number and current time
         const now = Date.now();
         const validBlocks = [];
-        
+
         for (let i = 0; i < 5; i++) {
           const mockBlock = {
             block_number: latestBlock - i,
@@ -57,12 +57,12 @@ export function SpecializedChart({ title, type, endpoints }: SpecializedChartPro
           };
           validBlocks.push(mockBlock);
         }
-        
+
         // Generate data based on chart type
         const chartData = validBlocks.map((block, index) => {
           const name = index === 0 ? 'Now' : `${(index + 1) * 2}m ago`;
           let value = 0;
-          
+
           if (type === 'walletGrowth') {
             // Count unique addresses
             const uniqueAddrs = new Set(block.transactions?.map(tx => tx.sender_address) || []);
@@ -70,7 +70,7 @@ export function SpecializedChart({ title, type, endpoints }: SpecializedChartPro
           } else if (type === 'failedRate') {
             // Estimate failed transaction rate
             const totalTxs = block.transactions?.length || 1;
-            const failedTxs = block.transactions?.filter(tx => 
+            const failedTxs = block.transactions?.filter(tx =>
               tx.calldata && tx.calldata.length < 2
             ).length || 0;
             value = (failedTxs / totalTxs) * 100;
@@ -96,10 +96,10 @@ export function SpecializedChart({ title, type, endpoints }: SpecializedChartPro
             const healthScore = Math.min(100, (txCount * 2) + (100 - Math.abs(blockTime - 120)) + Math.random() * 10);
             value = Math.max(85, healthScore); // Keep health score high
           }
-          
+
           return { name, value: Math.max(0.1, value) };
         }).reverse();
-        
+
         setData(chartData);
         setStatus(`Connected - Latest: ${chartData[chartData.length - 1]?.value.toFixed(1) || 0}`);
       } catch (error) {
@@ -110,7 +110,7 @@ export function SpecializedChart({ title, type, endpoints }: SpecializedChartPro
         for (let i = 4; i >= 0; i--) {
           const name = i === 0 ? 'Now' : `${i * 2}m ago`;
           let value = 0;
-          
+
           if (type === 'walletGrowth') {
             value = Math.floor(Math.random() * 20) + 5;
           } else if (type === 'failedRate') {
@@ -122,7 +122,7 @@ export function SpecializedChart({ title, type, endpoints }: SpecializedChartPro
           } else if (type === 'networkHealth') {
             value = 85 + Math.random() * 12; // Network health 85-97%
           }
-          
+
           fallbackData.push({ name, value });
         }
         setData(fallbackData);
@@ -137,7 +137,7 @@ export function SpecializedChart({ title, type, endpoints }: SpecializedChartPro
   if (type === 'networkHealth') {
     const healthValue = data[data.length - 1]?.value || 90;
     const healthColor = healthValue > 95 ? '#10b981' : healthValue > 85 ? '#f59e0b' : '#ef4444';
-    
+
     return (
       <div className="w-full">
         <div className="flex justify-between items-center mb-2">
@@ -147,13 +147,13 @@ export function SpecializedChart({ title, type, endpoints }: SpecializedChartPro
         <div className="h-[200px] flex items-center justify-center">
           <div className="relative w-32 h-32">
             <svg className="w-32 h-32 transform -rotate-90">
-              <circle cx="64" cy="64" r="50" stroke="#e5e7eb" strokeWidth="8" fill="none" />
-              <circle 
-                cx="64" 
-                cy="64" 
-                r="50" 
+              <circle cx="64" cy="64" r="50" stroke="hsl(var(--muted))" strokeWidth="8" fill="none" />
+              <circle
+                cx="64"
+                cy="64"
+                r="50"
                 stroke={healthColor}
-                strokeWidth="8" 
+                strokeWidth="8"
                 fill="none"
                 strokeDasharray={`${2 * Math.PI * 50 * healthValue / 100} ${2 * Math.PI * 50}`}
                 strokeLinecap="round"
@@ -168,7 +168,7 @@ export function SpecializedChart({ title, type, endpoints }: SpecializedChartPro
       </div>
     );
   }
-  
+
   if (type === 'avgFees') {
     return (
       <div className="w-full">
@@ -178,21 +178,20 @@ export function SpecializedChart({ title, type, endpoints }: SpecializedChartPro
         </div>
         <div className="h-[200px]">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={data}>
+            <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id="feeGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.8}/>
-                  <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.1}/>
+                  <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8} />
+                  <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.1} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" />
-              <YAxis stroke="hsl(var(--muted-foreground))" />
-              <Tooltip 
-                contentStyle={{ backgroundColor: "hsl(var(--background))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }}
+              <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} fontSize={12} />
+              <YAxis stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} fontSize={12} width={40} domain={['auto', 'auto']} />
+              <Tooltip
+                contentStyle={{ backgroundColor: "hsl(var(--popover))", borderColor: "hsl(var(--border))", color: "hsl(var(--popover-foreground))", borderRadius: "8px" }}
                 formatter={(value) => [`${Number(value).toFixed(4)} ETH`, 'Fee']}
               />
-              <Area type="monotone" dataKey="value" stroke="#8b5cf6" fillOpacity={1} fill="url(#feeGradient)" />
+              <Area type="monotone" dataKey="value" stroke="hsl(var(--primary))" fillOpacity={1} fill="url(#feeGradient)" />
             </AreaChart>
           </ResponsiveContainer>
         </div>
@@ -201,7 +200,7 @@ export function SpecializedChart({ title, type, endpoints }: SpecializedChartPro
   }
 
   const ChartComponent = type === 'walletGrowth' ? AreaChart : LineChart;
-  const color = type === 'walletGrowth' ? '#ec4899' : type === 'failedRate' ? '#ef4444' : '#10b981';
+  const color = type === 'walletGrowth' ? 'hsl(var(--primary))' : type === 'failedRate' ? '#ef4444' : '#10b981';
 
   return (
     <div className="w-full">
@@ -211,11 +210,10 @@ export function SpecializedChart({ title, type, endpoints }: SpecializedChartPro
       </div>
       <div className="h-[200px]">
         <ResponsiveContainer width="100%" height="100%">
-          <ChartComponent data={data}>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-            <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" />
-            <YAxis stroke="hsl(var(--muted-foreground))" />
-            <Tooltip contentStyle={{ backgroundColor: "hsl(var(--background))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
+          <ChartComponent data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+            <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} fontSize={12} />
+            <YAxis stroke="hsl(var(--muted-foreground))" tickLine={false} axisLine={false} fontSize={12} width={40} domain={['auto', 'auto']} />
+            <Tooltip contentStyle={{ backgroundColor: "hsl(var(--popover))", borderColor: "hsl(var(--border))", color: "hsl(var(--popover-foreground))", borderRadius: "8px" }} />
             {type === 'walletGrowth' ? (
               <Area type="monotone" dataKey="value" stroke={color} fill={color} fillOpacity={0.3} />
             ) : (

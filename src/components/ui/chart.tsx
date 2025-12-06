@@ -25,7 +25,7 @@ function Chart({
   className,
   method = 'starknet_getBlockWithTxs',
   title = 'Chart Data',
-  color = "#8884d8",
+  color = "hsl(var(--primary))",
   endpoints = [],
   onDataUpdate
 }: ChartProps) {
@@ -74,7 +74,7 @@ function Chart({
         }
 
         const result = await response.json();
-        
+
         if (result.error) {
           throw new Error(result.error.message || 'RPC Error');
         }
@@ -133,24 +133,51 @@ function Chart({
       <div className="h-[250px] border rounded-lg p-2">
         {data.length > 0 ? (
           <RechartsPrimitive.ResponsiveContainer width="100%" height="100%">
-            <RechartsPrimitive.LineChart data={data}>
-              <RechartsPrimitive.XAxis 
-                dataKey="timestamp"
-                tickFormatter={(t) => new Date(t).toLocaleTimeString()}
-              />
-              <RechartsPrimitive.YAxis />
-              <RechartsPrimitive.Tooltip
-                labelFormatter={(t) => new Date(t).toLocaleTimeString()}
-                formatter={(v: number) => [v, title]}
-              />
-              <RechartsPrimitive.Line
-                type="monotone"
-                dataKey="value"
-                stroke={color}
-                dot
-                strokeWidth={2}
-              />
-            </RechartsPrimitive.LineChart>
+            {type === 'bar' ? (
+              <RechartsPrimitive.BarChart data={data}>
+                <RechartsPrimitive.XAxis
+                  dataKey="timestamp"
+                  tickFormatter={(t) => new Date(t).toLocaleTimeString()}
+                  stroke="hsl(var(--muted-foreground))"
+                  fontSize={12}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <RechartsPrimitive.Tooltip
+                  contentStyle={{ backgroundColor: "hsl(var(--popover))", borderColor: "hsl(var(--border))", color: "hsl(var(--popover-foreground))", borderRadius: "8px" }}
+                  labelFormatter={(t) => new Date(t).toLocaleTimeString()}
+                  formatter={(v: number) => [v, title]}
+                />
+                <RechartsPrimitive.Bar
+                  dataKey="value"
+                  fill={color}
+                  radius={[4, 4, 0, 0]}
+                />
+              </RechartsPrimitive.BarChart>
+            ) : (
+              <RechartsPrimitive.LineChart data={data}>
+                <RechartsPrimitive.XAxis
+                  dataKey="timestamp"
+                  tickFormatter={(t) => new Date(t).toLocaleTimeString()}
+                  stroke="hsl(var(--muted-foreground))"
+                  fontSize={12}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <RechartsPrimitive.Tooltip
+                  contentStyle={{ backgroundColor: "hsl(var(--popover))", borderColor: "hsl(var(--border))", color: "hsl(var(--popover-foreground))", borderRadius: "8px" }}
+                  labelFormatter={(t) => new Date(t).toLocaleTimeString()}
+                  formatter={(v: number) => [v, title]}
+                />
+                <RechartsPrimitive.Line
+                  type="monotone"
+                  dataKey="value"
+                  stroke={color}
+                  dot={false}
+                  strokeWidth={2}
+                />
+              </RechartsPrimitive.LineChart>
+            )}
           </RechartsPrimitive.ResponsiveContainer>
         ) : (
           <div className="flex items-center justify-center h-full text-muted-foreground">

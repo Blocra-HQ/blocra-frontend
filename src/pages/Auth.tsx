@@ -204,40 +204,32 @@ export default function Auth() {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-lg">
-        <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center space-x-2 mb-4">
-            <div className="w-12 h-12 bg-gradient-primary rounded-xl flex items-center justify-center">
-              <BarChart3 className="w-7 h-7 text-primary-foreground" />
+      <div className="w-full max-w-md space-y-8">
+        <div className="text-center">
+          <Link to="/" className="inline-flex items-center space-x-2 mb-6">
+            <div className="w-12 h-12 rounded-full overflow-hidden bg-primary/10 flex items-center justify-center border border-border">
+              <img
+                src="/blocra-logo.png"
+                alt="BlocRA Logo"
+                className="w-full h-full object-cover"
+              />
             </div>
-            <span className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+            <span className="text-2xl font-bold tracking-tight">
               BlocRA
             </span>
           </Link>
-          <h1 className="text-3xl font-bold mb-2">Welcome to BlocRA</h1>
-          <p className="text-muted-foreground mb-4">
-            Join the premier blockchain research and analysis platform
+          <h1 className="text-2xl font-semibold tracking-tight">Welcome back</h1>
+          <p className="text-sm text-muted-foreground mt-2">
+            Enter your credentials to access your account
           </p>
         </div>
 
-        <Card className="glass border-border">
-          <CardHeader>
-            <CardTitle className="text-center">Get Started</CardTitle>
-            <CardDescription className="text-center">
-              Sign in to your account or create a new one
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+        <Card className="border-border bg-card shadow-none">
+          <CardContent className="pt-6">
             <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'signin' | 'signup')}>
               <TabsList className="grid w-full grid-cols-2 mb-6">
-                <TabsTrigger value="signin">
-                  <LogIn className="w-4 h-4 mr-2" />
-                  Sign In
-                </TabsTrigger>
-                <TabsTrigger value="signup">
-                  <UserPlus className="w-4 h-4 mr-2" />
-                  Sign Up
-                </TabsTrigger>
+                <TabsTrigger value="signin">Sign In</TabsTrigger>
+                <TabsTrigger value="signup">Sign Up</TabsTrigger>
               </TabsList>
 
               {error && (
@@ -259,7 +251,7 @@ export default function Auth() {
                     <Label htmlFor="signin-identifier">Email or Name</Label>
                     <Input
                       id="signin-identifier"
-                      placeholder="Enter your email or name"
+                      placeholder="name@example.com"
                       value={signInIdentifier}
                       onChange={(e) => setSignInIdentifier(e.target.value)}
                       required
@@ -271,7 +263,7 @@ export default function Auth() {
                       <Input
                         id="signin-password"
                         type={showSignInPassword ? 'text' : 'password'}
-                        placeholder="Enter your password"
+                        placeholder="••••••••"
                         value={signInPassword}
                         onChange={(e) => setSignInPassword(e.target.value)}
                         required
@@ -289,7 +281,7 @@ export default function Auth() {
                       </Button>
                     </div>
                   </div>
-                  <Button type="submit" className="w-full glow-primary" disabled={loading}>
+                  <Button type="submit" className="w-full" disabled={loading}>
                     {loading ? 'Signing in...' : 'Sign In'}
                   </Button>
                   <div className="text-center mt-4">
@@ -317,7 +309,7 @@ export default function Auth() {
                     <Label htmlFor="signup-name">Name</Label>
                     <Input
                       id="signup-name"
-                      placeholder="Enter your name"
+                      placeholder="John Doe"
                       value={signUpName}
                       onChange={(e) => setSignUpName(e.target.value)}
                       required
@@ -329,7 +321,7 @@ export default function Auth() {
                       <Input
                         id="signup-email"
                         type="email"
-                        placeholder="Enter your email"
+                        placeholder="name@example.com"
                         value={signUpEmail}
                         onChange={(e) => setSignUpEmail(e.target.value)}
                         required
@@ -408,7 +400,7 @@ export default function Auth() {
                       </div>
                     )}
                   </div>
-                  <Button type="submit" className="w-full glow-primary" disabled={loading}>
+                  <Button type="submit" className="w-full" disabled={loading}>
                     {loading ? 'Creating account...' : 'Create Account'}
                   </Button>
                 </form>

@@ -52,12 +52,12 @@ export function DashboardEditor({ dashboardId, onSave }: DashboardEditorProps) {
   const updateWidget = (widgetId: string, updates: Partial<Widget>) => {
     setDashboard(prev => ({
       ...prev,
-      widgets: prev.widgets.map(w => 
+      widgets: prev.widgets.map(w =>
         w.id === widgetId ? { ...w, ...updates } : w
       )
     }));
   };
-  
+
   // Load dashboard data if editing existing dashboard
   useEffect(() => {
     if (dashboardId) {
@@ -86,10 +86,10 @@ export function DashboardEditor({ dashboardId, onSave }: DashboardEditorProps) {
       ...dashboard,
       updatedAt: new Date().toISOString()
     };
-    
+
     localStorage.setItem(`dashboard_${dashboard.id}`, JSON.stringify(savedDashboard));
     onSave?.(savedDashboard);
-    
+
     toast({
       title: "Dashboard saved",
       description: "Your dashboard has been saved successfully",
@@ -102,10 +102,10 @@ export function DashboardEditor({ dashboardId, onSave }: DashboardEditorProps) {
       isPublic: true,
       publishedAt: new Date().toISOString()
     };
-    
+
     setDashboard(publishedDashboard);
     localStorage.setItem(`dashboard_${dashboard.id}`, JSON.stringify(publishedDashboard));
-    
+
     toast({
       title: "Dashboard published",
       description: "Your dashboard is now public and shareable",
@@ -139,7 +139,7 @@ export function DashboardEditor({ dashboardId, onSave }: DashboardEditorProps) {
             {dashboard.isPublic ? 'Public' : 'Private'}
           </Badge>
         </div>
-        
+
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={() => setShowPublishModal(true)}>
             <Share className="w-4 h-4 mr-2" />
@@ -201,9 +201,9 @@ export function DashboardEditor({ dashboardId, onSave }: DashboardEditorProps) {
                     </SelectContent>
                   </Select>
                 </div>
-                <Button 
-                  variant="destructive" 
-                  size="sm" 
+                <Button
+                  variant="destructive"
+                  size="sm"
                   onClick={() => deleteWidget(selectedWidget)}
                 >
                   <Trash2 className="w-4 h-4 mr-2" />
@@ -215,33 +215,40 @@ export function DashboardEditor({ dashboardId, onSave }: DashboardEditorProps) {
         </div>
 
         {/* Canvas */}
-        <div className="flex-1 p-4 bg-muted/20">
-          <div className="grid grid-cols-12 gap-4 h-full">
+        <div className="flex-1 p-4 bg-background relative overflow-hidden">
+          <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{
+            backgroundImage: `radial-gradient(circle, currentColor 1px, transparent 1px)`,
+            backgroundSize: '24px 24px'
+          }}></div>
+          <div className="grid grid-cols-12 gap-4 h-full relative z-10">
             {dashboard.widgets.map((widget) => (
               <Card
                 key={widget.id}
-                className={`col-span-4 cursor-pointer transition-all ${
-                  selectedWidget === widget.id ? 'ring-2 ring-primary' : ''
-                }`}
+                className={`col-span-4 cursor-pointer transition-all hover:shadow-md border-border/50 bg-card/80 backdrop-blur-sm ${selectedWidget === widget.id ? 'ring-2 ring-primary border-primary' : ''
+                  }`}
                 onClick={() => setSelectedWidget(widget.id)}
               >
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">{widget.title}</CardTitle>
+                  <CardTitle className="text-sm font-medium">{widget.title}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="h-32 bg-muted/50 rounded flex items-center justify-center">
-                    <span className="text-muted-foreground text-sm">
+                  <div className="h-32 bg-muted/30 rounded flex items-center justify-center border border-dashed border-border/50">
+                    <span className="text-muted-foreground text-sm flex items-center gap-2">
+                      {widget.type === 'chart' && <BarChart3 className="w-4 h-4" />}
+                      {widget.type === 'kpi' && <Settings className="w-4 h-4" />}
+                      {widget.type === 'table' && <Database className="w-4 h-4" />}
+                      {widget.type === 'text' && <Layout className="w-4 h-4" />}
                       {widget.type} widget
                     </span>
                   </div>
                 </CardContent>
               </Card>
             ))}
-            
+
             {dashboard.widgets.length === 0 && (
-              <div className="col-span-12 flex items-center justify-center h-64 border-2 border-dashed border-border rounded-lg">
+              <div className="col-span-12 flex items-center justify-center h-64 border-2 border-dashed border-border/50 rounded-lg bg-muted/5">
                 <div className="text-center">
-                  <Plus className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                  <Plus className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
                   <h3 className="text-lg font-medium mb-2">Start building your dashboard</h3>
                   <p className="text-muted-foreground">Add widgets from the sidebar to get started</p>
                 </div>
@@ -266,7 +273,7 @@ export function DashboardEditor({ dashboardId, onSave }: DashboardEditorProps) {
                   <Button size="sm" onClick={copyShareUrl}>Copy</Button>
                 </div>
               </div>
-              
+
               <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
@@ -275,7 +282,7 @@ export function DashboardEditor({ dashboardId, onSave }: DashboardEditorProps) {
                 />
                 <label className="text-sm">Make dashboard public</label>
               </div>
-              
+
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => setShowPublishModal(false)}>
                   Cancel

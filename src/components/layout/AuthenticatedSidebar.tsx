@@ -60,7 +60,7 @@ export function AuthenticatedSidebar({ className }: AuthenticatedSidebarProps) {
       {/* Sidebar */}
       <div
         className={cn(
-          "fixed left-0 top-0 h-screen glass-card border-r border-border/30 text-card-foreground shadow-2xl w-64 transition-transform duration-300 ease-in-out z-40",
+          "fixed left-0 top-0 h-screen bg-card border-r border-border text-card-foreground w-64 transition-transform duration-300 ease-in-out z-40",
           "lg:translate-x-0", // Always visible on desktop
           isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0", // Toggle on mobile
           className
@@ -68,14 +68,16 @@ export function AuthenticatedSidebar({ className }: AuthenticatedSidebarProps) {
       >
         <div className="flex h-full flex-col">
           {/* Header */}
-          <div className="flex h-16 items-center justify-between gap-3 px-4 border-b border-border/30 bg-gradient-to-r from-primary/5 to-accent/5">
+          <div className="flex h-16 items-center justify-between gap-3 px-4 border-b border-border">
             <div className="flex items-center gap-3">
-              <img
-                src="/blocra-logo.png"
-                alt="BlocRA Logo"
-                className="h-10 w-auto object-contain"
-              />
-              <span className="text-base sm:text-lg font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent whitespace-nowrap">
+              <div className="w-10 h-10 rounded-full overflow-hidden bg-primary/10 flex items-center justify-center border border-border">
+                <img
+                  src="/blocra-logo.png"
+                  alt="BlocRA Logo"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <span className="text-base sm:text-lg font-bold text-foreground whitespace-nowrap">
                 BlocRA
               </span>
             </div>
@@ -91,7 +93,7 @@ export function AuthenticatedSidebar({ className }: AuthenticatedSidebarProps) {
           </div>
 
           {/* Chain Selector */}
-          <div className="p-4 border-b border-border/30">
+          <div className="p-4 border-b border-border">
             <ChainSelector />
           </div>
 
@@ -119,14 +121,14 @@ export function AuthenticatedSidebar({ className }: AuthenticatedSidebarProps) {
                   className={cn(
                     "flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all duration-200 group relative overflow-hidden",
                     isActive
-                      ? "bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-lg shadow-primary/25"
-                      : "text-muted-foreground hover:bg-gradient-to-r hover:from-primary/10 hover:to-accent/10 hover:text-foreground hover:shadow-md"
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   )}
                 >
                   <item.icon
                     className={cn(
                       "w-5 h-5 transition-colors",
-                      isActive ? "text-primary-foreground" : "text-muted-foreground group-hover:text-primary"
+                      isActive ? "text-primary-foreground" : "text-muted-foreground group-hover:text-foreground"
                     )}
                   />
                   <span>{item.name}</span>
@@ -144,21 +146,21 @@ export function AuthenticatedSidebar({ className }: AuthenticatedSidebarProps) {
               <Link
                 to="/create-bounty"
                 onClick={handleLinkClick}
-                className="flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all duration-200 group text-muted-foreground hover:bg-gradient-to-r hover:from-primary/10 hover:to-accent/10 hover:text-foreground hover:shadow-md"
+                className="flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all duration-200 group text-muted-foreground hover:bg-muted hover:text-foreground"
               >
-                <Plus className="w-5 h-5 transition-colors text-muted-foreground group-hover:text-primary" />
+                <Plus className="w-5 h-5 transition-colors text-muted-foreground group-hover:text-foreground" />
                 <span>Create Bounty</span>
               </Link>
             </div>
           </nav>
 
           {/* Footer */}
-          <div className="p-4 border-t border-border/30 bg-gradient-to-r from-primary/5 to-accent/5">
+          <div className="p-4 border-t border-border">
             <div className="space-y-3">
               {profile && (
-                <div className="flex items-center space-x-3 px-3 py-3 cursor-pointer hover:bg-gradient-to-r hover:from-primary/10 hover:to-accent/10 rounded-xl transition-all duration-200 hover:shadow-md" onClick={handleProfileClick}>
-                  <div className="w-10 h-10 bg-gradient-to-br from-primary to-accent rounded-full flex items-center justify-center shadow-lg ring-2 ring-primary/20">
-                    <span className="text-sm font-semibold text-primary-foreground">
+                <div className="flex items-center space-x-3 px-3 py-3 cursor-pointer hover:bg-muted rounded-xl transition-all duration-200" onClick={handleProfileClick}>
+                  <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center ring-1 ring-border">
+                    <span className="text-sm font-semibold text-primary">
                       {profile.firstName?.charAt(0) || user?.email?.charAt(0) || 'U'}
                     </span>
                   </div>
@@ -177,7 +179,7 @@ export function AuthenticatedSidebar({ className }: AuthenticatedSidebarProps) {
                 variant="outline"
                 size="sm"
                 onClick={signOut}
-                className="w-full justify-center border-border/50 hover:bg-gradient-to-r hover:from-destructive/10 hover:to-destructive/5 hover:border-destructive/30 transition-all duration-200"
+                className="w-full justify-center border-border hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-all duration-200"
               >
                 <LogOut className="w-4 h-4 mr-2" />
                 Sign Out

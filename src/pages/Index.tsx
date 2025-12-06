@@ -166,9 +166,9 @@ const Index = () => {
         subtitle="Blockchain Research Analysis"
       />
 
-      <main className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
+      <main className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
         {/* Chain Indicator */}
-        <div className="flex items-center gap-3 p-3 sm:p-4 glass-card rounded-lg border border-border">
+        <div className="flex items-center gap-3 p-3 sm:p-4 bg-card rounded-lg border border-border shadow-sm">
           <Badge variant="outline" className="text-xs sm:text-sm px-2 sm:px-3 py-1">
             {currentChain.type.toUpperCase()}
           </Badge>
@@ -181,7 +181,7 @@ const Index = () => {
 
         {/* Stats Cards */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-5">
-          <Card className="glass">
+          <Card>
             <CardContent className="p-3 sm:p-4 md:p-6">
               <StatCard
                 title="Total Transactions"
@@ -192,7 +192,7 @@ const Index = () => {
             </CardContent>
           </Card>
 
-          <Card className="glass">
+          <Card>
             <CardContent className="p-6">
               <StatCard
                 title="Active Users"
@@ -204,7 +204,7 @@ const Index = () => {
             </CardContent>
           </Card>
 
-          <Card className="glass">
+          <Card>
             <CardContent className="p-6">
               <StatCard
                 title="Gas Used"
@@ -216,7 +216,7 @@ const Index = () => {
             </CardContent>
           </Card>
 
-          <Card className="glass">
+          <Card>
             <CardContent className="p-6">
               <StatCard
                 title="Volume"
@@ -228,7 +228,7 @@ const Index = () => {
             </CardContent>
           </Card>
 
-          <Card className="glass">
+          <Card>
             <CardContent className="p-6">
               <StatCard
                 title="TVL"
@@ -243,7 +243,7 @@ const Index = () => {
 
         {/* Charts Section */}
         <div className="grid gap-6 lg:grid-cols-2">
-          <Card className="glass glow-chart">
+          <Card>
             <CardHeader>
               <CardTitle className="text-base sm:text-lg md:text-xl">Transaction Volume</CardTitle>
             </CardHeader>
@@ -255,14 +255,14 @@ const Index = () => {
                 data={[]} // required initial data
                 xAxis="timestamp"
                 yAxis="value"
-                color="hsl(var(--chart-primary))"
+                color="hsl(var(--primary))"
                 endpoints={endpoints}
                 onDataUpdate={setRpcData}
               />
             </CardContent>
           </Card>
 
-          <Card className="glass">
+          <Card>
             <CardHeader>
               <CardTitle className="text-base sm:text-lg md:text-xl">Network Activity</CardTitle>
             </CardHeader>
@@ -279,7 +279,7 @@ const Index = () => {
 
         {/* Charts Section */}
         <div className="grid gap-6 lg:grid-cols-2">
-          <Card className="glass">
+          <Card>
             <CardHeader>
               <CardTitle className="text-base sm:text-lg md:text-xl">Transaction Activity</CardTitle>
               <p className="text-xs sm:text-sm text-muted-foreground">Recent block transaction count</p>
@@ -292,13 +292,13 @@ const Index = () => {
                 data={[]}
                 xAxis="timestamp"
                 yAxis="value"
-                color="#3b82f6"
+                color="hsl(var(--primary))"
                 endpoints={endpoints}
               />
             </CardContent>
           </Card>
 
-          <Card className="glass">
+          <Card>
             <CardHeader>
               <CardTitle className="text-base sm:text-lg md:text-xl">Network Health</CardTitle>
               <p className="text-xs sm:text-sm text-muted-foreground">Real-time Starknet network status</p>
@@ -312,7 +312,7 @@ const Index = () => {
             </CardContent>
           </Card>
 
-          <Card className="glass">
+          <Card>
             <CardHeader>
               <CardTitle className="text-base sm:text-lg md:text-xl">Gas Usage Pattern</CardTitle>
               <p className="text-xs sm:text-sm text-muted-foreground">Recent block gas consumption</p>
@@ -325,13 +325,13 @@ const Index = () => {
                 data={[]}
                 xAxis="timestamp"
                 yAxis="value"
-                color="#10b981"
+                color="hsl(var(--primary))"
                 endpoints={endpoints}
               />
             </CardContent>
           </Card>
 
-          <Card className="glass">
+          <Card>
             <CardHeader>
               <CardTitle className="text-base sm:text-lg md:text-xl">Active Users</CardTitle>
               <p className="text-xs sm:text-sm text-muted-foreground">Recent block unique addresses</p>
@@ -344,7 +344,7 @@ const Index = () => {
                 data={[]}
                 xAxis="timestamp"
                 yAxis="value"
-                color="#f59e0b"
+                color="hsl(var(--primary))"
                 endpoints={endpoints}
               />
             </CardContent>
@@ -353,7 +353,7 @@ const Index = () => {
 
         {/* Additional Analytics Charts */}
         <div className="grid gap-6 lg:grid-cols-2">
-          <Card className="glass">
+          <Card>
             <CardHeader>
               <CardTitle className="text-base sm:text-lg md:text-xl">Average Fee Trend</CardTitle>
               <p className="text-xs sm:text-sm text-muted-foreground">Recent block average fees</p>
@@ -367,7 +367,7 @@ const Index = () => {
             </CardContent>
           </Card>
 
-          <Card className="glass">
+          <Card>
             <CardHeader>
               <CardTitle className="text-base sm:text-lg md:text-xl">Top Contracts</CardTitle>
               <p className="text-xs sm:text-sm text-muted-foreground">Most active smart contracts by transaction count</p>
@@ -380,13 +380,13 @@ const Index = () => {
                 data={[]}
                 xAxis="timestamp"
                 yAxis="value"
-                color="#06b6d4"
+                color="hsl(var(--primary))"
                 endpoints={endpoints}
               />
             </CardContent>
           </Card>
 
-          <Card className="glass">
+          <Card>
             <CardHeader>
               <CardTitle className="text-base sm:text-lg md:text-xl">Block Metrics</CardTitle>
               <p className="text-xs sm:text-sm text-muted-foreground">Block time and transactions per block</p>
@@ -399,13 +399,13 @@ const Index = () => {
                 data={[]}
                 xAxis="timestamp"
                 yAxis="value"
-                color="#10b981"
+                color="hsl(var(--primary))"
                 endpoints={endpoints}
               />
             </CardContent>
           </Card>
 
-          <Card className="glass">
+          <Card>
             <CardHeader>
               <CardTitle className="text-base sm:text-lg md:text-xl">Unique Wallet Growth</CardTitle>
               <p className="text-xs sm:text-sm text-muted-foreground">New unique addresses over time</p>
@@ -419,7 +419,7 @@ const Index = () => {
             </CardContent>
           </Card>
 
-          <Card className="glass">
+          <Card>
             <CardHeader>
               <CardTitle className="text-base sm:text-lg md:text-xl">Pending vs Confirmed</CardTitle>
               <p className="text-xs sm:text-sm text-muted-foreground">Transaction status over time</p>
@@ -432,13 +432,13 @@ const Index = () => {
                 data={[]}
                 xAxis="timestamp"
                 yAxis="value"
-                color="#10b981"
+                color="hsl(var(--primary))"
                 endpoints={endpoints}
               />
             </CardContent>
           </Card>
 
-          <Card className="glass">
+          <Card>
             <CardHeader>
               <CardTitle className="text-base sm:text-lg md:text-xl">Failed Transaction Rate</CardTitle>
               <p className="text-xs sm:text-sm text-muted-foreground">Percentage of failed transactions</p>
@@ -454,7 +454,7 @@ const Index = () => {
         </div>
 
         {/* Data Info */}
-        <Card className="glass">
+        <Card>
           <CardContent className="p-3 sm:p-4 md:p-6">
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               <div>

@@ -737,7 +737,7 @@ export default function ContractEventsEDA() {
     <div className="min-h-screen bg-background text-foreground">
       <Header title={`Contract Events EDA - ${currentChain.name}`} subtitle={`Multi-contract analysis for ${currentChain.name} blockchain`} />
       <main className="p-6 space-y-6">
-        <Card className="glass max-w-2xl mx-auto">
+        <Card className="max-w-2xl mx-auto border-border/50 bg-card/50">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <span>Enter Contract Addresses</span>
@@ -779,7 +779,7 @@ export default function ContractEventsEDA() {
                         onClick={() => removeContract(index)}
                         variant="outline"
                         size="sm"
-                        className="text-red-500 hover:text-red-700"
+                        className="text-destructive hover:text-destructive"
                       >
                         <X className="h-4 w-4" />
                       </Button>
@@ -791,7 +791,7 @@ export default function ContractEventsEDA() {
                 <Button
                   onClick={handleFetch}
                   disabled={loading}
-                  className="bg-gradient-to-r from-primary to-accent w-full"
+                  className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
                 >
                   {loading ? (
                     <div className="flex items-center space-x-2">
@@ -816,8 +816,8 @@ export default function ContractEventsEDA() {
             </div>
             {error && (
               <div className={`mt-3 p-3 rounded-lg text-sm ${error.includes('✓')
-                  ? 'bg-green-500/10 text-green-500 border border-green-500/20'
-                  : 'bg-red-500/10 text-red-500 border border-red-500/20'
+                ? 'bg-green-500/10 text-green-500 border border-green-500/20'
+                : 'bg-red-500/10 text-red-500 border border-red-500/20'
                 }`}>
                 {error}
               </div>

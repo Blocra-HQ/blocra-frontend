@@ -1,9 +1,71 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
+    /* Minimal Dark Theme */
+    --background: 240 10% 3.9%;
+    /* #09090b */
+    --foreground: 0 0% 98%;
+    /* #fafafa */
+
+    --card: 240 10% 3.9%;
+    /* Same as background */
+    --card-foreground: 0 0% 98%;
+
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 0 0% 98%;
+    /* White for high contrast */
+    --primary-foreground: 240 5.9% 10%;
+
+    --secondary: 240 3.7% 15.9%;
+    /* #27272a */
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    /* #a1a1aa */
+
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 240 3.7% 15.9%;
+    /* Subtle border */
+    --input: 240 3.7% 15.9%;
+    --ring: 240 4.9% 83.9%;
+
+    --radius: 0.5rem;
+
+    /* Chart Colors (kept for functionality but can be muted) */
+    --chart-primary: 220 70% 50%;
+    --chart-secondary: 160 60% 45%;
+    --chart-tertiary: 30 80% 55%;
+    --chart-quaternary: 280 65% 60%;
+    --chart-success: 142 70% 45%;
+    --chart-warning: 48 90% 60%;
+    --chart-error: 0 80% 60%;
+
+    /* Sidebar */
+    --sidebar-background: 240 10% 3.9%;
+    --sidebar-foreground: 240 5% 64.9%;
+    --sidebar-primary: 0 0% 98%;
+    --sidebar-primary-foreground: 240 5.9% 10%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 240 4.9% 83.9%;
+  }
+
+  .light {
+    /* Minimal Light Theme (Optional, keeping it clean) */
     --background: 0 0% 100%;
     --foreground: 240 10% 3.9%;
     --card: 0 0% 100%;
@@ -23,260 +85,18 @@
     --border: 240 5.9% 90%;
     --input: 240 5.9% 90%;
     --ring: 240 5.9% 10%;
-    --radius: 0.5rem;
-  }
 
-  .dark {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 240 5.9% 10%;
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 240 4.9% 83.9%;
+    /* Sidebar Light */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 240 3.8% 46.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 240 5.9% 90%;
+    --sidebar-ring: 240 5.9% 10%;
   }
 }
-
-/* Starklytics Analytics Platform Design System - Dark theme optimized for data visualization */
-
-@layer base {
-  :root {
-    /* Analytics Dark Theme - Primary Colors */
-    --background: 218 24% 6%;
-    --foreground: 215 16% 95%;
-
-    --card: 219 25% 8%;
-    --card-foreground: 215 16% 95%;
-
-    --popover: 219 25% 8%;
-    --popover-foreground: 215 16% 95%;
-
-    /* Starknet Brand Colors */
-    --primary: 263 85% 65%;
-    --primary-foreground: 0 0% 100%;
-    --primary-glow: 263 95% 75%;
-
-    --secondary: 220 25% 12%;
-    --secondary-foreground: 215 16% 95%;
-
-    --muted: 220 20% 10%;
-    --muted-foreground: 215 12% 65%;
-
-    --accent: 200 85% 55%;
-    --accent-foreground: 0 0% 100%;
-
-    --destructive: 0 75% 60%;
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 220 25% 15%;
-    --input: 220 25% 15%;
-    --ring: 263 85% 65%;
-
-    --radius: 0.75rem;
-
-    /* Analytics-specific colors */
-    --chart-primary: 263 85% 65%;
-    --chart-secondary: 200 85% 55%;
-    --chart-tertiary: 280 85% 65%;
-    --chart-quaternary: 160 85% 55%;
-    --chart-success: 142 76% 36%;
-    --chart-warning: 48 96% 53%;
-    --chart-error: 0 84% 60%;
-
-    /* Data visualization gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
-    --gradient-chart: linear-gradient(180deg, hsl(var(--chart-primary) / 0.8), hsl(var(--chart-primary) / 0.2));
-    --gradient-glow: linear-gradient(135deg, hsl(var(--accent) / 0.3), hsl(var(--primary) / 0.3));
-
-    /* Glass morphism effects */
-    --glass-bg: hsla(var(--background) / 0.8);
-    --glass-border: hsla(var(--border) / 0.3);
-
-    /* Animations */
-    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    --transition-spring: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
-
-    /* Shadows */
-    --shadow-glow: 0 0 30px hsl(var(--primary) / 0.3);
-    --shadow-elevated: 0 10px 40px hsl(var(--background) / 0.5);
-    --shadow-chart: 0 8px 32px hsl(var(--chart-primary) / 0.25);
-
-    /* Sidebar */
-    --sidebar-background: 218 28% 5%;
-    --sidebar-foreground: 215 16% 88%;
-    --sidebar-primary: 263 85% 65%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 25% 10%;
-    --sidebar-accent-foreground: 215 16% 88%;
-    --sidebar-border: 220 25% 12%;
-    --sidebar-ring: 263 85% 65%;
-  }
-
-  .light {
-    /* Light theme for analytics platform */
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 263 85% 55%;
-    --primary-foreground: 0 0% 100%;
-    --primary-glow: 263 95% 65%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 200 85% 45%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 263 85% 55%;
-
-    /* Sidebar light theme */
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 222.2 84% 4.9%;
-    --sidebar-primary: 263 85% 55%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 40% 96.1%;
-    --sidebar-accent-foreground: 222.2 84% 4.9%;
-    --sidebar-border: 214.3 31.8% 91.4%;
-    --sidebar-ring: 263 85% 55%;
-
-    /* Glass morphism for light theme */
-    --glass-bg: hsla(var(--background) / 0.9);
-    --glass-border: hsla(var(--border) / 0.5);
-  }
-}
-
-@layer base {
-  * {
-    @apply border-border;
-  }
-
-  body {
-    @apply bg-background text-foreground font-sans;
-    font-feature-settings: "rlig" 1, "calt" 1;
-  }
-
-  /* Custom scrollbars for analytics theme */
-  ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-
-  ::-webkit-scrollbar-track {
-    @apply bg-muted/30;
-  }
-
-  ::-webkit-scrollbar-thumb {
-    @apply bg-border rounded-full;
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    @apply bg-primary/60;
-  }
-
-  /* Glassmorphism utility */
-  .glass {
-    background: var(--glass-bg);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid var(--glass-border);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  }
-
-  /* Enhanced glass effect for cards */
-  .glass-card {
-    background: linear-gradient(135deg,
-        hsla(var(--background) / 0.9),
-        hsla(var(--background) / 0.7));
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    border: 1px solid hsla(var(--border) / 0.4);
-    box-shadow:
-      0 8px 32px hsla(var(--background) / 0.3),
-      inset 0 1px 0 hsla(255, 255, 255, 0.1);
-  }
-
-  /* Ensure proper theme transitions */
-  * {
-    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
-  }
-
-  /* Glow effects */
-  .glow-primary {
-    box-shadow: var(--shadow-glow);
-  }
-
-  .glow-chart {
-    box-shadow: var(--shadow-chart);
-  }
-
-  /* Animation utilities */
-  .animate-fade-in {
-    animation: fadeIn 0.5s ease-out forwards;
-  }
-
-  .animate-slide-up {
-    animation: slideUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-  }
-
-  .animate-pulse-glow {
-    animation: pulseGlow 2s ease-in-out infinite;
-  }
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes pulseGlow {
-
-  0%,
-  100% {
-    box-shadow: 0 0 20px hsl(var(--primary) / 0.3);
-  }
-
-  50% {
-    box-shadow: 0 0 40px hsl(var(--primary) / 0.6);
-  }
-}
-
 
 @layer base {
   * {
@@ -285,35 +105,32 @@
 
   body {
     @apply bg-background text-foreground;
-    overflow-x: hidden;
+    font-family: 'Outfit', sans-serif;
+    font-feature-settings: "rlig" 1, "calt" 1;
   }
 
-  /* Prevent horizontal scroll on all elements */
-  html,
-  body {
-    max-width: 100vw;
-    overflow-x: hidden;
+  /* Minimal Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
   }
 
-  /* Ensure text wraps properly */
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6,
-  p,
-  span,
-  div {
-    word-wrap: break-word;
-    overflow-wrap: break-word;
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
   }
 
-  /* Prevent images and iframes from overflowing */
-  img,
-  iframe,
-  video {
-    max-width: 100%;
-    height: auto;
+  ::-webkit-scrollbar-thumb {
+    @apply bg-muted rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/50;
+  }
+}
+
+/* Utilities for minimal design */
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
   }
 }
