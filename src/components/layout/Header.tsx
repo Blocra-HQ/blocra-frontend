@@ -6,6 +6,7 @@ import { useWallet } from "@/hooks/use-wallet";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useSidebar } from "@/contexts/SidebarContext";
 import { cn } from "@/lib/utils";
+import { useRpcEndpoint } from "@/hooks/useRpcEndpoint";
 
 import {
   Bell,
@@ -29,6 +30,7 @@ export function Header({ title, subtitle }: HeaderProps) {
   const { isConnected, walletAddress, connectWallet } = useWallet();
   const { theme, setTheme } = useTheme();
   const { toggleSidebar } = useSidebar();
+  const { status: rpcStatus, activeEndpoint } = useRpcEndpoint();
 
   const handleWalletClick = async () => {
     if (!isConnected) {
@@ -85,21 +87,43 @@ export function Header({ title, subtitle }: HeaderProps) {
           </Button>
 
           {/* Wallet Connection */}
-          {/* Wallet Connection Status */}
+          {/* RPC Status Indicator (Circle) */}
           <div className="flex items-center">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleWalletClick}
-              className="relative p-2 h-auto hover:bg-transparent"
-              title={isConnected ? `Connected: ${walletAddress}` : "Click to Connect"}
+            <div
+              className="relative p-2"
+              title={
+                rpcStatus === 'connected' ? `RPC Connected: ${activeEndpoint}` :
+                  rpcStatus === 'connecting' ? "RPC Connecting..." :
+                    "RPC Connection Failed"
+              }
             >
               <div className={cn(
                 "w-3 h-3 rounded-full shadow-sm transition-all duration-300",
-                isConnected ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]" : "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]"
+                rpcStatus === 'connected' ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]" :
+                  rpcStatus === 'connecting' ? "bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.5)]" :
+                    "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]"
               )} />
-            </Button>
+            </div>
           </div>
+
+          {/* Wallet Connection Button */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleWalletClick}
+            className={cn(
+              "flex items-center gap-2",
+              !isConnected && "text-muted-foreground hover:text-foreground"
+            )}
+            title={isConnected ? "Wallet Connected" : "Connect Wallet"}
+          >
+            <Wallet className={cn("w-4 h-4 sm:w-5 sm:h-5", isConnected && "text-primary")} />
+            {isConnected && (
+              <span className="hidden lg:inline-block text-xs font-medium">
+                {walletAddress?.slice(0, 6)}...{walletAddress?.slice(-4)}
+              </span>
+            )}
+          </Button>
 
           {/* User Menu */}
           <Link to="/profile">

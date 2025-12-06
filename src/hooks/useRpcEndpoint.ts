@@ -12,6 +12,10 @@ export function useRpcEndpoint() {
   useEffect(() => {
     const checkEndpoint = async (endpoint: string) => {
       try {
+        console.log(`Checking RPC connection to ${endpoint}...`);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+
         const response = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -20,13 +24,18 @@ export function useRpcEndpoint() {
             id: 1,
             method: 'starknet_chainId',
             params: []
-          })
+          }),
+          signal: controller.signal
         });
+        clearTimeout(timeoutId);
 
         if (response.ok) {
+          console.log(`Connected to ${endpoint}`);
           setActiveEndpoint(endpoint);
           setStatus('connected');
           return true;
+        } else {
+          console.warn(`RPC ${endpoint} returned ${response.status}`);
         }
       } catch (error) {
         console.warn(`Failed to connect to ${endpoint}:`, error);
@@ -44,6 +53,7 @@ export function useRpcEndpoint() {
         }
       }
 
+      console.error('All RPC endpoints failed');
       setStatus('error');
     };
 

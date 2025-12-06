@@ -26,7 +26,13 @@ export function RpcStatus() {
         </Badge>
       </TooltipTrigger>
       <TooltipContent>
-        <p>{activeEndpoint || 'Not connected'}</p>
+        <p>
+          {status === 'connected'
+            ? `Connected to ${new URL(activeEndpoint || '').hostname}`
+            : status === 'connecting'
+              ? 'Connecting to Starknet...'
+              : 'Connection Failed - Check Console'}
+        </p>
       </TooltipContent>
     </Tooltip>
   );
