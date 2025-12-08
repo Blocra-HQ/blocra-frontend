@@ -765,7 +765,7 @@ export default function ContractEventsEDA() {
 
   const navigate = useNavigate();
 
-  const createDashboardFromContract = () => {
+  const createDashboardFromContract = async () => {
     if (!events.length || !stats || !contractInfo) return;
 
     // Create AI-generated dashboard based on contract type and data
