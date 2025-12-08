@@ -163,7 +163,7 @@ async function getContractInfo(contractAddress: string, provider: any) {
   }
 }
 
-async function fetchEvents(contractAddress: string) {
+async function fetchEvents(contractAddress: string, fromTimestamp?: number, toTimestamp?: number) {
   const { RpcProvider } = await import('starknet');
 
   for (let i = 0; i < RPC_ENDPOINTS.length; i++) {
@@ -171,18 +171,62 @@ async function fetchEvents(contractAddress: string) {
       console.log('Trying RPC:', getRpcUrl());
       const provider = new RpcProvider({ nodeUrl: getRpcUrl() });
 
+      // If caller provided timestamps, convert them to block numbers via binary search
+      let fromBlock: number | undefined = undefined;
+      let toBlock: number | undefined = undefined;
+
+      const estimateBlockFromTimestamp = async (targetTs: number, findFirst = true) => {
+        const latest = await provider.getBlockNumber();
+        let low = 0;
+        let high = latest;
+        let result = findFirst ? latest : 0;
+
+        // Binary search for block with timestamp close to target
+        while (low <= high) {
+          const mid = Math.floor((low + high) / 2);
+          try {
+            const blk = await provider.getBlockWithTxs(mid);
+            const ts = blk?.timestamp;
+            if (ts == null) break;
+
+            if (ts < targetTs) {
+              low = mid + 1;
+            } else {
+              result = mid;
+              high = mid - 1;
+            }
+          } catch (e) {
+            // If provider failed for this mid, shrink range conservatively
+            high = mid - 1;
+          }
+        }
+
+        return result;
+      };
+
+      if (typeof fromTimestamp === 'number') {
+        fromBlock = await estimateBlockFromTimestamp(fromTimestamp, true);
+      }
+
+      if (typeof toTimestamp === 'number') {
+        // find last block <= toTimestamp: search for first block > toTimestamp then subtract 1
+        const firstAfter = await estimateBlockFromTimestamp(toTimestamp + 1, true);
+        toBlock = Math.max(0, firstAfter - 1);
+      }
+
       // Get contract info first
       const contractInfo = await getContractInfo(contractAddress, provider);
 
       const latest = await provider.getBlockNumber();
-      const fromBlock = Math.max(0, latest - 2000); // Fetch last 2000 blocks for responsiveness
+      const queryFrom = typeof fromBlock === 'number' ? fromBlock : Math.max(0, latest - 2000);
+      const queryTo = typeof toBlock === 'number' ? toBlock : latest;
 
-      console.log('Fetching events from block:', fromBlock, 'to', latest);
+      console.log('Fetching events from block:', queryFrom, 'to', queryTo);
 
       const events = await provider.getEvents({
         address: contractAddress,
-        from_block: { block_number: fromBlock },
-        to_block: { block_number: latest },
+        from_block: { block_number: queryFrom },
+        to_block: { block_number: queryTo },
         chunk_size: 1000
       });
 
@@ -291,6 +335,13 @@ export default function ContractEventsEDA() {
   const [stateAnalysis, setStateAnalysis] = useState<any>(null);
   const [realtimeEnabled, setRealtimeEnabled] = useState(false);
 
+  // Date range for queries (default: 2 years ago -> today)
+  const today = new Date();
+  const twoYearsAgo = new Date();
+  twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
+  const [fromDate, setFromDate] = useState<string>(twoYearsAgo.toISOString().slice(0, 10));
+  const [toDate, setToDate] = useState<string>(today.toISOString().slice(0, 10));
+
   const validateContractAddress = (addr: string) => {
     const result = validateAddress(addr, currentChain.type);
     return result.isValid;
@@ -348,7 +399,10 @@ export default function ContractEventsEDA() {
 
       // Fetch real events for the first contract (primary focus)
       const primaryContract = validContracts[0];
-      const result = await fetchEvents(primaryContract.address);
+      // Convert selected dates to UNIX timestamps (seconds)
+      const fromTs = Math.floor(new Date(fromDate + 'T00:00:00Z').getTime() / 1000);
+      const toTs = Math.floor(new Date(toDate + 'T23:59:59Z').getTime() / 1000);
+      const result = await fetchEvents(primaryContract.address, fromTs, toTs);
       allEvents = result.events;
       fetchedContractInfo = result.contractInfo;
 
@@ -758,6 +812,26 @@ export default function ContractEventsEDA() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
+              <div className="flex items-center space-x-2">
+                <div className="flex-1">
+                  <label className="text-xs text-muted-foreground">From (start date)</label>
+                  <Input
+                    type="date"
+                    value={fromDate}
+                    onChange={e => setFromDate(e.target.value)}
+                    className="w-full text-sm"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="text-xs text-muted-foreground">To (end date)</label>
+                  <Input
+                    type="date"
+                    value={toDate}
+                    onChange={e => setToDate(e.target.value)}
+                    className="w-full text-sm"
+                  />
+                </div>
+              </div>
               <div className="space-y-3">
                 {contracts.map((contract, index) => (
                   <div key={index} className="flex space-x-2 items-center">
