@@ -393,18 +393,40 @@ export default function ContractEventsEDA() {
       // Use multi-chain RPC service
       const dashboardMetrics = await multiChainRPC.getDashboardMetrics();
 
-      // REAL DATA FETCHING
+      // REAL DATA FETCHING via backend
       let allEvents: any[] = [];
       let fetchedContractInfo: any = null;
 
-      // Fetch real events for the first contract (primary focus)
       const primaryContract = validContracts[0];
-      // Convert selected dates to UNIX timestamps (seconds)
-      const fromTs = Math.floor(new Date(fromDate + 'T00:00:00Z').getTime() / 1000);
-      const toTs = Math.floor(new Date(toDate + 'T23:59:59Z').getTime() / 1000);
-      const result = await fetchEvents(primaryContract.address, fromTs, toTs);
-      allEvents = result.events;
-      fetchedContractInfo = result.contractInfo;
+      const backendUrl = import.meta.env.VITE_BACKEND_URL;
+      
+      if (backendUrl) {
+        // Use backend API
+        const response = await fetch(`${backendUrl}/api/contracts/events`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contractAddress: primaryContract.address,
+            fromDate: fromDate + 'T00:00:00Z',
+            toDate: toDate + 'T23:59:59Z',
+            chain: currentChain.name
+          })
+        });
+        const data = await response.json();
+        if (data.success) {
+          allEvents = data.data.events;
+          fetchedContractInfo = { contractType: 'Smart Contract', contractName: primaryContract.name || 'Contract' };
+        } else {
+          throw new Error(data.message);
+        }
+      } else {
+        // Fallback to direct RPC
+        const fromTs = Math.floor(new Date(fromDate + 'T00:00:00Z').getTime() / 1000);
+        const toTs = Math.floor(new Date(toDate + 'T23:59:59Z').getTime() / 1000);
+        const result = await fetchEvents(primaryContract.address, fromTs, toTs);
+        allEvents = result.events;
+        fetchedContractInfo = result.contractInfo;
+      }
 
       console.log('Total events found:', allEvents.length);
       console.log('Contract info:', fetchedContractInfo);
@@ -542,6 +564,29 @@ export default function ContractEventsEDA() {
           contractInfo: fetchedContractInfo,
           blockRange: { from: Math.min(...blocks), to: Math.max(...blocks) }
         });
+
+        // Save to backend if user is logged in
+        const backendUrl = import.meta.env.VITE_BACKEND_URL;
+        const token = localStorage.getItem('token');
+        if (backendUrl && token) {
+          try {
+            await fetch(`${backendUrl}/api/contracts/save-query`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+              body: JSON.stringify({
+                contracts: validContracts,
+                chain: currentChain.name,
+                fromDate,
+                toDate,
+                events: allEvents.slice(0, 100),
+                stats,
+                contractInfo: fetchedContractInfo
+              })
+            });
+          } catch (e) {
+            console.log('Backend save failed:', e);
+          }
+        }
 
         // Enable real-time updates
         if (validContracts.length === 1) {
@@ -734,7 +779,25 @@ export default function ContractEventsEDA() {
       createdAt: new Date().toISOString()
     };
 
-    // Save dashboard config
+    // Save dashboard config to backend
+    const backendUrl = import.meta.env.VITE_BACKEND_URL;
+    const token = localStorage.getItem('token');
+    if (backendUrl && token) {
+      try {
+        await fetch(`${backendUrl}/api/dashboards`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({
+            title: dashboardConfig.name,
+            description: dashboardConfig.description,
+            widgets: dashboardConfig.widgets,
+            tags: [currentChain.name, contractInfo.contractType]
+          })
+        });
+      } catch (e) {
+        console.log('Backend save failed:', e);
+      }
+    }
     localStorage.setItem('ai_generated_dashboard', JSON.stringify(dashboardConfig));
 
     // Navigate to dashboard builder with pre-configured widgets
