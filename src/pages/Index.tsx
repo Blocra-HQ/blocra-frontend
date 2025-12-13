@@ -77,9 +77,17 @@ const Index = () => {
       const metrics = await multiChainRPC.getDashboardMetrics();
       console.log('Metrics:', metrics);
 
-      // Note: getTimeSeriesData not yet implemented in multiChainRPC
-      // Using empty data for now - can be added to MultiChainRPCService later
-      const timeSeriesData = { transactions: [], gasUsage: [], activeUsers: [], avgFee: [], blockMetrics: [], walletGrowth: [], pendingConfirmed: [], failedRate: [] };
+      // Get time-series data for continuous tracking
+      const timeSeriesData = {
+        transactions: multiChainRPC.getTimeSeriesData('totalTransactions'),
+        gasUsage: multiChainRPC.getTimeSeriesData('gasUsed'),
+        activeUsers: multiChainRPC.getTimeSeriesData('activeUsers'),
+        avgFee: multiChainRPC.getTimeSeriesData('avgBlockTime'),
+        blockMetrics: multiChainRPC.getTimeSeriesData('totalTransactions'),
+        walletGrowth: multiChainRPC.getTimeSeriesData('activeUsers'),
+        pendingConfirmed: multiChainRPC.getTimeSeriesData('pendingTxs'),
+        failedRate: multiChainRPC.getTimeSeriesData('failedTxRate')
+      };
       console.log('Time series:', timeSeriesData);
 
       const hourlyLabels = ['4h ago', '3h ago', '2h ago', '1h ago', 'Now'];
@@ -115,15 +123,15 @@ const Index = () => {
       ];
 
       setChartData({
-        transactions: timeSeriesData.transactions?.length > 0 ? timeSeriesData.transactions : [{ name: 'Now', value: metrics.totalTransactions || 0 }],
-        gasUsage: timeSeriesData.gasUsage?.length > 0 ? timeSeriesData.gasUsage : [{ name: 'Now', value: 0.1 }],
-        activeUsers: timeSeriesData.activeUsers?.length > 0 ? timeSeriesData.activeUsers : [{ name: 'Now', value: metrics.activeUsers || 0 }],
-        avgFee: timeSeriesData.avgFee?.length > 0 ? timeSeriesData.avgFee : [{ name: 'Now', value: 0.002 }],
+        transactions: timeSeriesData.transactions?.length > 0 ? timeSeriesData.transactions : [{ name: 'Now', value: metrics.totalTransactions || 0, timestamp: Date.now() }],
+        gasUsage: timeSeriesData.gasUsage?.length > 0 ? timeSeriesData.gasUsage : [{ name: 'Now', value: 0.1, timestamp: Date.now() }],
+        activeUsers: timeSeriesData.activeUsers?.length > 0 ? timeSeriesData.activeUsers : [{ name: 'Now', value: metrics.activeUsers || 0, timestamp: Date.now() }],
+        avgFee: timeSeriesData.avgFee?.length > 0 ? timeSeriesData.avgFee : [{ name: 'Now', value: 0.002, timestamp: Date.now() }],
         topContracts: metrics.contractActivity || [],
-        blockMetrics: timeSeriesData.blockMetrics || newBlockMetrics,
-        walletGrowth: timeSeriesData.walletGrowth || newWalletGrowth,
-        pendingConfirmed: timeSeriesData.pendingConfirmed || newPendingConfirmed,
-        failedRate: timeSeriesData.failedRate || newFailedRate,
+        blockMetrics: timeSeriesData.blockMetrics?.length > 0 ? timeSeriesData.blockMetrics : newBlockMetrics,
+        walletGrowth: timeSeriesData.walletGrowth?.length > 0 ? timeSeriesData.walletGrowth : newWalletGrowth,
+        pendingConfirmed: timeSeriesData.pendingConfirmed?.length > 0 ? timeSeriesData.pendingConfirmed : newPendingConfirmed,
+        failedRate: timeSeriesData.failedRate?.length > 0 ? timeSeriesData.failedRate : newFailedRate,
         validators: newValidators,
         stats: {
           totalTransactions: metrics.totalTransactions,
@@ -243,14 +251,14 @@ const Index = () => {
         <div className="grid gap-6 lg:grid-cols-2">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base sm:text-lg md:text-xl">Transaction Volume</CardTitle>
+              <CardTitle className="text-base sm:text-lg md:text-xl">Block Size Trend</CardTitle>
             </CardHeader>
             <CardContent>
               <Chart
-                title="Transaction Volume"
-                type="line"
+                title="Block Size"
+                type="area"
                 method="starknet_getBlockWithTxs"
-                data={[]} // required initial data
+                data={[]}
                 xAxis="timestamp"
                 yAxis="value"
                 color="hsl(var(--primary))"
@@ -266,7 +274,7 @@ const Index = () => {
             </CardHeader>
             <CardContent>
               <SpecializedChart
-                title="Network Activity"
+                title="Activity"
                 type="networkActivity"
                 endpoints={endpoints}
               />
@@ -279,18 +287,13 @@ const Index = () => {
         <div className="grid gap-6 lg:grid-cols-2">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base sm:text-lg md:text-xl">Transaction Activity</CardTitle>
-              <p className="text-xs sm:text-sm text-muted-foreground">Recent block transaction count</p>
+              <CardTitle className="text-base sm:text-lg md:text-xl">TPS Trend</CardTitle>
+              <p className="text-xs sm:text-sm text-muted-foreground">Transactions per second</p>
             </CardHeader>
             <CardContent>
-              <Chart
-                title="Transaction Activity"
-                type="line"
-                method="starknet_getBlockWithTxs"
-                data={[]}
-                xAxis="timestamp"
-                yAxis="value"
-                color="hsl(var(--primary))"
+              <SpecializedChart
+                title="TPS"
+                type="networkActivity"
                 endpoints={endpoints}
               />
             </CardContent>
@@ -299,11 +302,11 @@ const Index = () => {
           <Card>
             <CardHeader>
               <CardTitle className="text-base sm:text-lg md:text-xl">Network Health</CardTitle>
-              <p className="text-xs sm:text-sm text-muted-foreground">Real-time Starknet network status</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">Real-time network status</p>
             </CardHeader>
             <CardContent>
               <SpecializedChart
-                title="Network Health"
+                title="Health"
                 type="networkHealth"
                 endpoints={endpoints}
               />
@@ -336,7 +339,7 @@ const Index = () => {
             </CardHeader>
             <CardContent>
               <Chart
-                title="Active Users"
+                title="Users"
                 type="line"
                 method="starknet_blockNumber"
                 data={[]}
@@ -358,7 +361,7 @@ const Index = () => {
             </CardHeader>
             <CardContent>
               <SpecializedChart
-                title="Average Fees"
+                title="Fees"
                 type="avgFees"
                 endpoints={endpoints}
               />
@@ -372,7 +375,7 @@ const Index = () => {
             </CardHeader>
             <CardContent>
               <Chart
-                title="Top Contracts"
+                title="Contracts"
                 type="bar"
                 method="starknet_getBlockWithTxs"
                 data={[]}
@@ -391,7 +394,7 @@ const Index = () => {
             </CardHeader>
             <CardContent>
               <Chart
-                title="Block Metrics"
+                title="Metrics"
                 type="line"
                 method="starknet_blockNumber"
                 data={[]}
@@ -410,7 +413,7 @@ const Index = () => {
             </CardHeader>
             <CardContent>
               <SpecializedChart
-                title="Wallet Growth"
+                title="Growth"
                 type="walletGrowth"
                 endpoints={endpoints}
               />
@@ -423,14 +426,9 @@ const Index = () => {
               <p className="text-xs sm:text-sm text-muted-foreground">Transaction status over time</p>
             </CardHeader>
             <CardContent>
-              <Chart
-                title="Pending vs Confirmed"
-                type="line"
-                method="starknet_getBlockWithTxs"
-                data={[]}
-                xAxis="timestamp"
-                yAxis="value"
-                color="hsl(var(--primary))"
+              <SpecializedChart
+                title="Status"
+                type="pendingConfirmed"
                 endpoints={endpoints}
               />
             </CardContent>

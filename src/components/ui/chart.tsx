@@ -2,6 +2,7 @@ import * as React from "react"
 import { useEffect, useState, useRef } from "react"
 import * as RechartsPrimitive from "recharts"
 import { cn } from "@/lib/utils"
+import { multiChainRPC } from "@/services/MultiChainRPCService"
 
 interface ChartProps {
   type: 'bar' | 'line' | 'pie' | 'area';
@@ -96,7 +97,17 @@ function Chart({
           }
         }
 
-        setData((prev) => [...prev.slice(-20), { timestamp: now, value }]);
+        // Use persistent time-series data instead of temporary array
+        const metricName = getMetricNameFromMethod(method);
+        const timeSeriesChartData = multiChainRPC.getTimeSeriesData(metricName);
+        
+        if (timeSeriesChartData.length > 0) {
+          setData(timeSeriesChartData);
+        } else {
+          // Fallback to single point if no historical data
+          setData([{ timestamp: now, value, name: new Date(now).toLocaleTimeString() }]);
+        }
+        
         setStatus(`Connected - Latest: ${value}`);
       } catch (error) {
         console.error("RPC call failed:", error);
@@ -115,6 +126,15 @@ function Chart({
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [method, endpoints.join(',')]);
+
+  const getMetricNameFromMethod = (method: string): string => {
+    const methodMap: Record<string, string> = {
+      'starknet_getBlockWithTxs': 'totalTransactions',
+      'starknet_blockNumber': 'activeUsers',
+      'starknet_getStateUpdate': 'gasUsed'
+    };
+    return methodMap[method] || 'totalTransactions';
+  };
 
   if (!xAxis || !yAxis) {
     return (

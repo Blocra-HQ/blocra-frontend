@@ -1,4 +1,5 @@
 import { ChainConfig, SUPPORTED_CHAINS } from '../config/chains';
+import { timeSeriesData } from './TimeSeriesDataService';
 
 interface ChainData {
   totalTransactions: number;
@@ -128,11 +129,30 @@ class MultiChainRPCService {
         }
       }
 
-      return this.processChainData(chain, blocks, latestBlock);
+      const chainData = this.processChainData(chain, blocks, latestBlock);
+      
+      // Store time-series data for continuous tracking
+      this.storeTimeSeriesMetrics(chainData, latestBlock);
+      
+      return chainData;
     } catch (error) {
       console.error('Failed to fetch dashboard metrics:', error);
       return this.getDefaultMetrics();
     }
+  }
+
+  private storeTimeSeriesMetrics(data: ChainData, blockNumber: number): void {
+    timeSeriesData.addDataPoint('totalTransactions', blockNumber, data.totalTransactions);
+    timeSeriesData.addDataPoint('activeUsers', blockNumber, data.activeUsers);
+    timeSeriesData.addDataPoint('gasUsed', blockNumber, parseFloat(data.gasUsed.replace('M', '')));
+    timeSeriesData.addDataPoint('avgBlockTime', blockNumber, data.avgBlockTime);
+    timeSeriesData.addDataPoint('failedTxRate', blockNumber, data.failedTxRate);
+    timeSeriesData.addDataPoint('pendingTxs', blockNumber, data.pendingTxs);
+    timeSeriesData.addDataPoint('confirmedTxs', blockNumber, data.confirmedTxs);
+  }
+
+  getTimeSeriesData(metricName: string): Array<{ name: string; value: number; timestamp: number }> {
+    return timeSeriesData.getFormattedChartData(metricName);
   }
 
   private processChainData(chain: ChainConfig, blocks: any[], latestBlock: number): ChainData {
