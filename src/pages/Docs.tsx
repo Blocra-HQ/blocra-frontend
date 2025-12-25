@@ -1,11 +1,28 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Separator } from "@/components/ui/separator";
-import { Book, BarChart2, Layout, Activity, Wallet, Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Book, BarChart2, Layout, Activity, Wallet, Search, ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export default function Docs() {
+  const navigate = useNavigate();
+
   return (
-    <div className="container mx-auto p-6 max-w-5xl space-y-10">
+    <div className="w-full px-2 py-3 space-y-6">
+      
+      {/* Back to Dashboard Button */}
+      <div className="flex items-center gap-4">
+        <Button 
+          variant="outline" 
+          size="sm"
+          onClick={() => navigate('/')}
+          className="flex items-center gap-2"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to Dashboard
+        </Button>
+      </div>
 
       {/* Introduction Section */}
       <section className="space-y-4 text-center">
@@ -22,7 +39,7 @@ export default function Docs() {
       {/* Key Features Section */}
       <section className="space-y-6">
         <h2 className="text-2xl font-semibold tracking-tight">Key Features</h2>
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-3">
 
           <Card className="bg-card/50 border-border/50 hover:border-primary/50 transition-colors">
             <CardHeader>
@@ -75,29 +92,29 @@ export default function Docs() {
           <h2 className="text-2xl font-semibold tracking-tight">Getting Started</h2>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2">
-          <div className="space-y-4">
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-3">
             <h3 className="text-xl font-medium">1. Connect Your Wallet</h3>
             <p className="text-muted-foreground">
               Click the wallet icon in the top right corner to connect your Argent or Braavos wallet. This allows you to interact with the blockchain and save your custom dashboards.
             </p>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-3">
             <h3 className="text-xl font-medium">2. Explore a Contract</h3>
             <p className="text-muted-foreground">
               Navigate to the "Contract EDA" page. Paste a valid Starknet contract address to fetch and visualize its historical event data and transaction patterns.
             </p>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-3">
             <h3 className="text-xl font-medium">3. Build a Dashboard</h3>
             <p className="text-muted-foreground">
               Go to "Dashboard Builder". Click "Create New Dashboard", give it a name, and start adding widgets. You can resize and rearrange them to fit your workflow.
             </p>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-3">
             <h3 className="text-xl font-medium">4. Monitor Network</h3>
             <p className="text-muted-foreground">
               The main "Dashboard" gives you a high-level overview of the Starknet network health. Check here for gas spikes or network congestion.

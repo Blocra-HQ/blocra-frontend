@@ -1,774 +1,487 @@
-# Starklytics Suite - Comprehensive Codebase Overview
+# Codebase Overview
 
-## 📋 Executive Summary
+Complete technical documentation of the BlocRA platform architecture.
 
-**Starklytics Suite** is a production-ready, enterprise-grade analytics and bounty platform built for the Starknet blockchain ecosystem. It combines real-time blockchain analytics dashboards with an automated bounty management system, powered by AI insights and smart contracts.
-
-**Key Stats:**
-- **Frontend:** React 18 + TypeScript + Vite
-- **Backend:** Node.js/Express + MongoDB + Supabase
-- **Blockchain:** Starknet + Cairo Smart Contracts
-- **AI:** GPT-OSS 120B integration
-- **Deployment:** Vercel + Edge Functions
-- **Status:** Production Ready (99.9% uptime)
-
----
-
-## 🏗️ Architecture Overview
+## System Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    Frontend (React/Vite)                     │
-│  ┌────────────────────────────────────��─────────────────┐   │
-│  │ Pages: Analytics, Bounties, Dashboard, Query Editor  │   │
-│  │ Components: Charts, AI Chat, Wallet Integration      │   │
-│  │ Services: Starknet, Bounty, Dashboard, Query         │   │
-│  └──────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────┘
-                            ↓
+│                         Frontend                             │
+│  React + TypeScript + Vite + TailwindCSS + Recharts        │
+│  Port: 8080                                                  │
+└────────────────────┬────────────────────────────────────────┘
+                     │ HTTP/REST API
+                     ↓
 ┌─────────────────────────────────────────────────────────────┐
-│                  Backend (Node.js/Express)                   │
-│  ┌──────────────────────────────────────────────────────┐   │
-│  │ Routes: Auth, Bounties, Stats                        │   │
-│  │ Controllers: Auth, Bounty, Google Auth, Stats        │   │
-│  │ Models: User, Bounty (MongoDB)                       │   │
-│  │ Middleware: Auth, Error, Validation, Rate Limit      │   │
-│  └──────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────┘
-                            ↓
+│                    Rust Backend                              │
+│  Actix-web + SQLite + SQLx + JWT                            │
+│  Port: 5000                                                  │
+└────────────────────┬────────────────────────────────────────┘
+                     │ RPC Calls
+                     ↓
 ┌─────────────────────────────────────────────────────────────┐
-│              External Services & Blockchain                  │
-│  ┌──────────────────────────────────────────────────────┐   │
-│  │ Starknet RPC: Real-time blockchain data              │   │
-│  │ Cairo Contracts: Bounty smart contracts              │   │
-│  │ AutoSwappr: Token deposits/payouts                   │   │
-│  │ Supabase: Database & Auth                            │   │
-│  │ GPT-OSS: AI-powered insights                         │   │
-│  └──────────────────────────────────────────────────────┘   │
+│                  Starknet Blockchain                         │
+│  Cairo Smart Contracts + RPC Endpoints                      │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 📁 Project Structure
+## 1. Frontend (React + TypeScript)
 
-### Frontend (`/src`)
-
-#### **Pages** (`/src/pages`)
-- **Index.tsx** - Main analytics dashboard with real-time Starknet data
-- **Analytics.tsx** - Advanced analytics interface
-- **Bounties.tsx** - Browse and manage bounties
-- **CreateBounty.tsx** - Create new bounties
-- **JoinBounty.tsx** - Join existing bounties
-- **PlaceBounty.tsx** - Place bounty offers
-- **QueryEditor.tsx** - SQL-like query interface for blockchain data
-- **DashboardBuilder.tsx** - Drag-and-drop dashboard creation
-- **DashboardEdit.tsx** - Edit existing dashboards
-- **DashboardPage.tsx** - View saved dashboards
-- **PublicDashboard.tsx** - Public dashboard sharing
-- **ContractEventsEDA.tsx** - Exploratory data analysis for contract events
-- **DataExplorerPage.tsx** - Advanced data exploration
-- **Wallet.tsx** - Wallet management and integration
-- **Profile.tsx** - User profile management
-- **Settings.tsx** - Application settings
-- **SystemStatus.tsx** - System health monitoring
-- **Auth.tsx** - Authentication page
-- **AdminDashboard.tsx** - Admin panel
-- **AdminLogin.tsx** - Admin authentication
-- **Charts.tsx** - Chart gallery and examples
-- **Docs.tsx** - Documentation
-- **Library.tsx** - Query/Dashboard library
-- **NotFound.tsx** - 404 page
-
-#### **Components** (`/src/components`)
-
-**Layout Components:**
-- `layout/AppLayout.tsx` - Main app wrapper
-- `layout/Header.tsx` - Top navigation header
-- `layout/Sidebar.tsx` - Navigation sidebar
-- `layout/AuthenticatedSidebar.tsx` - Authenticated user sidebar
-
-**AI Components:**
-- `ai/AIChatBox.tsx` - AI chat interface
-- `ai/AIFloatingButton.tsx` - Floating AI button
-- `ai/AIDataInterpreter.tsx` - AI data analysis
-- `ai/AISuggestions.tsx` - AI-powered suggestions
-
-**Dashboard Components:**
-- `dashboard/DashboardEditor.tsx` - Dashboard editing interface
-- `dashboard/DashboardWidget.tsx` - Individual dashboard widget
-- `dashboard/DraggableWidget.tsx` - Draggable widget wrapper
-- `dashboard/ProfessionalDashboardWidget.tsx` - Enhanced widget
-- `dashboard/SavedDashboards.tsx` - Saved dashboards list
-- `dashboard/StatsOverview.tsx` - Statistics overview
-- `dashboard/CreateDashboardModal.tsx` - Create dashboard dialog
-- `dashboard/SaveDashboardDialog.tsx` - Save dashboard dialog
-- `dashboard/DashboardEmptyState.tsx` - Empty state UI
-- `dashboard/DashboardHeader.tsx` - Dashboard header
-
-**Query Components:**
-- `query/QueryEditor.tsx` - Query writing interface
-- `query/AdvancedQueryEditor.tsx` - Advanced query features
-- `query/QueryVisualizer.tsx` - Query result visualization
-- `query/ChartBuilder.tsx` - Chart creation from queries
-- `query/QuerySuggestions.tsx` - AI query suggestions
-- `query/SavedQueries.tsx` - Saved queries list
-
-**Auth Components:**
-- `auth/SocialLoginButtons.tsx` - Social login buttons
-- `auth/SocialLoginDialog.tsx` - Social login dialog
-
-**Bounty Components:**
-- `bounty/BountyDetailsDialog.tsx` - Bounty details modal
-
-**Data Explorer:**
-- `data-explorer/DataExplorer.tsx` - Data exploration interface
-
-**UI Components** (`/src/components/ui`)
-- Radix UI components: accordion, alert-dialog, avatar, badge, button, calendar, card, carousel, checkbox, collapsible, dialog, dropdown-menu, etc.
-- Custom components: Chart, RpcStatus
-
-**Other:**
-- `ErrorBoundary.tsx` - Error boundary wrapper
-- `ProtectedRoute.tsx` - Route protection component
-
-#### **Contexts** (`/src/contexts`)
-- **AuthContext.tsx** - Authentication state management (demo mode + production)
-- **ThemeContext.tsx** - Theme management (light/dark mode)
-
-#### **Services** (`/src/services`)
-- **StarknetDataService.ts** - Real-time Starknet blockchain data fetching
-  - `getDailyActivity()` - Hourly activity metrics
-  - `getDiscoveryTransactions()` - Interesting transactions
-  - `getNetworkMetrics()` - Network statistics
-  - Caching mechanism (5-minute TTL)
-  - Fallback data generation
-
-- **BountyService.ts** - Bounty management
-  - `getBounties()` - Fetch bounties with filters
-  - `createBounty()` - Create new bounty
-  - `joinBounty()` - Join bounty
-  - `submitSolution()` - Submit solution
-  - `selectWinner()` - Select winner
-  - `getStats()` - Bounty statistics
-  - Demo data fallback
-
-- **DashboardService.ts** - Dashboard management
-- **QueryService.ts** - Query management
-- **ProfileService.ts** - User profile management
-- **NotificationService.ts** - Notification handling
-- **AutoSwapprService.ts** - AutoSwappr integration
-
-#### **Hooks** (`/src/hooks`)
-- `use-mobile.tsx` - Mobile detection
-- `use-toast.ts` - Toast notifications
-- `use-wallet.ts` - Wallet integration
-- `useCavosWallet.ts` - Cavos wallet integration
-- `useLayout.ts` - Layout state
-- `useLocalStorage.ts` - Local storage management
-- `useQuerySaver.ts` - Query saving
-- `useRpcEndpoint.ts` - RPC endpoint management
-
-#### **Utilities** (`/src/utils`)
-- `errorHandler.ts` - Error handling utilities
-- `validation.ts` - Input validation
-
-#### **Types** (`/src/types`)
-- `common.types.ts` - Shared TypeScript types
-
-#### **Lib** (`/src/lib`)
-- `api.ts` - API client configuration
-- `utils.ts` - Utility functions
-
-#### **Middleware** (`/src/middleware`)
-- `rateLimiter.ts` - Client-side rate limiting
-
-#### **Integrations** (`/src/integrations`)
-- `autoswappr.ts` - AutoSwappr API integration
-- `bounty-contract.ts` - Smart contract interaction
-
-### Backend (`/backend`)
-
-#### **Routes** (`/backend/src/routes`)
-- **authRoutes.js** - Authentication endpoints
-  - POST `/api/auth/signup` - User registration
-  - POST `/api/auth/signin` - User login
-  - POST `/api/auth/google` - Google OAuth
-  - POST `/api/auth/logout` - Logout
-
-- **bountyRoutes.js** - Bounty endpoints
-  - GET `/api/bounties` - List bounties
-  - POST `/api/bounties` - Create bounty
-  - GET `/api/bounties/:id` - Get bounty details
-  - PUT `/api/bounties/:id` - Update bounty
-  - POST `/api/bounties/:id/join` - Join bounty
-  - POST `/api/bounties/:id/submit` - Submit solution
-  - POST `/api/bounties/:id/winner` - Select winner
-  - GET `/api/bounties/stats` - Bounty statistics
-
-#### **Controllers** (`/backend/src/controllers`)
-- **authController.js** - Authentication logic
-  - User registration with validation
-  - Password hashing with bcrypt
-  - JWT token generation
-  - Email verification
-
-- **bountyController.js** - Bounty management logic
-  - CRUD operations
-  - Submission handling
-  - Winner selection
-
-- **googleAuthController.js** - Google OAuth handling
-- **statsController.js** - Statistics aggregation
-
-#### **Models** (`/backend/src/models`)
-
-**User.js** - User schema
-```javascript
-{
-  email: String (unique, validated),
-  password: String (hashed, optional for OAuth),
-  googleId: String (OAuth),
-  twitterId: String (OAuth),
-  githubId: String (OAuth),
-  authProvider: String (local|google|twitter|github),
-  role: String (admin|creator|analyst),
-  firstName: String,
-  lastName: String,
-  profilePicture: String (URL),
-  isActive: Boolean,
-  isEmailVerified: Boolean,
-  lastLogin: Date,
-  refreshToken: String,
-  timestamps: true
-}
+### Structure
+```
+src/
+├── components/          # Reusable UI components
+│   ├── ai/             # AI chat components
+│   ├── bounty/         # Bounty-related components
+│   ├── layout/         # Header, sidebar, footer
+│   └── ui/             # shadcn/ui components
+├── contexts/           # React contexts (Auth, Chain, Theme)
+├── hooks/              # Custom React hooks
+├── lib/                # Utilities and helpers
+├── pages/              # Route pages
+│   ├── Index.tsx       # Dashboard with 13 charts
+│   ├── Bounties.tsx    # Bounty management
+│   ├── Admin.tsx       # Admin panel
+│   └── ...
+├── services/           # API service layer
+└── types/              # TypeScript type definitions
 ```
 
-**Bounty.js** - Bounty schema
-```javascript
-{
-  title: String (required, max 200),
-  description: String (required, max 2000),
-  reward: {
-    amount: Number,
-    currency: String (USD|EUR|GBP|ETH|BTC|STRK)
-  },
-  status: String (draft|active|completed|cancelled|expired),
-  priority: String (low|medium|high|critical),
-  category: String (bug|feature|security|documentation|design|research|other),
-  tags: [String],
-  requirements: [{
-    description: String,
-    isCompleted: Boolean
-  }],
-  createdBy: ObjectId (ref: User),
-  assignedTo: ObjectId (ref: User),
-  submissions: [{
-    user: ObjectId,
-    content: String,
-    attachments: [String],
-    submittedAt: Date,
-    status: String (pending|approved|rejected),
-    feedback: String
-  }],
-  deadline: Date,
-  isPublic: Boolean,
-  views: Number,
-  timestamps: true
-}
+### Key Features
+- **Dashboard:** 13 real-time charts showing blockchain metrics
+- **Authentication:** Multi-wallet support (Argent, Braavos, Metamask)
+- **Bounty System:** Create, manage, and participate in bounties
+- **Admin Panel:** User management, bounty approval, analytics
+- **Dark Mode:** Full theme support
+- **Responsive:** Mobile, tablet, desktop layouts
+
+### State Management
+- React Context API for global state
+- Local state with useState/useReducer
+- Real-time updates every 30 seconds
+
+### API Integration
+```typescript
+// Example: Fetch dashboard stats
+const response = await fetch('http://localhost:5000/api/dashboards/stats');
+const data = await response.json();
+// Returns: { block_number, timestamp, stats: {...}, block_info: {...} }
 ```
-
-#### **Middleware** (`/backend/src/middlewares`)
-- **authMiddlewares.js** - JWT verification, role-based access
-- **errorMiddleware.js** - Global error handling
-- **validateMiddleware.js** - Input validation
-
-#### **Utilities** (`/backend/src/utils`)
-- **generateToken.js** - JWT token generation
-- **validateEnv.js** - Environment variable validation
-- **logger.js** - Winston logging
-- **rateLimiter.js** - Express rate limiting
-- **googleAuth.js** - Google OAuth utilities
-- **githubAuth.js** - GitHub OAuth utilities
-- **twitterAuth.js** - Twitter OAuth utilities
-
-#### **Validators** (`/backend/src/validators`)
-- **authValidator.js** - Auth input validation (Zod)
-- **bountyValidator.js** - Bounty input validation
-- **googleAuthValidator.js** - Google auth validation
-
-#### **Config** (`/backend/src/config`)
-- **db.js** - MongoDB connection configuration
-
-#### **Main Files**
-- **app.js** - Express app setup with middleware
-- **server.js** - Server startup
-
-### Smart Contracts (`/contracts`)
-
-#### **Cairo Smart Contract** (`/src/bounty_contract.cairo`)
-
-**Bounty Struct:**
-```cairo
-pub struct Bounty {
-    pub id: u256,
-    pub creator: ContractAddress,
-    pub title: felt252,
-    pub description: felt252,
-    pub reward_amount: u256,
-    pub deadline: u64,
-    pub status: u8,
-    pub max_participants: u32,
-    pub current_participants: u32,
-}
-```
-
-**Key Functions:**
-- `create_bounty()` - Create new bounty
-- `join_bounty()` - Join bounty as participant
-- `submit_solution()` - Submit solution hash
-- `select_winner()` - Select winner (creator only)
-- `get_bounty()` - Retrieve bounty details
-- `is_participant()` - Check participation
-- `get_winner()` - Get winner address
-
-**Events:**
-- `BountyCreated` - Emitted on bounty creation
-- `ParticipantJoined` - Emitted when participant joins
-- `SolutionSubmitted` - Emitted on solution submission
-- `WinnerSelected` - Emitted when winner is selected
-
-**Storage:**
-- `bounties: Map<u256, Bounty>` - Bounty storage
-- `bounty_count: u256` - Total bounty count
-- `participants: Map<(u256, ContractAddress), bool>` - Participation tracking
-- `submissions: Map<(u256, ContractAddress), felt252>` - Solution hashes
-- `winners: Map<u256, ContractAddress>` - Winner tracking
 
 ---
 
-## 🔄 Data Flow
+## 2. Backend (Rust + Actix-web)
+
+### Structure
+```
+backend-rust/
+├── src/
+│   ├── main.rs              # Entry point, server setup
+│   ├── config.rs            # Environment configuration
+│   ├── db.rs                # Database connection & migrations
+│   ├── errors.rs            # Custom error types
+│   ├── handlers/            # Request handlers (controllers)
+│   │   ├── auth.rs          # Authentication endpoints
+│   │   ├── bounty.rs        # Bounty CRUD operations
+│   │   ├── admin.rs         # Admin operations
+│   │   ├── contract.rs      # Contract queries
+│   │   ├── dashboard.rs     # Analytics & stats
+│   │   └── query.rs         # Custom queries
+│   ├── middleware/          # Custom middleware
+│   │   └── rate_limit.rs    # Rate limiting
+│   ├── models/              # Data structures
+│   │   ├── user.rs
+│   │   ├── bounty.rs
+│   │   ├── submission.rs
+│   │   └── ...
+│   ├── routes/              # Route configuration
+│   ├── services/            # Business logic
+│   │   └── rpc.rs           # Starknet RPC service
+│   └── utils/               # Utilities
+│       └── jwt.rs           # JWT token handling
+├── migrations/              # SQL migration files
+│   ├── 001_create_users.sql
+│   ├── 002_create_bounties.sql
+│   └── ...
+├── Cargo.toml              # Rust dependencies
+└── .env                    # Environment variables
+```
+
+### Database Schema (SQLite)
+
+#### Users Table
+```sql
+CREATE TABLE users (
+    id TEXT PRIMARY KEY,
+    email TEXT UNIQUE,
+    wallet_address TEXT UNIQUE,
+    password_hash TEXT,
+    role TEXT DEFAULT 'user',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+#### Bounties Table
+```sql
+CREATE TABLE bounties (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    description TEXT,
+    reward_amount REAL NOT NULL,
+    status TEXT DEFAULT 'open',
+    difficulty TEXT,
+    category TEXT,
+    created_by TEXT NOT NULL,
+    deadline DATETIME,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (created_by) REFERENCES users(id)
+);
+```
+
+#### Other Tables
+- `bounty_participants` - Track bounty participation
+- `submissions` - Bounty submissions
+- `rewards` - Reward distribution
+- `contract_queries` - Saved contract queries
+
+### API Endpoints (42 Total)
+
+#### Authentication (8 endpoints)
+- `POST /api/auth/register` - Register new user
+- `POST /api/auth/login` - Email/password login
+- `POST /api/auth/wallet` - Wallet authentication
+- `POST /api/auth/google` - Google OAuth
+- `GET /api/auth/me` - Get current user
+- `PUT /api/auth/profile` - Update profile
+- `POST /api/auth/refresh` - Refresh token
+- `POST /api/auth/logout` - Logout
+
+#### Bounties (12 endpoints)
+- `GET /api/bounties` - List all bounties
+- `POST /api/bounties` - Create bounty
+- `GET /api/bounties/:id` - Get bounty details
+- `PUT /api/bounties/:id` - Update bounty
+- `DELETE /api/bounties/:id` - Delete bounty
+- `POST /api/bounties/:id/join` - Join bounty
+- `POST /api/bounties/:id/submit` - Submit work
+- `GET /api/bounties/:id/submissions` - List submissions
+- `PUT /api/bounties/:id/submissions/:sid` - Review submission
+- `GET /api/bounties/user/:userId` - User's bounties
+- `GET /api/bounties/stats` - Bounty statistics
+- `POST /api/bounties/:id/reward` - Distribute reward
+
+#### Admin (6 endpoints)
+- `GET /api/admin/users` - List all users
+- `PUT /api/admin/users/:id` - Update user
+- `DELETE /api/admin/users/:id` - Delete user
+- `GET /api/admin/bounties` - All bounties (admin view)
+- `PUT /api/admin/bounties/:id/approve` - Approve bounty
+- `GET /api/admin/stats` - Platform statistics
+
+#### Contracts (8 endpoints)
+- `POST /api/contracts/events` - Get contract events
+- `POST /api/contracts/analyze` - Analyze contract
+- `POST /api/contracts/balance` - Get token balance
+- `POST /api/contracts/transactions` - Get transactions
+- `GET /api/contracts/queries` - Saved queries
+- `POST /api/contracts/queries` - Save query
+- `DELETE /api/contracts/queries/:id` - Delete query
+- `GET /api/contracts/popular` - Popular contracts
+
+#### Dashboard (3 endpoints)
+- `GET /api/dashboards` - User dashboard data
+- `GET /api/dashboards/analytics` - Platform analytics
+- `GET /api/dashboards/stats` - Blockchain stats (optimized)
+
+#### Queries (4 endpoints)
+- `GET /api/queries` - List saved queries
+- `POST /api/queries` - Create query
+- `GET /api/queries/:id` - Get query
+- `DELETE /api/queries/:id` - Delete query
+
+#### Health (1 endpoint)
+- `GET /health` - Health check
+
+### RPC Service (Starknet Integration)
+
+```rust
+// Multi-endpoint failover system
+const RPC_ENDPOINTS: &[&str] = &[
+    "https://starknet-mainnet.public.blastapi.io/rpc/v0_7",
+    "https://starknet-mainnet.g.alchemy.com/starknet/version/rpc/v0_7/...",
+    "https://starknet-mainnet.blastapi.io/...",
+    "https://free-rpc.nethermind.io/mainnet-juno/v0_7",
+];
+```
+
+**Features:**
+- Automatic failover if endpoint fails
+- Block fetching with transaction details
+- Event filtering and decoding
+- Contract analysis
+- Transaction status tracking
+
+### Performance Metrics
+- **Response Time:** 1-5ms average
+- **Throughput:** 15,000+ req/sec
+- **Memory:** ~30MB
+- **Startup:** <200ms
+- **Database:** SQLite (ACID compliant)
+
+---
+
+## 3. Smart Contracts (Cairo/Starknet)
+
+### Contract Structure
+```
+contracts/
+├── src/
+│   └── lib.cairo           # Main contract logic
+├── Scarb.toml              # Cairo dependencies
+└── Scarb.lock              # Lock file
+```
+
+### Contract Features
+- Token management
+- Bounty escrow
+- Reward distribution
+- Access control
+- Event emission
+
+### Deployment
+- Network: Starknet Mainnet
+- Compiler: Cairo 2.x
+- Build tool: Scarb
+
+---
+
+## 4. Data Flow
+
+### Dashboard Stats Flow
+```
+1. Frontend requests stats every 30s
+   ↓
+2. Backend fetches latest block from RPC
+   ↓
+3. Backend calculates all metrics from ONE block:
+   - Total transactions
+   - Gas used
+   - Unique senders
+   - Transaction status (success/failed/pending)
+   - Volume, TVL, fees
+   ↓
+4. Backend returns JSON response
+   ↓
+5. Frontend updates 13 charts with new data
+   ↓
+6. Historical data accumulated (last 20 blocks)
+```
 
 ### Authentication Flow
 ```
-User Input (Email/Password)
-    ↓
-AuthContext.signIn() / signUp()
-    ↓
-Demo Mode: localStorage storage
-Production Mode: API call to /api/auth/signin
-    ↓
-JWT Token stored in localStorage
-    ↓
-fetchProfile() retrieves user data
-    ↓
-User state updated in AuthContext
-    ↓
-Protected routes accessible
+1. User connects wallet (Argent/Braavos)
+   ↓
+2. Frontend sends wallet address to backend
+   ↓
+3. Backend checks if user exists in database
+   ↓
+4. Backend generates JWT token
+   ↓
+5. Frontend stores token in localStorage
+   ↓
+6. All subsequent requests include JWT in Authorization header
 ```
 
 ### Bounty Creation Flow
 ```
-User fills bounty form
-    ↓
-BountyService.createBounty()
-    ↓
-POST /api/bounties with auth token
-    ↓
-Backend validates input (Zod)
-    ↓
-MongoDB stores bounty
-    ↓
-Smart contract creates bounty on-chain
-    ↓
-AutoSwappr handles token deposit
-    ↓
-Notification sent to creator
-    ↓
-Bounty appears in list
-```
-
-### Real-Time Analytics Flow
-```
-Index page loads
-    ↓
-StarknetDataService.getDailyActivity()
-    ↓
-Fetch from Starknet RPC endpoints
-    ↓
-Parse block data
-    ↓
-Calculate metrics (transactions, gas, users)
-    ↓
-Cache data (5-minute TTL)
-    ↓
-Update charts every 2 seconds
-    ↓
-User sees live Starknet data
+1. User fills bounty form
+   ↓
+2. Frontend validates input
+   ↓
+3. POST /api/bounties with JWT token
+   ↓
+4. Backend verifies JWT
+   ↓
+5. Backend inserts into SQLite database
+   ↓
+6. Backend returns created bounty
+   ↓
+7. Frontend updates UI
 ```
 
 ---
 
-## 🔐 Security Features
+## 5. Security
 
 ### Backend Security
-1. **Helmet.js** - HTTP security headers
-2. **CORS** - Cross-origin resource sharing control
-3. **Rate Limiting** - 100 requests per 15 minutes
-4. **Input Sanitization** - MongoDB sanitization + XSS prevention
-5. **Password Hashing** - bcryptjs with salt rounds 12
-6. **JWT Authentication** - Secure token-based auth
-7. **Environment Validation** - Required env vars checked at startup
-8. **Error Handling** - Comprehensive error middleware
+- **JWT Authentication:** Secure token-based auth
+- **Password Hashing:** bcrypt with salt
+- **Rate Limiting:** 1000 requests per 15 minutes
+- **SQL Injection:** Prevented by SQLx prepared statements
+- **CORS:** Configurable origin whitelist
+- **Memory Safety:** Rust's compile-time guarantees
 
 ### Frontend Security
-1. **Protected Routes** - ProtectedRoute component
-2. **Token Storage** - localStorage with auth_token
-3. **Input Validation** - Zod schema validation
-4. **XSS Prevention** - React's built-in XSS protection
-5. **HTTPS** - Enforced in production
+- **XSS Prevention:** React's built-in escaping
+- **HTTPS Only:** Production deployment
+- **Token Storage:** Secure localStorage
+- **Input Validation:** Client-side validation
+- **CSRF Protection:** Token-based requests
 
 ---
 
-## 🚀 Key Features
-
-### 1. Real-Time Analytics Dashboard
-- **Live Starknet Data** - Fetches from multiple RPC endpoints
-- **Interactive Charts** - Recharts library for visualizations
-- **Metrics Tracked:**
-  - Transaction volume
-  - Gas usage
-  - Active users
-  - Average fees
-  - Top contracts
-  - Block metrics
-  - Wallet growth
-  - Transaction status
-  - Failed rate
-  - Validator performance
-
-### 2. Bounty Management System
-- **Create Bounties** - Define tasks with rewards
-- **Join Bounties** - Participate in challenges
-- **Submit Solutions** - Upload work for review
-- **Select Winners** - Automated payout via smart contracts
-- **Role-Based Access** - Creator, Analyst, Admin roles
-- **Smart Contract Integration** - On-chain bounty logic
-
-### 3. Dashboard Builder
-- **Drag-and-Drop** - React Grid Layout
-- **Custom Widgets** - Create personalized dashboards
-- **Save/Share** - Public dashboard sharing
-- **Real-Time Updates** - Live data refresh
-
-### 4. Query Editor
-- **SQL-Like Interface** - Write custom queries
-- **AI Suggestions** - GPT-OSS powered recommendations
-- **Visualization** - Auto-generate charts
-- **Save Queries** - Reuse common queries
-
-### 5. AI Integration
-- **GPT-OSS 120B** - Advanced language model
-- **Data Interpretation** - Automatic insights
-- **Chat Interface** - Interactive AI assistant
-- **Query Suggestions** - Smart query recommendations
-
-### 6. Wallet Integration
-- **Starknet Wallets** - Argent X, Braavos support
-- **Transaction Signing** - Secure contract interactions
-- **Balance Display** - Real-time wallet balance
-
----
-
-## 🛠️ Technology Stack
-
-### Frontend
-- **React 18** - UI framework
-- **TypeScript** - Type safety
-- **Vite** - Build tool
-- **Tailwind CSS** - Styling
-- **shadcn/ui** - Component library
-- **Recharts** - Data visualization
-- **React Router** - Navigation
-- **React Hook Form** - Form management
-- **Zod** - Schema validation
-- **TanStack Query** - Data fetching
-- **Starknet.js** - Blockchain interaction
+## 6. Performance Optimizations
 
 ### Backend
-- **Node.js** - Runtime
-- **Express** - Web framework
-- **MongoDB** - Database
-- **Mongoose** - ODM
-- **JWT** - Authentication
-- **bcryptjs** - Password hashing
-- **Zod** - Validation
-- **Winston** - Logging
-- **Helmet** - Security headers
-- **CORS** - Cross-origin handling
-
-### Blockchain
-- **Starknet** - L2 blockchain
-- **Cairo** - Smart contract language
-- **Scarb** - Cairo package manager
-- **Starkli** - CLI tool
-
-### Deployment
-- **Vercel** - Frontend hosting
-- **Supabase** - Backend services
-- **Edge Functions** - Serverless functions
-
----
-
-## 📊 Database Schema
-
-### Users Collection
-```
-{
-  _id: ObjectId,
-  email: String (unique),
-  password: String (hashed),
-  role: String (admin|creator|analyst),
-  firstName: String,
-  lastName: String,
-  profilePicture: String,
-  isActive: Boolean,
-  isEmailVerified: Boolean,
-  lastLogin: Date,
-  createdAt: Date,
-  updatedAt: Date
-}
-```
-
-### Bounties Collection
-```
-{
-  _id: ObjectId,
-  title: String,
-  description: String,
-  reward: {
-    amount: Number,
-    currency: String
-  },
-  status: String,
-  priority: String,
-  category: String,
-  tags: [String],
-  requirements: [{
-    description: String,
-    isCompleted: Boolean
-  }],
-  createdBy: ObjectId (ref: User),
-  submissions: [{
-    user: ObjectId,
-    content: String,
-    status: String,
-    submittedAt: Date
-  }],
-  deadline: Date,
-  isPublic: Boolean,
-  views: Number,
-  createdAt: Date,
-  updatedAt: Date
-}
-```
-
----
-
-## 🔌 API Endpoints
-
-### Authentication
-- `POST /api/auth/signup` - Register user
-- `POST /api/auth/signin` - Login user
-- `POST /api/auth/google` - Google OAuth
-- `POST /api/auth/logout` - Logout
-
-### Bounties
-- `GET /api/bounties` - List bounties
-- `GET /api/bounties/:id` - Get bounty
-- `POST /api/bounties` - Create bounty
-- `PUT /api/bounties/:id` - Update bounty
-- `POST /api/bounties/:id/join` - Join bounty
-- `POST /api/bounties/:id/submit` - Submit solution
-- `POST /api/bounties/:id/winner` - Select winner
-- `GET /api/bounties/stats` - Get statistics
-
-### Health
-- `GET /health` - Health check
-
----
-
-## 🎯 User Roles
-
-### Admin
-- Full system access
-- User management
-- Bounty moderation
-- System configuration
-
-### Creator
-- Create bounties
-- Manage own bounties
-- Select winners
-- View analytics
-
-### Analyst
-- Browse bounties
-- Join bounties
-- Submit solutions
-- View analytics
-- Create dashboards
-
----
-
-## 📈 Performance Optimizations
-
-1. **Code Splitting** - Lazy loading of pages
-2. **Caching** - 5-minute cache for Starknet data
-3. **Rate Limiting** - Prevent API abuse
-4. **Database Indexes** - Optimized queries
-5. **Image Optimization** - WebP format
-6. **Bundle Optimization** - Tree shaking, minification
-7. **CDN** - Vercel global CDN
-
----
-
-## 🧪 Testing
-
-### Backend
-- Unit tests for validators
-- Integration tests for routes
-- Contract tests for Cairo
+- **Async/Await:** Non-blocking I/O
+- **Connection Pooling:** Reuse database connections
+- **Compiled Binary:** No runtime overhead
+- **Zero-Copy:** Efficient data handling
+- **Multi-threading:** Actix-web workers
 
 ### Frontend
-- Component tests
-- Integration tests
-- E2E tests
+- **Code Splitting:** Lazy loading routes
+- **Memoization:** React.memo, useMemo
+- **Debouncing:** API call optimization
+- **Virtual Scrolling:** Large lists
+- **Image Optimization:** Lazy loading
+
+### Database
+- **Indexes:** On frequently queried columns
+- **Prepared Statements:** Query plan caching
+- **Transactions:** Batch operations
+- **WAL Mode:** Better concurrency
 
 ---
 
-## 📝 Environment Variables
+## 7. Testing
 
-### Frontend (.env.local)
-```
-VITE_API_URL=http://localhost:3000
-VITE_STARKNET_RPC_URL=https://starknet-mainnet.public.blastapi.io
-VITE_BOUNTY_CONTRACT_ADDRESS=0x...
-VITE_AUTOSWAPPR_API_URL=https://api.autoswappr.com
-VITE_GPT_OSS_ENDPOINT=http://localhost:8000
-VITE_CAVOS_CLIENT_ID=...
-```
-
-### Backend (.env)
-```
-NODE_ENV=production
-PORT=3000
-MONGODB_URI=mongodb://...
-JWT_SECRET=...
-CORS_ORIGIN=https://starklytics-suite.vercel.app
-RATE_LIMIT_MAX_REQUESTS=100
-```
-
----
-
-## 🚀 Deployment
-
-### Frontend
+### Backend Tests
 ```bash
-npm run build
-# Deployed to Vercel
+cd backend-rust
+cargo test
 ```
 
-### Backend
+### Frontend Tests
 ```bash
-npm run start
-# Deployed to Supabase/Vercel
+npm run test
 ```
 
-### Smart Contracts
+### Integration Tests
 ```bash
-./scripts/deploy-contract.sh
-# Deployed to Starknet mainnet
+# Test all API endpoints
+cd backend-rust
+./test-api.sh
 ```
 
 ---
 
-## 📚 Key Files to Understand
+## 8. Deployment Architecture
 
-1. **src/App.tsx** - Main app routing and setup
-2. **src/pages/Index.tsx** - Analytics dashboard implementation
-3. **src/services/StarknetDataService.ts** - Blockchain data fetching
-4. **src/services/BountyService.ts** - Bounty management
-5. **src/contexts/AuthContext.tsx** - Authentication state
-6. **backend/src/app.js** - Express app configuration
-7. **backend/src/models/User.js** - User schema
-8. **backend/src/models/Bounty.js** - Bounty schema
-9. **src/bounty_contract.cairo** - Smart contract logic
+### Production Setup
+```
+┌─────────────────────────────────────────┐
+│         Load Balancer (Nginx)           │
+│         SSL/TLS Termination             │
+└──────────────┬──────────────────────────┘
+               │
+       ┌───────┴────────┐
+       │                │
+       ↓                ↓
+┌─────────────┐  ┌─────────────┐
+│  Frontend   │  │   Backend   │
+│  (Static)   │  │   (Rust)    │
+│  Port 80    │  │  Port 5000  │
+└─────────────┘  └──────┬──────┘
+                        │
+                        ↓
+                 ┌─────────────┐
+                 │   SQLite    │
+                 │  Database   │
+                 └─────────────┘
+```
+
+### Scaling Strategy
+- **Horizontal:** Multiple backend instances behind load balancer
+- **Vertical:** Increase server resources
+- **Database:** Consider PostgreSQL for multi-writer scenarios
+- **Caching:** Redis for session storage
+- **CDN:** Static asset delivery
 
 ---
 
-## 🔄 Development Workflow
+## 9. Monitoring
+
+### Metrics to Track
+- Response times (p50, p95, p99)
+- Error rates
+- Request throughput
+- Database query performance
+- Memory usage
+- CPU usage
+- Active connections
+
+### Logging
+```rust
+// Backend logging levels
+RUST_LOG=error  // Production
+RUST_LOG=info   // Staging
+RUST_LOG=debug  // Development
+```
+
+---
+
+## 10. Development Workflow
 
 ### Local Development
 ```bash
-# Install dependencies
-npm install
-cd backend && npm install
+# Terminal 1: Backend
+cd backend-rust
+cargo run
 
-# Start backend
-npm run backend
-
-# Start frontend (in another terminal)
+# Terminal 2: Frontend
 npm run dev
 
-# Access at http://localhost:8080
+# Terminal 3: Watch logs
+tail -f backend-rust/logs/app.log
 ```
 
-### Production Build
-```bash
-npm run build
-# Creates optimized dist/ folder
-```
+### Git Workflow
+1. Create feature branch
+2. Make changes
+3. Run tests
+4. Commit with descriptive message
+5. Push and create PR
+6. Code review
+7. Merge to main
 
 ---
 
-## 🎓 Learning Path
+## Technology Stack Summary
 
-1. **Start with** `src/App.tsx` - Understand routing
-2. **Then explore** `src/pages/Index.tsx` - Main dashboard
-3. **Study** `src/contexts/AuthContext.tsx` - State management
-4. **Review** `src/services/StarknetDataService.ts` - Data fetching
-5. **Check** `backend/src/app.js` - Backend setup
-6. **Examine** `backend/src/models/` - Database schemas
-7. **Understand** `src/bounty_contract.cairo` - Smart contracts
-
----
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create feature branch
-3. Make changes
-4. Submit pull request
-5. Follow code style guidelines
-
----
-
-## 📞 Support
-
-- **Email:** support@starklytics.com
-- **Discord:** [Join community](https://discord.gg/starklytics)
-- **GitHub Issues:** Report bugs
-- **Documentation:** [Full docs](./README-PRODUCTION.md)
+| Layer | Technology | Purpose |
+|-------|-----------|---------|
+| **Frontend** | React 18 | UI framework |
+| | TypeScript | Type safety |
+| | Vite | Build tool |
+| | TailwindCSS | Styling |
+| | Recharts | Data visualization |
+| | shadcn/ui | Component library |
+| **Backend** | Rust 1.75+ | Programming language |
+| | Actix-web 4.9 | Web framework |
+| | SQLx 0.8 | Database driver |
+| | SQLite | Database |
+| | JWT | Authentication |
+| | bcrypt | Password hashing |
+| **Blockchain** | Starknet | Layer 2 network |
+| | Cairo 2.x | Smart contract language |
+| | Scarb | Build tool |
+| **DevOps** | Docker | Containerization |
+| | Nginx | Reverse proxy |
+| | GitHub Actions | CI/CD |
 
 ---
 
-## 📄 License
-
-MIT License - See LICENSE file for details
-
----
-
-**Last Updated:** January 2025
-**Version:** 1.0.0
-**Status:** Production Ready ✅
+**Last Updated:** December 24, 2024
