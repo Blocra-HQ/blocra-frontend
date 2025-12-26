@@ -182,35 +182,35 @@ const Index = () => {
       
       {/* Chain Switch Notification */}
       {showChainSwitch && (
-        <div className="fixed top-20 right-4 z-50 animate-in slide-in-from-top">
-          <div className="bg-blue-600 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3">
-            <div className="w-3 h-3 bg-white rounded-full animate-pulse"></div>
-            <div>
-              <p className="font-semibold">Chain Switched!</p>
-              <p className="text-sm">Now viewing {currentChain.name}</p>
+        <div className="fixed top-16 sm:top-20 right-2 sm:right-4 z-50 animate-in slide-in-from-top max-w-[calc(100vw-1rem)] sm:max-w-sm">
+          <div className="bg-blue-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg shadow-lg flex items-center gap-2 sm:gap-3">
+            <div className="w-2 h-2 sm:w-3 sm:h-3 bg-white rounded-full animate-pulse flex-shrink-0"></div>
+            <div className="min-w-0">
+              <p className="font-semibold text-sm sm:text-base truncate">Chain Switched!</p>
+              <p className="text-xs sm:text-sm truncate">Now viewing {currentChain.name}</p>
             </div>
           </div>
         </div>
       )}
       
-      <main className="w-full px-2 py-3 space-y-3">{/* Maximized width */}
-        {/* Chain Info Banner */}
-        <div className="flex items-center justify-between gap-4 p-2 bg-card border rounded-lg shadow-sm">
-          <div className="flex items-center gap-4">
+      <main className="w-full px-2 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6 space-y-3 sm:space-y-4">{/* Responsive padding */}
+        {/* Chain Info Banner - Responsive */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4 p-3 sm:p-4 bg-card border rounded-lg shadow-sm">
+          <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto">
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              <span className="font-semibold text-sm">{currentChain.name}</span>
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse flex-shrink-0"></div>
+              <span className="font-semibold text-sm sm:text-base">{currentChain.name}</span>
             </div>
-            <div className="text-xs text-muted-foreground">
+            <div className="text-xs sm:text-sm text-muted-foreground">
               {currentChain.nativeCurrency}
             </div>
           </div>
           {blockInfo && !error && (
-            <div className="text-xs text-muted-foreground flex items-center gap-2">
-              <span>Block #{blockInfo.block_number.toLocaleString()}</span>
-              <span>•</span>
-              <span>{new Date(blockInfo.timestamp * 1000).toLocaleTimeString()}</span>
-              {loading && <span className="animate-pulse">• Updating...</span>}
+            <div className="text-xs sm:text-sm text-muted-foreground flex flex-wrap items-center gap-1 sm:gap-2 w-full sm:w-auto">
+              <span className="whitespace-nowrap">Block #{blockInfo.block_number.toLocaleString()}</span>
+              <span className="hidden sm:inline">•</span>
+              <span className="whitespace-nowrap">{new Date(blockInfo.timestamp * 1000).toLocaleTimeString()}</span>
+              {loading && <span className="animate-pulse whitespace-nowrap">• Updating...</span>}
             </div>
           )}
         </div>
@@ -228,16 +228,16 @@ const Index = () => {
           </div>
         )}
 
-        {/* Loading State */}
+        {/* Loading State - Responsive Grid */}
         {loading && !stats && (
-          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-5">
+          <div className="grid gap-2 sm:gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             {[...Array(5)].map((_, i) => (
               <Card key={i}>
-                <CardContent className="p-6">
+                <CardContent className="p-4 sm:p-6">
                   <div className="animate-pulse">
-                    <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                    <div className="h-8 bg-gray-200 rounded w-1/2 mb-2"></div>
-                    <div className="h-3 bg-gray-200 rounded w-2/3"></div>
+                    <div className="h-3 sm:h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
+                    <div className="h-6 sm:h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-2"></div>
+                    <div className="h-2 sm:h-3 bg-gray-200 dark:bg-gray-700 rounded w-2/3"></div>
                   </div>
                 </CardContent>
               </Card>
@@ -245,64 +245,64 @@ const Index = () => {
           </div>
         )}
 
-        {/* Key Metrics - Single Block Data */}
+        {/* Key Metrics - Responsive Grid */}
         {stats && (
           <>
-            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-5">
+            <div className="grid gap-2 sm:gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
               <Card className="border-l-4 border-l-blue-500">
-                <CardContent className="p-4">
+                <CardContent className="p-3 sm:p-4">
                   <p className="text-xs font-medium text-muted-foreground mb-1">Total Transactions</p>
-                  <p className="text-2xl font-bold mb-1">{stats.total_transactions.toLocaleString()}</p>
+                  <p className="text-xl sm:text-2xl font-bold mb-1">{stats.total_transactions.toLocaleString()}</p>
                   <p className="text-xs text-muted-foreground">In latest block</p>
                 </CardContent>
               </Card>
 
               <Card className="border-l-4 border-l-green-500">
-                <CardContent className="p-4">
+                <CardContent className="p-3 sm:p-4">
                   <p className="text-xs font-medium text-muted-foreground mb-1">Active Users</p>
-                  <p className="text-2xl font-bold mb-1">{stats.active_users.toLocaleString()}</p>
+                  <p className="text-xl sm:text-2xl font-bold mb-1">{stats.active_users.toLocaleString()}</p>
                   <p className="text-xs text-muted-foreground">Unique addresses</p>
                 </CardContent>
               </Card>
 
               <Card className="border-l-4 border-l-purple-500">
-                <CardContent className="p-4">
+                <CardContent className="p-3 sm:p-4">
                   <p className="text-xs font-medium text-muted-foreground mb-1">Gas Used</p>
-                  <p className="text-2xl font-bold mb-1">{(stats.gas_used / 1000000).toFixed(1)}M</p>
+                  <p className="text-xl sm:text-2xl font-bold mb-1">{(stats.gas_used / 1000000).toFixed(1)}M</p>
                   <p className="text-xs text-muted-foreground">Total gas consumed</p>
                 </CardContent>
               </Card>
 
               <Card className="border-l-4 border-l-orange-500">
-                <CardContent className="p-4">
+                <CardContent className="p-3 sm:p-4">
                   <p className="text-xs font-medium text-muted-foreground mb-1">Volume</p>
-                  <p className="text-2xl font-bold mb-1">${stats.volume.toLocaleString()}</p>
+                  <p className="text-xl sm:text-2xl font-bold mb-1">${stats.volume.toLocaleString()}</p>
                   <p className="text-xs text-muted-foreground">Transaction volume</p>
                 </CardContent>
               </Card>
 
               <Card className="border-l-4 border-l-pink-500">
-                <CardContent className="p-4">
+                <CardContent className="p-3 sm:p-4">
                   <p className="text-xs font-medium text-muted-foreground mb-1">TVL</p>
-                  <p className="text-2xl font-bold mb-1">${(stats.tvl / 1000000).toFixed(0)}M</p>
+                  <p className="text-xl sm:text-2xl font-bold mb-1">${(stats.tvl / 1000000).toFixed(0)}M</p>
                   <p className="text-xs text-muted-foreground">Total value locked</p>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Primary Charts - Time Series */}
-            <div className="grid gap-3 md:grid-cols-2">
+            {/* Primary Charts - Responsive Grid */}
+            <div className="grid gap-2 sm:gap-3 grid-cols-1 lg:grid-cols-2">
               <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5 text-blue-500" />
-                    Transaction Volume
+                <CardHeader className="p-3 sm:p-6">
+                  <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                    <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-blue-500 flex-shrink-0" />
+                    <span className="truncate">Transaction Volume</span>
                   </CardTitle>
                   <p className="text-xs text-muted-foreground">Number of transactions per block</p>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-3 sm:p-6 pt-0">
                   {historicalData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={250}>
+                    <ResponsiveContainer width="100%" height={200} className="sm:h-[250px]">
                       <LineChart data={historicalData}>
                         <XAxis dataKey="time" />
                         <YAxis />
@@ -353,19 +353,19 @@ const Index = () => {
               </Card>
             </div>
 
-            {/* Secondary Charts Grid */}
-            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+            {/* Secondary Charts Grid - Responsive */}
+            <div className="grid gap-2 sm:gap-3 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
               <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <BarChart3 className="h-5 w-5 text-green-500" />
-                    Network Volume
+                <CardHeader className="p-3 sm:p-6">
+                  <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                    <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5 text-green-500 flex-shrink-0" />
+                    <span className="truncate">Network Volume</span>
                   </CardTitle>
                   <p className="text-xs text-muted-foreground">Transaction volume in USD</p>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-3 sm:p-6 pt-0">
                   {historicalData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={200}>
+                    <ResponsiveContainer width="100%" height={180} className="sm:h-[200px]">
                       <BarChart data={historicalData}>
                         <XAxis dataKey="time" />
                         <YAxis />

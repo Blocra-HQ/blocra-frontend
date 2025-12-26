@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Header } from '@/components/layout/Header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +16,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 export default function AdminDashboard() {
   const [stats, setStats] = useState<any>(null);
   const [activities, setActivities] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
   const [topContracts, setTopContracts] = useState<any[]>([]);
   const [activityTrends, setActivityTrends] = useState<any[]>([]);
   const [filterUser, setFilterUser] = useState('');
@@ -31,6 +33,19 @@ export default function AdminDashboard() {
   const loadDashboardData = async () => {
     const stats = await ActivityTrackingService.getActivityStats();
     const activities = await ActivityTrackingService.getActivities(50);
+
+    // Fetch users from backend
+    const backendUrl = import.meta.env.VITE_BACKEND_URL;
+    if (backendUrl) {
+      try {
+        const response = await fetch(`${backendUrl}/api/admin/users`);
+        const usersData = await response.json();
+        setUsers(usersData);
+      } catch (error) {
+        console.error('Failed to fetch users:', error);
+        setUsers([]);
+      }
+    }
 
     setStats({
       totalUsers: stats.total,
@@ -117,13 +132,11 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-6">
+    <div className="min-h-screen bg-background">
+      <Header title="Admin Dashboard" subtitle="Monitor platform usage and manage users" />
+      <div className="p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">BlocRA Admin Dashboard</h1>
-            <p className="text-muted-foreground">Monitor platform usage and user activities</p>
-          </div>
           <div className="flex space-x-2">
             <Button onClick={loadDashboardData} variant="outline">
               <RefreshCw className="h-4 w-4 mr-2" />
@@ -251,6 +264,62 @@ export default function AdminDashboard() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
+              <span>👥 Registered Users ({users.length})</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left p-3">ID</th>
+                    <th className="text-left p-3">Email</th>
+                    <th className="text-left p-3">Username</th>
+                    <th className="text-left p-3">Wallet Address</th>
+                    <th className="text-left p-3">Role</th>
+                    <th className="text-left p-3">Created At</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="text-center py-8 text-muted-foreground">
+                        No users found
+                      </td>
+                    </tr>
+                  ) : (
+                    users.map(user => (
+                      <tr key={user.id} className="border-b hover:bg-muted/50">
+                        <td className="p-3 font-mono text-sm">{user.id}</td>
+                        <td className="p-3">{user.email || '-'}</td>
+                        <td className="p-3">{user.username || '-'}</td>
+                        <td className="p-3 font-mono text-xs">
+                          {user.wallet_address ? (
+                            <span title={user.wallet_address}>
+                              {user.wallet_address.substring(0, 10)}...{user.wallet_address.substring(user.wallet_address.length - 8)}
+                            </span>
+                          ) : '-'}
+                        </td>
+                        <td className="p-3">
+                          <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
+                            {user.role}
+                          </Badge>
+                        </td>
+                        <td className="p-3 text-sm">
+                          {new Date(user.created_at).toLocaleString()}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
               <span>Recent Activities</span>
               <div className="flex space-x-2">
                 <Input
@@ -309,6 +378,7 @@ export default function AdminDashboard() {
             </div>
           </CardContent>
         </Card>
+      </div>
       </div>
     </div>
   );
