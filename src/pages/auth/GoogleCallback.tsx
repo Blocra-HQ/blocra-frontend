@@ -11,7 +11,8 @@ export default function GoogleCallback() {
       
       if (code) {
         try {
-          const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/google`, {
+          const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+          const response = await fetch(`${backendUrl}/api/auth/google`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ token: code, role: 'analyst' })

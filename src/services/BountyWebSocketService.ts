@@ -21,7 +21,9 @@ class BountyWebSocketService {
 
   private connect() {
     try {
-      const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:5000';
+      // Convert HTTP(S) backend URL to WebSocket URL
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+      const wsUrl = import.meta.env.VITE_WS_URL || backendUrl.replace(/^http/, 'ws');
       this.ws = new WebSocket(wsUrl);
 
       this.ws.onopen = () => {

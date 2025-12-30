@@ -37,7 +37,8 @@ export function OptimizedStats() {
         setError(null);
         
         // Single API call to get all stats from one block
-        const response = await fetch('http://localhost:5000/api/dashboards/stats');
+        const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+        const response = await fetch(`${backendUrl}/api/dashboards/stats`);
         
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);

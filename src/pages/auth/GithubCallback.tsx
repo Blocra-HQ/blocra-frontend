@@ -11,7 +11,8 @@ export default function GithubCallback() {
       
       if (code) {
         try {
-          const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/github`, {
+          const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+          const response = await fetch(`${backendUrl}/api/auth/github`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ code, role: 'analyst' })

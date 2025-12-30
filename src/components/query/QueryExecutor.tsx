@@ -44,7 +44,9 @@ export function QueryExecutor({ onResults, onError }: QueryExecutorProps) {
   };
 
   const executeRPCQuery = async (sql: string): Promise<any[]> => {
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+    const API_URL = import.meta.env.VITE_BACKEND_URL 
+      ? `${import.meta.env.VITE_BACKEND_URL}/api`
+      : 'http://localhost:5000/api';
     
     try {
       const response = await fetch(`${API_URL}/queries/execute`, {
