@@ -19,33 +19,21 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
-// Lazily loaded pages
+// Lazily loaded pages - Core features only
 const ContractEventsEDA = lazy(() => import("./pages/ContractEventsEDA"));
+const QueryEditor = lazy(() => import("./pages/QueryEditor"));
 const Docs = lazy(() => import("./pages/Docs"));
 const Profile = lazy(() => import("./pages/Profile"));
-const CreateBounty = lazy(() => import("./pages/CreateBounty"));
-const QueryEditor = lazy(() => import("./pages/QueryEditor"));
-const Analytics = lazy(() => import("./pages/Analytics"));
-const Bounties = lazy(() => import("./pages/Bounties"));
-const DashboardBuilder = lazy(() => import("./pages/DashboardBuilder"));
-const DashboardEdit = lazy(() => import("./pages/DashboardEdit"));
-const DashboardPage = lazy(() => import("./pages/DashboardPage"));
-const PublicDashboard = lazy(() => import("./pages/PublicDashboard"));
-const Charts = lazy(() => import("./pages/Charts"));
-const Wallet = lazy(() => import("./pages/Wallet"));
 const Settings = lazy(() => import("./pages/Settings"));
-const JoinBounty = lazy(() => import("./pages/JoinBounty"));
-const PlaceBounty = lazy(() => import("./pages/PlaceBounty"));
-const SystemStatus = lazy(() => import("./pages/SystemStatus"));
 const DataExplorerPage = lazy(() => import("./pages/DataExplorerPage"));
 const LibraryPage = lazy(() => import("./pages/LibraryPage"));
-const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
-const AdminLogin = lazy(() => import("./pages/AdminLogin"));
-const MyBounties = lazy(() => import("./pages/MyBounties"));
-const BountyStats = lazy(() => import("./pages/BountyStats"));
-const SubmitBounty = lazy(() => import("./pages/SubmitBounty"));
 const GoogleCallback = lazy(() => import("./pages/auth/GoogleCallback"));
-const GithubCallback = lazy(() => import("./pages/auth/GithubCallback"));
+
+// Bounty features - consolidated
+const Bounties = lazy(() => import("./pages/Bounties"));
+const CreateBounty = lazy(() => import("./pages/CreateBounty"));
+const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+const DashboardBuilder = lazy(() => import("./pages/DashboardBuilder"));
 
 const queryClient = new QueryClient();
 
@@ -75,7 +63,6 @@ const App = () => (
                           </ProtectedRoute>
                         } />
                         <Route path="/auth/google/callback" element={<GoogleCallback />} />
-                        <Route path="/auth/github/callback" element={<GithubCallback />} />
 
                         <Route path="/docs" element={
                           <Docs />
@@ -92,17 +79,7 @@ const App = () => (
                             <Profile />
                           </ProtectedRoute>
                         } />
-                        <Route path="/join-bounty" element={
-                          <ProtectedRoute>
-                            <JoinBounty />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/place-bounty" element={
-                          <ProtectedRoute>
-                            <PlaceBounty />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/create-bounty" element={
+                        <Route path="/bounties/create" element={
                           <ProtectedRoute>
                             <CreateBounty />
                           </ProtectedRoute>
@@ -132,42 +109,10 @@ const App = () => (
                             <LibraryPage />
                           </ProtectedRoute>
                         } />
-                        <Route path="/admin" element={<AdminLogin />} />
-                        <Route path="/admin/dashboard" element={<AdminDashboard />} />
-                        <Route path="/analytics" element={
-                          <ProtectedRoute>
-                            <Analytics />
-                          </ProtectedRoute>
-                        } />
+                        <Route path="/admin" element={<AdminDashboard />} />
                         <Route path="/bounties" element={
                           <ProtectedRoute>
                             <Bounties />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/builder" element={
-                          <ProtectedRoute>
-                            <DashboardBuilder />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/builder/edit/:id" element={
-                          <ProtectedRoute>
-                            <DashboardEdit />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/dashboard/:username/:slug" element={
-                          <ProtectedRoute>
-                            <DashboardPage />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/d/:username/:slug" element={<PublicDashboard />} />
-                        <Route path="/charts" element={
-                          <ProtectedRoute>
-                            <Charts />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/wallet" element={
-                          <ProtectedRoute>
-                            <Wallet />
                           </ProtectedRoute>
                         } />
                         <Route path="/contract-events-eda" element={
@@ -180,24 +125,9 @@ const App = () => (
                             <Settings />
                           </ProtectedRoute>
                         } />
-                        <Route path="/status" element={
+                        <Route path="/builder" element={
                           <ProtectedRoute>
-                            <SystemStatus />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/my-bounties" element={
-                          <ProtectedRoute>
-                            <MyBounties />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/bounty-stats" element={
-                          <ProtectedRoute>
-                            <BountyStats />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/bounty/:bountyId/submit" element={
-                          <ProtectedRoute>
-                            <SubmitBounty />
+                            <DashboardBuilder />
                           </ProtectedRoute>
                         } />
 

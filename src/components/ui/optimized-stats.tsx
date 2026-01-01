@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Zap } from 'lucide-react';
 
 interface BlockchainStats {
   total_transactions: number;
@@ -206,7 +207,7 @@ export function OptimizedStats() {
                 <p className="text-xs text-muted-foreground">Avg Fee</p>
                 <p className="text-lg font-semibold">{parseFloat(stats.avg_fee).toFixed(6)} ETH</p>
               </div>
-              <div className="text-2xl">⚡</div>
+              <Zap className="h-6 w-6 text-yellow-500" />
             </div>
           </CardContent>
         </Card>

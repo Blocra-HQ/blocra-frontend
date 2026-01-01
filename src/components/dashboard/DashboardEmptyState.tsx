@@ -31,7 +31,7 @@ export function DashboardEmptyState({ onEdit }: DashboardEmptyStateProps) {
       </div>
       
       <div className="text-sm text-muted-foreground">
-        <p>💡 Tip: You can add existing queries or create new ones directly in edit mode</p>
+        <p>Tip: You can add existing queries or create new ones directly in edit mode</p>
       </div>
     </div>
   );

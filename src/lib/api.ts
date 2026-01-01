@@ -34,7 +34,7 @@ class ApiClient {
     }
   }
 
-  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${this.baseURL}${endpoint}`;
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -175,3 +175,16 @@ class ApiClient {
 }
 
 export const apiClient = new ApiClient(API_BASE_URL);
+
+// Export a simpler api object for convenience
+export const api = {
+  get: (endpoint: string) => apiClient.get(endpoint),
+  post: (endpoint: string, data?: any) => apiClient.post(endpoint, data),
+  put: (endpoint: string, data?: any) => apiClient.request(endpoint, {
+    method: 'PUT',
+    body: data ? JSON.stringify(data) : undefined,
+  }),
+  delete: (endpoint: string) => apiClient.request(endpoint, {
+    method: 'DELETE',
+  }),
+};

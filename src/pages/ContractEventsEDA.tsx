@@ -926,7 +926,7 @@ Tip: Verify the contract address on Voyager or Starkscan to confirm it exists an
                       )}
                     </div>
                   ) : (
-                    '🚀 Fetch ALL Events (Unlimited)'
+                    'Fetch Events'
                   )}
                 </Button>
               </div>
@@ -989,12 +989,12 @@ Tip: Verify the contract address on Voyager or Starkscan to confirm it exists an
                   <p className="text-xs text-muted-foreground">Unique Users</p>
                 </div>
                 <div className="text-center p-3 bg-cyan-500/10 rounded-lg border border-cyan-500/20">
-                  <div className="text-2xl mb-1">📊</div>
+                  <BarChart3 className="h-6 w-6 text-cyan-600 mx-auto mb-1" />
                   <p className="text-xl font-bold text-cyan-600">{stats.avgEventsPerBlock}</p>
                   <p className="text-xs text-muted-foreground">Events/Block</p>
                 </div>
                 <div className="text-center p-3 bg-pink-500/10 rounded-lg border border-pink-500/20">
-                  <div className="text-2xl mb-1">⚡</div>
+                  <Zap className="h-6 w-6 text-pink-600 mx-auto mb-1" />
                   <p className="text-xl font-bold text-pink-600">{stats.avgTxPerBlock}</p>
                   <p className="text-xs text-muted-foreground">TX/Block</p>
                 </div>

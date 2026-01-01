@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Link } from 'react-router-dom';
 import { Header } from '@/components/layout/Header';
@@ -14,6 +14,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
 import { useNavigate } from 'react-router-dom';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import {
   User,
   Key,
   Wallet,
@@ -25,8 +34,11 @@ import {
   HelpCircle,
   MessageSquare,
   Lightbulb,
-  Info
-} from 'lucide-react';interface WalletData {
+  Info,
+  Upload,
+  Send
+} from 'lucide-react';
+import { api } from '@/lib/api';interface WalletData {
   name: string;
   address: string;
   isConnected: boolean;
@@ -50,6 +62,25 @@ const Settings = (): JSX.Element => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Feedback dialog state
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [feedbackName, setFeedbackName] = useState('');
+  const [feedbackMessage, setFeedbackMessage] = useState('');
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+
+  // Support dialog state
+  const [supportOpen, setSupportOpen] = useState(false);
+
+  // Version info dialog state
+  const [versionOpen, setVersionOpen] = useState(false);
+
+  // Profile image state
+  const [profileImage, setProfileImage] = useState<string | null>(
+    user?.profile_picture || profile?.profile_picture || null
+  );
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const [profileData, setProfileData] = useState({
     firstName: user?.firstName || profile?.firstName || '',
@@ -66,7 +97,98 @@ const Settings = (): JSX.Element => {
       email: user?.email || profile?.email || '',
       fullName: profile?.fullName || `${user?.firstName || ''} ${user?.lastName || ''}`.trim()
     });
+    setProfileImage(user?.profile_picture || profile?.profile_picture || null);
   }, [user, profile]);
+
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Invalid File",
+        description: "Please upload an image file",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "File Too Large",
+        description: "Image must be less than 5MB",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setUploadingImage(true);
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const response = await api.post('/auth/upload-profile-image', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      setProfileImage(response.data.profile_picture);
+      toast({
+        title: "Success",
+        description: "Profile image updated successfully"
+      });
+    } catch (error) {
+      console.error('Image upload error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to upload image",
+        variant: "destructive"
+      });
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleFeedbackSubmit = async () => {
+    if (!feedbackName.trim() || !feedbackMessage.trim()) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all fields",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setFeedbackLoading(true);
+    try {
+      await api.post('/feedback/submit', {
+        name: feedbackName,
+        feedback: feedbackMessage,
+        user_email: user?.email || profile?.email
+      });
+
+      toast({
+        title: "Thank you for your feedback!",
+        description: "We appreciate your input and will review it soon."
+      });
+
+      setFeedbackName('');
+      setFeedbackMessage('');
+      setFeedbackOpen(false);
+    } catch (error) {
+      console.error('Feedback error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send feedback. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setFeedbackLoading(false);
+    }
+  };
 
   const [connectedWallets] = useState<WalletData[]>([
     { name: 'Argent', address: '0x123...789', isConnected: true },
@@ -161,15 +283,41 @@ const Settings = (): JSX.Element => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center space-x-4">
-                <Avatar className="w-20 h-20">
-                  <AvatarFallback>
-                    {(user?.firstName || profile?.firstName || user?.email || 'U').charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
+                <div className="relative">
+                  <Avatar 
+                    className="w-20 h-20 cursor-pointer hover:opacity-80 transition-opacity"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    {profileImage ? (
+                      <AvatarImage src={profileImage} alt="Profile" />
+                    ) : (
+                      <AvatarFallback>
+                        {(user?.firstName || profile?.firstName || user?.email || 'U').charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    )}
+                  </Avatar>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="absolute bottom-0 right-0 h-6 w-6 rounded-full p-0"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadingImage}
+                  >
+                    <Upload className="h-3 w-3" />
+                  </Button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleImageUpload}
+                  />
+                </div>
                 <div>
                   <h3 className="font-semibold">{user?.firstName || profile?.firstName || 'User'} {user?.lastName || profile?.lastName || ''}</h3>
                   <p className="text-sm text-muted-foreground">{user?.email || profile?.email}</p>
                   <Badge variant="outline" className="mt-1">{(user?.role || profile?.role || 'analyst').toUpperCase()}</Badge>
+                  <p className="text-xs text-muted-foreground mt-1">Click avatar to upload image</p>
                 </div>
               </div>
               <div className="grid gap-4">
@@ -335,21 +483,37 @@ const Settings = (): JSX.Element => {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <Button variant="outline" className="w-full flex items-center gap-2">
-                <HelpCircle className="w-4 h-4" />
-                Help Center
-              </Button>
-              <Button variant="outline" className="w-full flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                className="w-full flex items-center gap-2"
+                onClick={() => setSupportOpen(true)}
+              >
                 <MessageSquare className="w-4 h-4" />
                 Contact Support
               </Button>
-              <Button variant="outline" className="w-full flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                className="w-full flex items-center gap-2"
+                onClick={() => setFeedbackOpen(true)}
+              >
                 <Lightbulb className="w-4 h-4" />
-                Feature Requests
+                Send Feedback
               </Button>
-              <Button variant="outline" className="w-full flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                className="w-full flex items-center gap-2"
+                onClick={() => setVersionOpen(true)}
+              >
                 <Info className="w-4 h-4" />
                 Version Info
+              </Button>
+              <Button 
+                variant="outline" 
+                className="w-full flex items-center gap-2"
+                onClick={() => window.open('https://docs.blocra.com', '_blank')}
+              >
+                <HelpCircle className="w-4 h-4" />
+                Help Center
               </Button>
             </div>
             <Separator />
@@ -367,6 +531,129 @@ const Settings = (): JSX.Element => {
         </Card>
       </div>
       </main>
+
+      {/* Feedback Dialog */}
+      <Dialog open={feedbackOpen} onOpenChange={setFeedbackOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Send Feedback</DialogTitle>
+            <DialogDescription>
+              We'd love to hear your thoughts! Share your feedback with us.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="feedback-name">Name</Label>
+              <Input
+                id="feedback-name"
+                placeholder="Your name"
+                value={feedbackName}
+                onChange={(e) => setFeedbackName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="feedback-message">Feedback</Label>
+              <Textarea
+                id="feedback-message"
+                placeholder="Tell us what you think..."
+                rows={5}
+                value={feedbackMessage}
+                onChange={(e) => setFeedbackMessage(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setFeedbackOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleFeedbackSubmit} disabled={feedbackLoading}>
+              <Send className="w-4 h-4 mr-2" />
+              {feedbackLoading ? 'Sending...' : 'Send Feedback'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Support Dialog */}
+      <Dialog open={supportOpen} onOpenChange={setSupportOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Contact Support</DialogTitle>
+            <DialogDescription>
+              Need help? Reach out to our support team on Telegram.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="p-4 bg-muted rounded-lg">
+              <p className="text-sm mb-2">Get instant support via Telegram:</p>
+              <Button
+                className="w-full"
+                onClick={() => window.open('https://t.me/ndii_ekanem', '_blank')}
+              >
+                <MessageSquare className="w-4 h-4 mr-2" />
+                Message @ndii_ekanem
+              </Button>
+            </div>
+            <div className="p-4 border rounded-lg">
+              <p className="text-sm text-muted-foreground">
+                Our support team typically responds within 24 hours. For urgent issues, 
+                Telegram is the fastest way to reach us.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSupportOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Version Info Dialog */}
+      <Dialog open={versionOpen} onOpenChange={setVersionOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Version Information</DialogTitle>
+            <DialogDescription>
+              BlocRA - Blockchain Analytics Platform
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid gap-2">
+              <div className="flex justify-between">
+                <span className="text-sm font-medium">Version:</span>
+                <span className="text-sm text-muted-foreground">1.0.0</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm font-medium">Build Date:</span>
+                <span className="text-sm text-muted-foreground">December 2024</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm font-medium">Environment:</span>
+                <span className="text-sm text-muted-foreground">
+                  {import.meta.env.MODE === 'production' ? 'Production' : 'Development'}
+                </span>
+              </div>
+            </div>
+            <Separator />
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Features:</p>
+              <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
+                <li>Multi-chain blockchain analytics</li>
+                <li>Real-time contract monitoring</li>
+                <li>Advanced query editor</li>
+                <li>Event data analysis</li>
+                <li>Bounty system</li>
+              </ul>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setVersionOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

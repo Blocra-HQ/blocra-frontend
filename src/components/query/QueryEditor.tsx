@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Play, Save, Download, Wand2, BarChart3, Lightbulb, RefreshCw, Zap, Trophy, Activity, Users, Search, TrendingUp, ChevronLeft, ChevronRight, Plus, Clock, Eye } from 'lucide-react';
+import { Play, Save, Download, Wand2, BarChart3, Lightbulb, RefreshCw, Zap, Trophy, Activity, Users, Search, TrendingUp, ChevronLeft, ChevronRight, Plus, Clock, Eye, Sparkles } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useQuerySaver } from '@/hooks/useQuerySaver';
 import { useNavigate } from 'react-router-dom';
@@ -104,6 +104,9 @@ export function QueryEditor({ onQueryComplete }: QueryEditorProps) {
     toggleAutosave
   } = useQuerySaver();
 
+  const [activeTab, setActiveTab] = useState<string>('editor');
+  const [sqlJustGenerated, setSqlJustGenerated] = useState(false);
+  
   const generateSQLFromPrompt = async () => {
     if (!prompt.trim()) return;
 
@@ -143,9 +146,17 @@ export function QueryEditor({ onQueryComplete }: QueryEditorProps) {
       }
 
       setQuery(generatedSQL);
+      
+      // Automatically switch to SQL Editor tab to show the generated query
+      setActiveTab('editor');
+      
+      // Add visual indicator
+      setSqlJustGenerated(true);
+      setTimeout(() => setSqlJustGenerated(false), 3000); // Remove after 3 seconds
+      
       toast({
         title: "SQL Generated",
-        description: "AI has generated SQL from your prompt",
+        description: "Query is now in the editor. Review and execute it!",
       });
     } catch (error) {
       toast({
@@ -1267,7 +1278,7 @@ LIMIT 30;`;
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         <div className="lg:col-span-3 space-y-4">
 
-          <Tabs defaultValue="editor" className="w-full">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="editor">SQL Editor</TabsTrigger>
               <TabsTrigger value="ai-prompt">AI Assistant</TabsTrigger>
@@ -1286,11 +1297,22 @@ LIMIT 30;`;
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {sqlJustGenerated && (
+                    <div className="flex items-center gap-2 p-2 bg-primary/10 border border-primary/20 rounded-md animate-pulse">
+                      <Sparkles className="w-4 h-4 text-primary" />
+                      <span className="text-sm text-primary font-medium">AI Generated SQL - Review and execute!</span>
+                    </div>
+                  )}
                   <Textarea
                     value={query}
-                    onChange={(e) => setQuery(e.target.value)}
+                    onChange={(e) => {
+                      setQuery(e.target.value);
+                      setSqlJustGenerated(false); // Remove highlight when user edits
+                    }}
                     placeholder="Enter your SQL query here..."
-                    className="min-h-[200px] font-mono"
+                    className={`min-h-[200px] font-mono transition-all ${
+                      sqlJustGenerated ? 'ring-2 ring-primary ring-offset-2' : ''
+                    }`}
                   />
                   <div className="flex gap-2 flex-wrap">
                     {loading ? (

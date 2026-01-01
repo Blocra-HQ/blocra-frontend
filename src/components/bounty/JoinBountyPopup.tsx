@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useWebSocketStats } from '../services/BountyWebSocketService';
 import { Button } from './ui/button';
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
@@ -29,8 +28,13 @@ export const JoinBountyPopup = ({ bountyId, bountyTitle, onSubmit }: JoinBountyP
     attachments: []
   });
 
-  // Get real-time stats from WebSocket
-  const stats = useWebSocketStats();
+  // Mock stats - replace with API call later
+  const stats = {
+    activeBountiesCount: 0,
+    totalRewardsSTRK: 0,
+    activeParticipantsCount: 0,
+    completedThisMonth: 0
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

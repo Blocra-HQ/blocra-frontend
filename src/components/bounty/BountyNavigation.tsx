@@ -1,12 +1,17 @@
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useWebSocketStats } from '@/services/BountyWebSocketService';
 import { Target, Award, Trophy } from 'lucide-react';
 
 export const BountyNavigation = () => {
   const navigate = useNavigate();
-  const stats = useWebSocketStats();
+  
+  // Mock stats - replace with API call later
+  const stats = {
+    activeBountiesCount: 0,
+    completedThisMonth: 0,
+    totalRewardsSTRK: 0
+  };
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">

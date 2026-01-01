@@ -75,8 +75,11 @@ const Index = () => {
     const fetchStats = async () => {
       try {
         setError(null);
+        setLoading(true);
         const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
-        const response = await fetch(`${backendUrl}/api/dashboards/stats`);
+        
+        // Only fetch for the currently selected chain
+        const response = await fetch(`${backendUrl}/api/dashboards/stats?chain=${currentChain.id}`);
         
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -133,7 +136,7 @@ const Index = () => {
     fetchStats();
     const interval = setInterval(fetchStats, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [currentChain.id]); // Re-fetch when chain changes
 
   const pieData = stats ? [
     { name: 'Transfers', value: Math.floor(stats.total_transactions * 0.4), color: '#3b82f6' },

@@ -8,6 +8,7 @@ interface SavedQuery {
   query: string;
   createdAt: string;
   lastRun?: string;
+  preferredVisualization?: 'bar' | 'line' | 'pie' | 'table' | 'number';
 }
 
 export function useQuerySaver() {
@@ -25,13 +26,28 @@ export function useQuerySaver() {
     });
   };
 
-  const saveQuery = (query: string, autoSaved: boolean = false) => {
+  const saveQuery = (query: string, autoSaved: boolean = false, visualization?: 'bar' | 'line' | 'pie' | 'table' | 'number') => {
     const trimmedQuery = query.trim();
     if (!trimmedQuery) return;
 
-    // Don't save duplicate queries
-    if (savedQueries.some(sq => sq.query === trimmedQuery)) {
-      if (!autoSaved) {
+    // Check if query already exists
+    const existingQuery = savedQueries.find(sq => sq.query === trimmedQuery);
+    
+    if (existingQuery) {
+      // Update visualization if provided
+      if (visualization && existingQuery.preferredVisualization !== visualization) {
+        setSavedQueries(savedQueries.map(sq => 
+          sq.query === trimmedQuery 
+            ? { ...sq, preferredVisualization: visualization }
+            : sq
+        ));
+        if (!autoSaved) {
+          toast({
+            title: "Visualization updated",
+            description: `Preferred visualization set to ${visualization}`,
+          });
+        }
+      } else if (!autoSaved) {
         toast({
           title: "Query already saved",
           description: "This query has already been saved to your collection",
@@ -45,6 +61,7 @@ export function useQuerySaver() {
       title: extractQueryTitle(trimmedQuery),
       query: trimmedQuery,
       createdAt: new Date().toISOString(),
+      preferredVisualization: visualization || 'table',
     };
 
     setSavedQueries([newQuery, ...savedQueries].slice(0, 50)); // Keep last 50 queries
