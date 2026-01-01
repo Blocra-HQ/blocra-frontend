@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Header } from '@/components/layout/Header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -20,6 +20,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { useChain } from '@/contexts/ChainContext';
 import { multiChainRPC } from '@/services/MultiChainRPCService';
 import { validateAddress, getAddressPlaceholder } from '@/services/AddressValidationService';
+import { universalEventFetcher } from '@/services/UniversalEventFetcher';
 
 
 const RPC_ENDPOINTS = [
@@ -163,154 +164,63 @@ async function getContractInfo(contractAddress: string, provider: any) {
   }
 }
 
-async function fetchEvents(contractAddress: string, onProgress?: (message: string) => void) {
-  const { RpcProvider } = await import('starknet');
+async function fetchEvents(contractAddress: string, chain: any, onProgress?: (message: string) => void) {
+  try {
+    console.log(`[fetchEvents] Starting fetch for ${chain.name} (${chain.type})`);
+    console.log(`[fetchEvents] Contract address: ${contractAddress}`);
+    console.log(`[fetchEvents] RPC endpoints:`, chain.rpcs);
+    
+    // Use universal event fetcher for all chains
+    const latestBlock = await universalEventFetcher.getLatestBlock(chain);
+    console.log(`[fetchEvents] Latest block: ${latestBlock}`);
+    
+    const fromBlock = 0; // UNLIMITED MODE: fetch from genesis
+    const toBlock = latestBlock;
 
-  for (let i = 0; i < RPC_ENDPOINTS.length; i++) {
-    try {
-      console.log('Trying RPC:', getRpcUrl());
-      const provider = new RpcProvider({ nodeUrl: getRpcUrl() });
+    console.log(`🚀 UNLIMITED MODE (${chain.name}): Fetching ALL events from block 0 to ${toBlock.toLocaleString()}`);
 
-      // Get contract info first
-      const contractInfo = await getContractInfo(contractAddress, provider);
+    const result = await universalEventFetcher.fetchEvents(
+      chain,
+      contractAddress,
+      fromBlock,
+      toBlock,
+      onProgress
+    );
 
-      const latest = await provider.getBlockNumber();
-      // UNLIMITED MODE: Always fetch from block 0 to latest (entire blockchain history)
-      const queryFrom = 0;
-      const queryTo = latest;
+    console.log(`[fetchEvents] Fetch complete. Total events: ${result.totalFetched}`);
+    console.log(`[fetchEvents] Chain type: ${result.chainType}`);
 
-      console.log('🚀 UNLIMITED MODE: Fetching ALL events from block 0 to', queryTo, '(', queryTo.toLocaleString(), 'blocks)');
+    // Convert to the format expected by the UI
+    const decodedEvents = result.events.map(event => ({
+      block_number: event.blockNumber,
+      transaction_hash: event.transactionHash,
+      event_name: event.eventName,
+      decoded_data: event.data,
+      timestamp: event.timestamp ? new Date(event.timestamp * 1000).toISOString() : new Date().toISOString(),
+      timestamp_raw: event.timestamp || Math.floor(Date.now() / 1000),
+      keys: [],
+      data: event.data
+    }));
 
-      // Fetch all events with automatic pagination
-      let allEvents: any[] = [];
-      let continuationToken: string | undefined = undefined;
-      let pageCount = 0;
-      const maxPages = 100; // Safety limit to prevent infinite loops
+    console.log(`[fetchEvents] Decoded ${decodedEvents.length} events`);
 
-      do {
-        pageCount++;
-        if (onProgress) onProgress(`Fetching page ${pageCount}... (${allEvents.length} events so far)`);
-        console.log(`📄 Fetching page ${pageCount}...`);
-        
-        const eventsResponse = await provider.getEvents({
-          address: contractAddress,
-          from_block: { block_number: queryFrom },
-          to_block: { block_number: queryTo },
-          chunk_size: 1000,
-          continuation_token: continuationToken
-        });
-
-        const pageEvents = eventsResponse.events || [];
-        allEvents = allEvents.concat(pageEvents);
-        continuationToken = eventsResponse.continuation_token;
-
-        console.log(`   ✅ Page ${pageCount}: ${pageEvents.length} events (Total: ${allEvents.length})`);
-        
-        if (continuationToken) {
-          console.log(`   🔄 More events available, fetching next page...`);
-        }
-
-        // Safety check
-        if (pageCount >= maxPages) {
-          console.log(`   ⚠️ Reached maximum page limit (${maxPages}). Stopping pagination.`);
-          if (onProgress) onProgress(`Reached page limit. Fetched ${allEvents.length} events.`);
-          break;
-        }
-      } while (continuationToken);
-
-      if (onProgress) onProgress(`Complete! ${allEvents.length} events fetched.`);
-
-      console.log(`🎉 COMPLETE! Fetched ${allEvents.length} total events across ${pageCount} pages`);
-
-      const events = { events: allEvents, continuation_token: continuationToken };
-
-      // Fetch timestamps for first and last block to interpolate
-      const latestTimestamp = await getBlockTimestamp(queryTo) || Math.floor(Date.now() / 1000);
-      const fromTimestampValue = await getBlockTimestamp(queryFrom) || (latestTimestamp - (queryTo - queryFrom) * 15); // Assume 15s block time if fail
-
-      // Enhanced event decoding with meaningful data extraction
-      const decodedEvents = (events.events || []).map(event => {
-        let eventName = 'Unknown Event';
-        let decodedData: any = {};
-
-        // Interpolate timestamp based on block number
-        const blockDiff = queryTo - event.block_number;
-        const totalDiff = queryTo - queryFrom;
-        const timeDiff = latestTimestamp - fromTimestampValue;
-        const estimatedTimestamp = totalDiff > 0 ? latestTimestamp - (blockDiff / totalDiff) * timeDiff : latestTimestamp;
-
-        if (event.keys && event.keys.length > 0) {
-          const eventKey = event.keys[0];
-
-          // Transfer event
-          if (eventKey === '0x99cd8bde557814842a3121e8ddfd433a539b8c9f14bf31ebf108d12e6196e9') {
-            eventName = 'Transfer';
-            if (event.data && event.data.length >= 3) {
-              decodedData = {
-                from: event.data[0],
-                to: event.data[1],
-                amount: parseInt(event.data[2], 16).toString()
-              };
-            }
-          }
-          // Approval event
-          else if (eventKey === '0x1dcde06aabdbca2f80aa51392b345d7549d7757aa855f7e37f5d335ac8243b1') {
-            eventName = 'Approval';
-            if (event.data && event.data.length >= 3) {
-              decodedData = {
-                owner: event.data[0],
-                spender: event.data[1],
-                amount: parseInt(event.data[2], 16).toString()
-              };
-            }
-          }
-          // Swap events (common in DEX)
-          else if (eventKey.includes('302b4aa3237648863fc569a648f3625780753ababf66d86fd6f7e7bbc648c63')) {
-            eventName = 'Swap';
-            if (event.data && event.data.length >= 4) {
-              decodedData = {
-                user: event.data[0],
-                token_in: event.data[1],
-                token_out: event.data[2],
-                amount: parseInt(event.data[3], 16).toString()
-              };
-            }
-          }
-          // Deposit/Withdrawal events
-          else if (eventKey.includes('1dcde06aabdbca2f80aa51392b345d7549d7757aa855f7e37f5d335ac8243b1')) {
-            eventName = event.data && event.data[0] === '0x1' ? 'Deposit' : 'Withdrawal';
-            if (event.data && event.data.length >= 2) {
-              decodedData = {
-                user: event.keys[1] || 'Unknown',
-                amount: parseInt(event.data[1] || '0', 16).toString()
-              };
-            }
-          }
-        }
-
-        return {
-          ...event,
-          event_name: eventName,
-          decoded_data: decodedData,
-          timestamp: new Date(estimatedTimestamp * 1000).toISOString(),
-          timestamp_raw: estimatedTimestamp
-        };
-      });
-
-      return { events: decodedEvents, contractInfo };
-    } catch (error) {
-      console.error('RPC failed:', getRpcUrl(), error);
-      switchToNextRpc();
-      if (i === RPC_ENDPOINTS.length - 1) {
-        throw error;
+    return {
+      events: decodedEvents,
+      contractInfo: {
+        contractType: 'Smart Contract',
+        contractName: 'Contract',
+        classHash: null
       }
-    }
+    };
+  } catch (error) {
+    console.error('[fetchEvents] Error:', error);
+    throw error;
   }
-  throw new Error('All RPC endpoints failed');
 }
 
 export default function ContractEventsEDA() {
   const { currentChain } = useChain();
+  
   const [contracts, setContracts] = useState([{ address: '', name: '' }]);
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -327,6 +237,23 @@ export default function ContractEventsEDA() {
   const [predictions, setPredictions] = useState<any[]>([]);
   const [stateAnalysis, setStateAnalysis] = useState<any>(null);
   const [realtimeEnabled, setRealtimeEnabled] = useState(false);
+
+  // Clear all state when chain changes
+  useEffect(() => {
+    console.log(`[ContractEventsEDA] Chain changed to: ${currentChain.name} (${currentChain.type})`);
+    setContracts([{ address: '', name: '' }]);
+    setEvents([]);
+    setError('');
+    setStats(null);
+    setContractInfo(null);
+    setComprehensiveData(null);
+    setAiReport(null);
+    setDependencyGraph(null);
+    setAnomalies([]);
+    setPredictions([]);
+    setStateAnalysis(null);
+    setRealtimeEnabled(false);
+  }, [currentChain.id]); // Re-run when chain ID changes
 
   const validateContractAddress = (addr: string) => {
     const result = validateAddress(addr, currentChain.type);
@@ -384,33 +311,14 @@ export default function ContractEventsEDA() {
       let fetchedContractInfo: any = null;
 
       const primaryContract = validContracts[0];
-      const backendUrl = import.meta.env.VITE_BACKEND_URL;
       
-      if (backendUrl) {
-        // Use backend API - fetch ALL events from block 0 to latest
-        const response = await fetch(`${backendUrl}/api/contracts/events`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contractAddress: primaryContract.address,
-            chain: currentChain.name
-          })
-        });
-        const data = await response.json();
-        if (data.success) {
-          allEvents = data.data.events;
-          fetchedContractInfo = { contractType: 'Smart Contract', contractName: primaryContract.name || 'Contract' };
-        } else {
-          throw new Error(data.message);
-        }
-      } else {
-        // Fallback to direct RPC - fetch ALL events from block 0 to latest
-        const result = await fetchEvents(primaryContract.address, (message) => {
-          setLoadingProgress({ current: 0, total: 0, message });
-        });
-        allEvents = result.events;
-        fetchedContractInfo = result.contractInfo;
-      }
+      // Always use direct RPC with universal fetcher for multi-chain support
+      // Backend API doesn't support multi-chain yet
+      const result = await fetchEvents(primaryContract.address, currentChain, (message) => {
+        setLoadingProgress({ current: 0, total: 0, message });
+      });
+      allEvents = result.events;
+      fetchedContractInfo = result.contractInfo;
 
       console.log('Total events found:', allEvents.length);
       console.log('Contract info:', fetchedContractInfo);
@@ -576,17 +484,58 @@ export default function ContractEventsEDA() {
           setRealtimeEnabled(true);
         }
       } else {
-        setStats(null);
+        // NO EVENTS FOUND - Show dashboard with zero values instead of hiding it
+        const zeroStats = {
+          // Basic metrics - all zeros
+          totalEvents: 0,
+          totalTransactions: 0,
+          totalCalls: 0,
+          uniqueBlocks: 0,
+          uniqueUsers: 0,
+
+          // Activity patterns - all zeros
+          avgEventsPerBlock: '0.00',
+          avgEventsPerTx: '0.00',
+          avgTxPerBlock: '0.00',
+
+          // Value metrics - all zeros
+          totalVolume: '0.000000',
+          transferCount: 0,
+          volumeOverTime: [], // Empty array for chart
+
+          // Time range - current block
+          dateRange: {
+            from: 0,
+            to: 0,
+            span: 0
+          },
+
+          // Event distribution - empty
+          eventTypes: [],
+          topCallers: [], // Empty array for chart
+
+          // Contract health indicators
+          isActive: false,
+          hasTransfers: false,
+          hasApprovals: false,
+
+          // Error rate
+          errorRate: { rate: 0 }
+        };
+
+        setStats(zeroStats);
         setContractInfo(fetchedContractInfo);
         setError(`✓ Contract address is valid for ${currentChain.name}, but no events found across entire blockchain history (block 0 to latest). 
 
+This means the contract has NO ACTIVITY. All metrics below show zero values.
+
 Possible reasons:
 • The contract has never emitted any events
-• The contract address might be incorrect
+• The contract was deployed but never used
 • The contract might be a pure logic contract without events
-• RPC endpoint might be having issues
+• The contract might be inactive
 
-Tip: Verify the contract address on Voyager or Starkscan to confirm it exists and has events.`);
+Tip: Verify the contract address on ${currentChain.explorer.replace('https://', '')} to confirm it exists and check its transaction history.`);
       }
     } catch (e: any) {
       console.error('Fetch error:', e);
@@ -989,12 +938,12 @@ Tip: Verify the contract address on Voyager or Starkscan to confirm it exists an
                   <p className="text-xs text-muted-foreground">Unique Users</p>
                 </div>
                 <div className="text-center p-3 bg-cyan-500/10 rounded-lg border border-cyan-500/20">
-                  <BarChart3 className="h-6 w-6 text-cyan-600 mx-auto mb-1" />
+                  <div className="text-2xl mb-1">📊</div>
                   <p className="text-xl font-bold text-cyan-600">{stats.avgEventsPerBlock}</p>
                   <p className="text-xs text-muted-foreground">Events/Block</p>
                 </div>
                 <div className="text-center p-3 bg-pink-500/10 rounded-lg border border-pink-500/20">
-                  <Zap className="h-6 w-6 text-pink-600 mx-auto mb-1" />
+                  <div className="text-2xl mb-1">⚡</div>
                   <p className="text-xl font-bold text-pink-600">{stats.avgTxPerBlock}</p>
                   <p className="text-xs text-muted-foreground">TX/Block</p>
                 </div>

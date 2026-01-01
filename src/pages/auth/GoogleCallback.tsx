@@ -1,5 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { buildApiUrl } from '@/config/api';
+import { logger } from '@/utils/logger';
 
 export default function GoogleCallback() {
   const navigate = useNavigate();
@@ -11,8 +13,8 @@ export default function GoogleCallback() {
       
       if (code) {
         try {
-          const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
-          const response = await fetch(`${backendUrl}/api/auth/google`, {
+          logger.info('Processing Google OAuth callback');
+          const response = await fetch(buildApiUrl('auth/google'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ token: code, role: 'analyst' })
@@ -23,11 +25,14 @@ export default function GoogleCallback() {
           if (data.success) {
             localStorage.setItem('auth_token', data.data.accessToken);
             localStorage.setItem('demo_user', JSON.stringify(data.data.user));
+            logger.info('Google authentication successful');
             navigate('/');
           } else {
+            logger.warn('Google authentication failed', data);
             navigate('/auth?error=google_auth_failed');
           }
         } catch (error) {
+          logger.error('Google authentication error', error);
           navigate('/auth?error=google_auth_failed');
         }
       } else {

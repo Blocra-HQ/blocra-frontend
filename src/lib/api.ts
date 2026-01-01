@@ -1,6 +1,5 @@
-const API_BASE_URL = import.meta.env.VITE_BACKEND_URL 
-  ? `${import.meta.env.VITE_BACKEND_URL}/api`
-  : 'http://localhost:5000/api';
+import { API_CONFIG } from '@/config/api';
+import { logger } from '@/utils/logger';
 
 class ApiClient {
   private baseURL: string;
@@ -11,7 +10,7 @@ class ApiClient {
     try {
       this.token = localStorage.getItem('auth_token');
     } catch (error) {
-      console.warn('localStorage unavailable, running without token persistence');
+      logger.warn('localStorage unavailable, running without token persistence');
       this.token = null;
     }
   }
@@ -21,7 +20,7 @@ class ApiClient {
     try {
       localStorage.setItem('auth_token', token);
     } catch (error) {
-      console.warn('Failed to save token to localStorage');
+      logger.warn('Failed to save token to localStorage');
     }
   }
 
@@ -30,7 +29,7 @@ class ApiClient {
     try {
       localStorage.removeItem('auth_token');
     } catch (error) {
-      console.warn('Failed to remove token from localStorage');
+      logger.warn('Failed to remove token from localStorage');
     }
   }
 
@@ -174,7 +173,7 @@ class ApiClient {
   }
 }
 
-export const apiClient = new ApiClient(API_BASE_URL);
+export const apiClient = new ApiClient(API_CONFIG.apiUrl);
 
 // Export a simpler api object for convenience
 export const api = {

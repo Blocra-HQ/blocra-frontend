@@ -7,6 +7,8 @@ import { AIFloatingButton } from "@/components/ai/AIFloatingButton";
 import { useChain } from "@/contexts/ChainContext";
 import { Activity, TrendingUp, Users, Zap, DollarSign, BarChart3, AlertCircle } from "lucide-react";
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { buildApiUrl } from '@/config/api';
+import { logger } from '@/utils/logger';
 
 interface BlockchainStats {
   total_transactions: number;
@@ -76,10 +78,9 @@ const Index = () => {
       try {
         setError(null);
         setLoading(true);
-        const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
         
         // Only fetch for the currently selected chain
-        const response = await fetch(`${backendUrl}/api/dashboards/stats?chain=${currentChain.id}`);
+        const response = await fetch(buildApiUrl(`dashboards/stats?chain=${currentChain.id}`));
         
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -126,7 +127,7 @@ const Index = () => {
           throw new Error('Invalid response format');
         }
       } catch (err) {
-        console.error('Failed to fetch blockchain stats:', err);
+        logger.error('Failed to fetch blockchain stats', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch stats');
       } finally {
         setLoading(false);

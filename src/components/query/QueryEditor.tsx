@@ -12,6 +12,8 @@ import { useNavigate } from 'react-router-dom';
 import { ChartBuilder } from './ChartBuilder';
 import { useChain } from '@/contexts/ChainContext';
 import { validateAddress, getAddressFormatDescription } from '@/services/AddressValidationService';
+import { buildApiUrl } from '@/config/api';
+import { logger } from '@/utils/logger';
 
 interface QueryEditorProps {
   onQueryComplete?: (results: QueryResult[], query: string) => void;
@@ -89,7 +91,7 @@ export function QueryEditor({ onQueryComplete }: QueryEditorProps) {
       try {
         setQueryHistory(JSON.parse(savedHistory));
       } catch (e) {
-        console.warn('Failed to load query history');
+        logger.warn('Failed to load query history');
       }
     }
   }, []);
@@ -607,7 +609,7 @@ export function QueryEditor({ onQueryComplete }: QueryEditorProps) {
     try {
       saveQueryToCollection(query, false);
     } catch (e) {
-      console.warn('Query saver hook failed:', e);
+      logger.warn('Query saver hook failed', e);
     }
 
     // Trigger re-render of saved queries list
@@ -705,13 +707,9 @@ export function QueryEditor({ onQueryComplete }: QueryEditorProps) {
     setError(null);
 
     try {
-      console.log(`🔍 Analyzing contract: ${address}`);
+      logger.info(`Analyzing contract: ${address}`);
 
-      const BACKEND_URL = import.meta.env.VITE_BACKEND_URL 
-        ? `${import.meta.env.VITE_BACKEND_URL}/api`
-        : 'http://localhost:5000/api';
-
-      const response = await fetch(`${BACKEND_URL}/contracts/analyze`, {
+      const response = await fetch(buildApiUrl('contracts/analyze'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -726,7 +724,7 @@ export function QueryEditor({ onQueryComplete }: QueryEditorProps) {
         throw new Error(data.message || 'Failed to analyze contract');
       }
 
-      console.log('📊 Contract analysis result:', data);
+      logger.info('Contract analysis result', data);
 
       if (data.success && data.data) {
         const contractData = data.data;
@@ -792,7 +790,7 @@ LIMIT 1;`;
       }
 
     } catch (error: any) {
-      console.error('❌ Contract analysis error:', error);
+      logger.error('Contract analysis error', error);
       const errorMsg = error.message || 'Failed to analyze contract';
       setError(errorMsg);
       toast({
@@ -1178,7 +1176,7 @@ LIMIT 30;`;
           setInsights(realInsights);
           setLastUpdate(new Date());
         } catch (error) {
-          console.error('Failed to fetch insights:', error);
+          logger.error('Failed to fetch insights', error);
           // Fallback insights
           setInsights([
             {

@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { sanitizeSQL, validateSQL } from '@/utils/sqlSanitizer';
 import { queryRateLimiter } from '@/utils/queryLimits';
 import { useToast } from '@/components/ui/use-toast';
+import { API_CONFIG } from '@/config/api';
+import { logger } from '@/utils/logger';
 
 interface QueryExecutorProps {
   onResults: (results: any[], query: string) => void;
@@ -44,12 +46,8 @@ export function QueryExecutor({ onResults, onError }: QueryExecutorProps) {
   };
 
   const executeRPCQuery = async (sql: string): Promise<any[]> => {
-    const API_URL = import.meta.env.VITE_BACKEND_URL 
-      ? `${import.meta.env.VITE_BACKEND_URL}/api`
-      : 'http://localhost:5000/api';
-    
     try {
-      const response = await fetch(`${API_URL}/queries/execute`, {
+      const response = await fetch(`${API_CONFIG.apiUrl}/queries/execute`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -65,6 +63,7 @@ export function QueryExecutor({ onResults, onError }: QueryExecutorProps) {
       const data = await response.json();
       return data.results || [];
     } catch (error) {
+      logger.warn('Query execution failed, using mock data', error);
       // Fallback to mock data for demo
       return generateMockData(sql);
     }

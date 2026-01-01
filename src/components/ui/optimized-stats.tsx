@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Zap } from 'lucide-react';
+import { buildApiUrl } from '@/config/api';
+import { logger } from '@/utils/logger';
 
 interface BlockchainStats {
   total_transactions: number;
@@ -38,8 +40,7 @@ export function OptimizedStats() {
         setError(null);
         
         // Single API call to get all stats from one block
-        const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
-        const response = await fetch(`${backendUrl}/api/dashboards/stats`);
+        const response = await fetch(buildApiUrl('dashboards/stats'));
         
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -54,7 +55,7 @@ export function OptimizedStats() {
           throw new Error('Invalid response format');
         }
       } catch (err) {
-        console.error('Failed to fetch blockchain stats:', err);
+        logger.error('Failed to fetch blockchain stats', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch stats');
       } finally {
         setLoading(false);

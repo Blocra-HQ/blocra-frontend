@@ -3,6 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Users, Activity, FileText, TrendingUp, Eye } from 'lucide-react';
+import { buildApiUrl } from '@/config/api';
+import { logger } from '@/utils/logger';
 
 interface UserActivity {
   user_id: number;
@@ -48,15 +50,14 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
     try {
-      const response = await fetch(`${backendUrl}/api/admin/login`, {
+      logger.info('Admin login attempt');
+      const response = await fetch(buildApiUrl('admin/login'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password }),
@@ -68,11 +69,14 @@ export default function AdminDashboard() {
         setToken(data.token);
         setIsAuthenticated(true);
         localStorage.setItem('admin_token', data.token);
+        logger.info('Admin login successful');
         fetchDashboardData(data.token);
       } else {
+        logger.warn('Admin login failed', data.message);
         setError(data.message || 'Invalid password');
       }
     } catch (err) {
+      logger.error('Admin login error', err);
       setError('Failed to connect to server');
     } finally {
       setLoading(false);
@@ -82,10 +86,10 @@ export default function AdminDashboard() {
   const fetchDashboardData = async (authToken: string) => {
     try {
       const [dashboardRes, usersRes] = await Promise.all([
-        fetch(`${backendUrl}/api/admin/dashboard`, {
+        fetch(buildApiUrl('admin/dashboard'), {
           headers: { 'Authorization': `Bearer ${authToken}` },
         }),
-        fetch(`${backendUrl}/api/admin/users`, {
+        fetch(buildApiUrl('admin/users'), {
           headers: { 'Authorization': `Bearer ${authToken}` },
         }),
       ]);
@@ -101,7 +105,7 @@ export default function AdminDashboard() {
         setUsers(usersData.data);
       }
     } catch (err) {
-      console.error('Failed to fetch dashboard data:', err);
+      logger.error('Failed to fetch dashboard data', err);
     }
   };
 
