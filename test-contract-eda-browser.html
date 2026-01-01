@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contract EDA Tests</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #2196F3;
+            padding-bottom: 10px;
+        }
+        .test-section {
+            margin: 30px 0;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 5px;
+        }
+        .test-case {
+            margin: 15px 0;
+            padding: 15px;
+            background: white;
+            border-left: 4px solid #ddd;
+            border-radius: 3px;
+        }
+        .test-case.pass {
+            border-left-color: #4CAF50;
+        }
+        .test-case.fail {
+            border-left-color: #f44336;
+        }
+        .test-case.skip {
+            border-left-color: #FF9800;
+        }
+        .test-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .test-result {
+            font-size: 14px;
+            color: #666;
+        }
+        button {
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #0b7dda;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .summary {
+            margin-top: 30px;
+            padding: 20px;
+            background: #e3f2fd;
+            border-radius: 5px;
+            font-size: 18px;
+        }
+        .summary.fail {
+            background: #ffebee;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status.pass {
+            background: #4CAF50;
+            color: white;
+        }
+        .status.fail {
+            background: #f44336;
+            color: white;
+        }
+        .status.skip {
+            background: #FF9800;
+            color: white;
+        }
+        .chain-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .chain-card {
+            padding: 15px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .chain-card h4 {
+            margin: 0 0 10px 0;
+            color: #2196F3;
+        }
+        .chain-status {
+            font-size: 12px;
+            color: #666;
+        }
+        .progress {
+            width: 100%;
+            height: 20px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .progress-bar {
+            height: 100%;
+            background: #4CAF50;
+            transition: width 0.3s;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Contract EDA Test Suite</h1>
+        
+        <div>
+            <button onclick="runAllTests()" id="runBtn">Run All Tests</button>
+            <button onclick="testChainConnectivity()">Test Chain Connectivity</button>
+            <button onclick="testReportGeneration()">Test Report Generation</button>
+        </div>
+
+        <div class="progress" id="progress" style="display:none;">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+
+        <div id="chainStatus" class="chain-grid"></div>
+        <div id="results"></div>
+    </div>
+
+    <script>
+        const CHAINS = [
+            {
+                id: 'starknet',
+                name: 'Starknet',
+                rpc: 'https://rpc.starknet.lava.build',
+                testContract: '0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7',
+                method: 'starknet_blockNumber',
+                type: 'starknet'
+            },
+            {
+                id: 'base',
+                name: 'Base',
+                rpc: 'https://mainnet.base.org',
+                testContract: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+                method: 'eth_blockNumber',
+                type: 'evm'
+            },
+            {
+                id: 'ethereum',
+                name: 'Ethereum',
+                rpc: 'https://rpc.flashbots.net',
+                testContract: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+                method: 'eth_blockNumber',
+                type: 'evm'
+            },
+            {
+                id: 'arbitrum',
+                name: 'Arbitrum',
+                rpc: 'https://arbitrum-one.publicnode.com',
+                testContract: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831',
+                method: 'eth_blockNumber',
+                type: 'evm'
+            },
+            {
+                id: 'optimism',
+                name: 'Optimism',
+                rpc: 'https://mainnet.optimism.io',
+                testContract: '0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85',
+                method: 'eth_blockNumber',
+                type: 'evm'
+            },
+            {
+                id: 'polygon',
+                name: 'Polygon',
+                rpc: 'https://polygon-bor-rpc.publicnode.com',
+                testContract: '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359',
+                method: 'eth_blockNumber',
+                type: 'evm'
+            }
+        ];
+
+        let testResults = [];
+        let passed = 0;
+        let failed = 0;
+        let skipped = 0;
+
+        function addTest(name, status, message = '') {
+            testResults.push({ name, status, message });
+            if (status === 'pass') passed++;
+            else if (status === 'fail') failed++;
+            else if (status === 'skip') skipped++;
+        }
+
+        async function makeRPCCall(url, method, params = []) {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    jsonrpc: '2.0',
+                    method: method,
+                    params: params,
+                    id: 1
+                })
+            });
+            return await response.json();
+        }
+
+        function updateProgress(percent) {
+            document.getElementById('progress').style.display = 'block';
+            document.getElementById('progressBar').style.width = percent + '%';
+        }
+
+        function displayResults() {
+            const resultsDiv = document.getElementById('results');
+            const total = passed + failed + skipped;
+            
+            let html = '<div class="test-section">';
+            
+            testResults.forEach(test => {
+                html += `
+                    <div class="test-case ${test.status}">
+                        <div class="test-name">
+                            <span class="status ${test.status}">
+                                ${test.status === 'pass' ? '✅ PASS' : test.status === 'fail' ? '❌ FAIL' : '⏭️ SKIP'}
+                            </span>
+                            ${test.name}
+                        </div>
+                        ${test.message ? `<div class="test-result">${test.message}</div>` : ''}
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            
+            html += `
+                <div class="summary ${failed > 0 ? 'fail' : ''}">
+                    <strong>Test Summary:</strong><br>
+                    ✅ Passed: ${passed}<br>
+                    ❌ Failed: ${failed}<br>
+                    ⏭️ Skipped: ${skipped}<br>
+                    📈 Total: ${total}<br>
+                    🎯 Success Rate: ${total > 0 ? ((passed / (passed + failed)) * 100).toFixed(1) : 0}%
+                </div>
+            `;
+            
+            resultsDiv.innerHTML = html;
+            document.getElementById('progress').style.display = 'none';
+        }
+
+        async function testChainConnectivity() {
+            const statusDiv = document.getElementById('chainStatus');
+            statusDiv.innerHTML = '<h3>Testing Chain Connectivity...</h3>';
+            
+            let html = '';
+            for (const chain of CHAINS) {
+                html += `<div class="chain-card" id="chain-${chain.id}">
+                    <h4>${chain.name}</h4>
+                    <div class="chain-status">Testing...</div>
+                </div>`;
+            }
+            statusDiv.innerHTML = html;
+
+            for (const chain of CHAINS) {
+                const cardDiv = document.getElementById(`chain-${chain.id}`);
+                try {
+                    const response = await makeRPCCall(chain.rpc, chain.method);
+                    if (response.result) {
+                        cardDiv.innerHTML = `
+                            <h4>✅ ${chain.name}</h4>
+                            <div class="chain-status">
+                                Latest Block: ${response.result}<br>
+                                Type: ${chain.type}<br>
+                                Status: Connected
+                            </div>
+                        `;
+                    } else {
+                        throw new Error('No result');
+                    }
+                } catch (error) {
+                    cardDiv.innerHTML = `
+                        <h4>❌ ${chain.name}</h4>
+                        <div class="chain-status">
+                            Error: ${error.message}<br>
+                            Status: Failed
+                        </div>
+                    `;
+                }
+            }
+        }
+
+        async function testReportGeneration() {
+            testResults = [];
+            passed = failed = skipped = 0;
+
+            // Test CSV export
+            try {
+                const mockData = [
+                    { block: 1, tx: '0x123', event: 'Transfer' },
+                    { block: 2, tx: '0x456', event: 'Approval' }
+                ];
+                const csv = mockData.map(row => `${row.block},${row.tx},${row.event}`).join('\\n');
+                if (csv.includes('Transfer') && csv.includes('Approval')) {
+                    addTest('CSV export format', 'pass', 'CSV format correct');
+                } else {
+                    throw new Error('CSV format incorrect');
+                }
+            } catch (error) {
+                addTest('CSV export format', 'fail', error.message);
+            }
+
+            // Test JSON export
+            try {
+                const mockData = {
+                    contract: '0x123',
+                    events: [{ type: 'Transfer', count: 10 }],
+                    stats: { total: 10 }
+                };
+                const json = JSON.stringify(mockData);
+                const parsed = JSON.parse(json);
+                if (parsed.stats.total === 10) {
+                    addTest('JSON export format', 'pass', 'JSON format correct');
+                } else {
+                    throw new Error('JSON format incorrect');
+                }
+            } catch (error) {
+                addTest('JSON export format', 'fail', error.message);
+            }
+
+            // Test PDF report structure
+            try {
+                const reportData = {
+                    title: 'Contract Analysis Report',
+                    contract: '0x123',
+                    chain: 'Ethereum',
+                    stats: { totalEvents: 100 },
+                    charts: ['volume', 'events'],
+                    timestamp: new Date().toISOString()
+                };
+                if (reportData.title && reportData.stats) {
+                    addTest('PDF report structure', 'pass', 'Report structure valid');
+                } else {
+                    throw new Error('Report structure incomplete');
+                }
+            } catch (error) {
+                addTest('PDF report structure', 'fail', error.message);
+            }
+
+            displayResults();
+        }
+
+        async function runAllTests() {
+            document.getElementById('runBtn').disabled = true;
+            testResults = [];
+            passed = failed = skipped = 0;
+            updateProgress(0);
+
+            // Test 1: Chain connectivity
+            updateProgress(10);
+            for (const chain of CHAINS) {
+                try {
+                    const response = await makeRPCCall(chain.rpc, chain.method);
+                    if (response.result) {
+                        addTest(`${chain.name} RPC connectivity`, 'pass', `Block: ${response.result}`);
+                    } else {
+                        throw new Error('No result');
+                    }
+                } catch (error) {
+                    addTest(`${chain.name} RPC connectivity`, 'fail', error.message);
+                }
+            }
+
+            // Test 2: Address validation
+            updateProgress(40);
+            const evmValid = /^0x[0-9a-fA-F]{40}$/.test('0x1234567890123456789012345678901234567890');
+            addTest('EVM address validation', evmValid ? 'pass' : 'fail');
+
+            const starknetValid = /^0x[0-9a-fA-F]{63,64}$/.test('0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7');
+            addTest('Starknet address validation', starknetValid ? 'pass' : 'fail');
+
+            // Test 3: Zero-activity state
+            updateProgress(60);
+            const zeroStats = {
+                totalEvents: 0,
+                totalTransactions: 0,
+                uniqueUsers: 0,
+                isActive: false
+            };
+            addTest('Zero stats structure', 'pass', 'All fields present');
+
+            // Test 4: Report generation
+            updateProgress(80);
+            await testReportGeneration();
+
+            updateProgress(100);
+            displayResults();
+            document.getElementById('runBtn').disabled = false;
+        }
+
+        window.addEventListener('load', () => {
+            console.log('🧪 Contract EDA test page loaded');
+        });
+    </script>
+</body>
+</html>

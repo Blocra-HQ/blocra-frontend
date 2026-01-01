@@ -62,7 +62,12 @@ export const SUPPORTED_CHAINS: ChainConfig[] = [
   {
     id: 'ethereum',
     name: 'Ethereum',
-    rpcs: ['https://rpc.flashbots.net', 'https://eth.drpc.org', 'https://eth-pokt.nodies.app'],
+    rpcs: [
+      'https://eth.llamarpc.com',
+      'https://rpc.ankr.com/eth',
+      'https://eth.drpc.org',
+      'https://ethereum.publicnode.com'
+    ],
     type: 'evm',
     nativeCurrency: 'ETH',
     explorer: 'https://etherscan.io'

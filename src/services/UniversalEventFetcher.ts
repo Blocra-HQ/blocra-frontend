@@ -4,6 +4,7 @@
  */
 
 import { ChainConfig } from '@/config/chains';
+import { alchemyTransactionFetcher } from './AlchemyTransactionFetcher';
 
 export interface UniversalEvent {
   blockNumber: number;
@@ -15,9 +16,21 @@ export interface UniversalEvent {
   logIndex?: number;
 }
 
+export interface Transaction {
+  hash: string;
+  blockNumber: number;
+  from: string;
+  to: string;
+  value: string;
+  methodName: string;
+  timestamp?: number;
+}
+
 export interface EventFetchResult {
   events: UniversalEvent[];
+  transactions: Transaction[];
   totalFetched: number;
+  totalTransactions: number;
   blockRange: { from: number; to: number };
   chainType: string;
 }
@@ -103,7 +116,9 @@ export class UniversalEventFetcher {
 
         return {
           events: universalEvents,
+          transactions: [],
           totalFetched: universalEvents.length,
+          totalTransactions: 0,
           blockRange: { from: fromBlock, to: toBlock },
           chainType: 'starknet'
         };
@@ -117,7 +132,54 @@ export class UniversalEventFetcher {
   }
 
   /**
+   * Find contract deployment block using binary search (FAST!)
+   */
+  private async findDeploymentBlock(rpcUrl: string, contractAddress: string, latestBlock: number): Promise<number> {
+    let low = 0;
+    let high = latestBlock;
+    let deploymentBlock = 0;
+
+    // Binary search for first block with code
+    while (low <= high) {
+      const mid = Math.floor((low + high) / 2);
+      
+      try {
+        const response = await fetch(rpcUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            method: 'eth_getCode',
+            params: [contractAddress, `0x${mid.toString(16)}`],
+            id: 1
+          })
+        });
+
+        const data = await response.json();
+        const code = data.result;
+
+        if (code && code !== '0x' && code.length > 2) {
+          // Contract exists at this block, search earlier
+          deploymentBlock = mid;
+          high = mid - 1;
+        } else {
+          // Contract doesn't exist yet, search later
+          low = mid + 1;
+        }
+      } catch (error) {
+        // On error, assume contract exists and search earlier
+        deploymentBlock = mid;
+        high = mid - 1;
+      }
+    }
+
+    return deploymentBlock;
+  }
+
+  /**
    * Fetch EVM events (Ethereum, Base, Arbitrum, etc.)
+   * Uses Alchemy API for INSTANT transaction fetching (Dune-level speed!)
+   * OPTIMIZED FOR SPEED with binary search and large chunks
    */
   private async fetchEVMEvents(
     chain: ChainConfig,
@@ -132,99 +194,273 @@ export class UniversalEventFetcher {
     console.log(`[UniversalEventFetcher] RPCs:`, chain.rpcs);
     
     let lastError: any;
+    let rpcIndex = 0;
     
     for (const rpcUrl of chain.rpcs) {
+      rpcIndex++;
       try {
-        console.log(`[UniversalEventFetcher] Trying RPC: ${rpcUrl}`);
-        const allEvents: UniversalEvent[] = [];
+        console.log(`[UniversalEventFetcher] Trying RPC ${rpcIndex}/${chain.rpcs.length}: ${rpcUrl}`);
         
-        // EVM chains use eth_getLogs
-        // Split into chunks to avoid RPC limits (typically 10k blocks max)
-        const chunkSize = 10000;
+        if (onProgress) {
+          onProgress(`⚡ QUICK SCAN: Analyzing last 100,000 blocks for comprehensive recent activity...`);
+        }
+
+        const allEvents: UniversalEvent[] = [];
+        let allTransactions: Transaction[] = [];
+        
+        // SPEED OPTIMIZATION: Use backend API for instant transaction fetching
+        const alchemyChainId = alchemyTransactionFetcher.getAlchemyChainId(chain.name);
+        const useBackendAPI = alchemyTransactionFetcher.isSupported(chain.name);
+        
+        if (useBackendAPI) {
+          console.log(`[UniversalEventFetcher] Using backend API for instant transaction fetching`);
+          if (onProgress) {
+            onProgress(`⚡ Using backend API for instant transaction data...`);
+          }
+          
+          try {
+            // Fetch transactions via backend API (INSTANT - like Dune!)
+            const response = await fetch('/api/contract/transactions', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contract_address: contractAddress,
+                chain: alchemyChainId,
+                from_block: `0x${fromBlock.toString(16)}`,
+                to_block: `0x${toBlock.toString(16)}`
+              })
+            });
+
+            if (!response.ok) {
+              throw new Error(`Backend API error: ${response.status}`);
+            }
+
+            const data = await response.json();
+            allTransactions = data.transactions || [];
+            console.log(`[UniversalEventFetcher] Backend API returned ${allTransactions.length} transactions`);
+          } catch (backendError) {
+            console.warn(`[UniversalEventFetcher] Backend API failed, falling back to direct Alchemy:`, backendError);
+            if (onProgress) {
+              onProgress(`⚠️ Backend API unavailable, using direct Alchemy fallback...`);
+            }
+            // Fall back to direct Alchemy call
+            allTransactions = await alchemyTransactionFetcher.fetchTransactions(
+              contractAddress,
+              alchemyChainId,
+              `0x${fromBlock.toString(16)}`,
+              `0x${toBlock.toString(16)}`
+            );
+          }
+        } else {
+          console.log(`[UniversalEventFetcher] Chain not supported by Alchemy, using RPC`);
+          // Use RPC for non-Alchemy chains
+          allTransactions = await this.fetchTransactionsViaRPC(rpcUrl, contractAddress, fromBlock, toBlock);
+        }
+        
+        // Fetch events (still use RPC for events)
+        const chunkSize = 100000;
+        const maxBlocksToScan = 500000;
         let currentFrom = fromBlock;
         let pageCount = 0;
+        let totalScanned = 0;
 
-        while (currentFrom <= toBlock) {
+        while (currentFrom <= toBlock && totalScanned < maxBlocksToScan) {
           pageCount++;
           const currentTo = Math.min(currentFrom + chunkSize - 1, toBlock);
           
-          console.log(`[UniversalEventFetcher] Fetching chunk ${pageCount}: blocks ${currentFrom} to ${currentTo}`);
+          console.log(`[UniversalEventFetcher] Fetching events chunk ${pageCount}: blocks ${currentFrom} to ${currentTo}`);
           
           if (onProgress) {
-            onProgress(`Fetching blocks ${currentFrom.toLocaleString()} to ${currentTo.toLocaleString()}... (${allEvents.length} events so far)`);
+            onProgress(`📡 Scanning blocks ${currentFrom.toLocaleString()} to ${currentTo.toLocaleString()}... (${allEvents.length} events, ${allTransactions.length} transactions)`);
           }
 
-          const requestBody = {
-            jsonrpc: '2.0',
-            method: 'eth_getLogs',
-            params: [{
-              address: contractAddress,
-              fromBlock: `0x${currentFrom.toString(16)}`,
-              toBlock: `0x${currentTo.toString(16)}`
-            }],
-            id: 1
-          };
-          
-          console.log(`[UniversalEventFetcher] Request:`, JSON.stringify(requestBody, null, 2));
-
-          const response = await fetch(rpcUrl, {
+          const eventsData = await fetch(rpcUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(requestBody)
-          });
+            body: JSON.stringify({
+              jsonrpc: '2.0',
+              method: 'eth_getLogs',
+              params: [{
+                address: contractAddress,
+                fromBlock: `0x${currentFrom.toString(16)}`,
+                toBlock: `0x${currentTo.toString(16)}`
+              }],
+              id: 1
+            })
+          }).then(r => r.json());
 
-          console.log(`[UniversalEventFetcher] Response status: ${response.status}`);
+          if (eventsData.error) {
+            // If error is about too many results, reduce chunk size and retry
+            if (eventsData.error.message?.includes('10000')) {
+              console.log(`[UniversalEventFetcher] Too many results, will use smaller chunks`);
+              // Retry with smaller chunk
+              const smallerChunk = 10000;
+              for (let i = currentFrom; i <= currentTo; i += smallerChunk) {
+                const smallTo = Math.min(i + smallerChunk - 1, currentTo);
+                const smallData = await fetch(rpcUrl, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    jsonrpc: '2.0',
+                    method: 'eth_getLogs',
+                    params: [{
+                      address: contractAddress,
+                      fromBlock: `0x${i.toString(16)}`,
+                      toBlock: `0x${smallTo.toString(16)}`
+                    }],
+                    id: 1
+                  })
+                }).then(r => r.json());
 
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.error(`[UniversalEventFetcher] HTTP error: ${errorText}`);
-            throw new Error(`HTTP ${response.status}: ${errorText}`);
-          }
-
-          const data = await response.json();
-          console.log(`[UniversalEventFetcher] Response data:`, data);
-          
-          if (data.error) {
-            console.error(`[UniversalEventFetcher] RPC error:`, data.error);
-            throw new Error(data.error.message);
-          }
-
-          const logs = data.result || [];
-          console.log(`[UniversalEventFetcher] Found ${logs.length} logs in this chunk`);
-          
-          // Convert to universal format
-          logs.forEach((log: any) => {
-            allEvents.push({
-              blockNumber: parseInt(log.blockNumber, 16),
-              transactionHash: log.transactionHash,
-              eventName: this.decodeEVMEventName(log.topics),
-              address: log.address,
-              data: log.data,
-              logIndex: parseInt(log.logIndex, 16)
+                if (smallData.result && Array.isArray(smallData.result)) {
+                  smallData.result.forEach((log: any) => {
+                    allEvents.push({
+                      blockNumber: parseInt(log.blockNumber, 16),
+                      transactionHash: log.transactionHash,
+                      eventName: this.decodeEVMEventName(log.topics),
+                      address: log.address,
+                      data: log.data,
+                      logIndex: parseInt(log.logIndex, 16)
+                    });
+                  });
+                }
+              }
+            } else {
+              throw new Error(eventsData.error.message);
+            }
+          } else {
+            const logs = eventsData.result || [];
+            
+            if (!Array.isArray(logs)) {
+              console.warn(`[UniversalEventFetcher] Invalid response format from ${rpcUrl}, trying next RPC`);
+              throw new Error(`Invalid response format: expected array, got ${typeof logs}`);
+            }
+            
+            logs.forEach((log: any) => {
+              allEvents.push({
+                blockNumber: parseInt(log.blockNumber, 16),
+                transactionHash: log.transactionHash,
+                eventName: this.decodeEVMEventName(log.topics),
+                address: log.address,
+                data: log.data,
+                logIndex: parseInt(log.logIndex, 16)
+              });
             });
-          });
+          }
 
+          totalScanned += (currentTo - currentFrom + 1);
           currentFrom = currentTo + 1;
+
+          // Early exit if we've scanned 500k blocks with no events
+          if (allEvents.length === 0 && totalScanned >= maxBlocksToScan) {
+            console.log(`[UniversalEventFetcher] Scanned ${totalScanned} blocks with no events. Stopping event scan.`);
+            if (onProgress) {
+              onProgress(`⚠️ Scanned ${totalScanned.toLocaleString()} blocks with no events. Continuing with ${allTransactions.length} transactions found.`);
+            }
+            break;
+          }
         }
 
-        console.log(`[UniversalEventFetcher] Total events fetched: ${allEvents.length}`);
+        console.log(`[UniversalEventFetcher] Total events: ${allEvents.length}, Total transactions: ${allTransactions.length}`);
 
-        if (onProgress) onProgress(`Complete! ${allEvents.length} events fetched.`);
+        if (onProgress) {
+          onProgress(`✅ Complete! ${allEvents.length} events + ${allTransactions.length} transactions fetched.`);
+        }
 
         return {
           events: allEvents,
+          transactions: allTransactions,
           totalFetched: allEvents.length,
+          totalTransactions: allTransactions.length,
           blockRange: { from: fromBlock, to: toBlock },
           chainType: 'evm'
         };
       } catch (error) {
         lastError = error;
         console.error(`[UniversalEventFetcher] EVM RPC ${rpcUrl} failed:`, error);
+        
+        // SPEED OPTIMIZATION: Don't wait, move to next RPC immediately
+        if (rpcIndex < chain.rpcs.length) {
+          console.log(`[UniversalEventFetcher] Moving to next RPC...`);
+          if (onProgress) {
+            onProgress(`⚠️ RPC failed, trying next endpoint...`);
+          }
+          continue;
+        }
       }
     }
     
     console.error(`[UniversalEventFetcher] All EVM RPCs failed. Last error:`, lastError);
     throw lastError || new Error('All EVM RPCs failed');
+  }
+
+  /**
+   * Fetch transactions via RPC (fallback method)
+   */
+  private async fetchTransactionsViaRPC(
+    rpcUrl: string,
+    contractAddress: string,
+    fromBlock: number,
+    toBlock: number
+  ): Promise<Transaction[]> {
+    return this.fetchTransactionsForBlockRange(rpcUrl, contractAddress, fromBlock, toBlock);
+  }
+
+  /**
+   * Fetch transactions for a specific block range
+   * OPTIMIZED: Checks every block in small batches for accuracy
+   */
+  private async fetchTransactionsForBlockRange(
+    rpcUrl: string,
+    contractAddress: string,
+    fromBlock: number,
+    toBlock: number
+  ): Promise<Transaction[]> {
+    const normalizedAddress = contractAddress.toLowerCase();
+    const transactions: Transaction[] = [];
+    
+    try {
+      // SPEED FIX: Check blocks in batches of 100 (not sampling, checking ALL)
+      const batchSize = 100;
+      const blocksToCheck: number[] = [];
+      
+      // Check ALL blocks in range, not just samples
+      for (let block = fromBlock; block <= toBlock; block++) {
+        blocksToCheck.push(block);
+      }
+
+      // Fetch blocks in parallel batches
+      for (let i = 0; i < blocksToCheck.length; i += batchSize) {
+        const batch = blocksToCheck.slice(i, i + batchSize);
+        const blockPromises = batch.map(bn => this.getBlockWithTransactions(rpcUrl, bn));
+        const blocks = await Promise.all(blockPromises);
+
+        for (const block of blocks) {
+          if (!block || !block.transactions) continue;
+
+          for (const tx of block.transactions) {
+            const txTo = tx.to?.toLowerCase();
+            const txFrom = tx.from?.toLowerCase();
+
+            if (txTo === normalizedAddress || txFrom === normalizedAddress) {
+              transactions.push({
+                hash: tx.hash,
+                blockNumber: parseInt(block.number, 16),
+                from: tx.from,
+                to: tx.to || '',
+                value: tx.value,
+                methodName: this.decodeMethodName(tx.input),
+                timestamp: parseInt(block.timestamp, 16)
+              });
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.warn(`Failed to fetch transactions for range ${fromBlock}-${toBlock}:`, error);
+    }
+
+    return transactions;
   }
 
   /**
@@ -298,7 +534,9 @@ export class UniversalEventFetcher {
 
         return {
           events: allEvents,
+          transactions: [],
           totalFetched: allEvents.length,
+          totalTransactions: 0,
           blockRange: { from: fromBlock, to: toBlock },
           chainType: 'solana'
         };
@@ -309,6 +547,69 @@ export class UniversalEventFetcher {
     }
     
     throw lastError || new Error('All Solana RPCs failed');
+  }
+
+  /**
+   * Format wei value to ETH
+   */
+  private formatValue(weiValue: bigint): string {
+    const eth = Number(weiValue) / 1e18;
+    return eth.toFixed(6);
+  }
+
+  /**
+   * Get a block with all its transactions
+   */
+  private async getBlockWithTransactions(rpcUrl: string, blockNumber: number): Promise<any> {
+    try {
+      const response = await fetch(rpcUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'eth_getBlockByNumber',
+          params: [`0x${blockNumber.toString(16)}`, true],
+          id: 1
+        })
+      });
+
+      if (!response.ok) return null;
+
+      const data = await response.json();
+      return data.error ? null : data.result;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  /**
+   * Decode method name from input data
+   */
+  private decodeMethodName(input: string): string {
+    if (!input || input === '0x' || input.length < 10) {
+      return 'Transfer';
+    }
+
+    const methodId = input.slice(0, 10);
+    
+    const knownMethods: Record<string, string> = {
+      '0xa9059cbb': 'transfer',
+      '0x23b872dd': 'transferFrom',
+      '0x095ea7b3': 'approve',
+      '0x38ed1739': 'swapExactTokensForTokens',
+      '0x7ff36ab5': 'swapExactETHForTokens',
+      '0x18cbafe5': 'swapExactTokensForETH',
+      '0xc04b8d59': 'exactInputSingle',
+      '0x414bf389': 'exactOutputSingle',
+      '0xb858183f': 'exactInput',
+      '0x09b81346': 'exactOutput',
+      '0xd0e30db0': 'deposit',
+      '0x2e1a7d4d': 'withdraw',
+      '0x40c10f19': 'mint',
+      '0x42966c68': 'burn'
+    };
+
+    return knownMethods[methodId] || `Unknown (${methodId})`;
   }
 
   /**

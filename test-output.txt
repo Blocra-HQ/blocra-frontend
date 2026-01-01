@@ -1,0 +1,82 @@
+
+🧪 Running Contract EDA Tests...
+
+======================================================================
+
+🌐 RPC Connectivity Tests
+----------------------------------------------------------------------
+   Latest block: 5044044
+✅ PASS: Starknet RPC connectivity
+   Latest block: 0x2664371
+✅ PASS: Base RPC connectivity
+   Latest block: 0x1706240
+✅ PASS: Ethereum RPC connectivity
+   Latest block: 0x18d96367
+✅ PASS: Arbitrum RPC connectivity
+   Latest block: 0x8b18507
+✅ PASS: Optimism RPC connectivity
+   Latest block: 0x4d55b57
+✅ PASS: Polygon RPC connectivity
+
+📝 Contract Code Verification
+----------------------------------------------------------------------
+⏭️  SKIP: Starknet contract verification (Starknet uses different method)
+   Code length: 3706 chars
+✅ PASS: Base contract exists
+   Code length: 4374 chars
+✅ PASS: Ethereum contract exists
+   Code length: 3706 chars
+✅ PASS: Arbitrum contract exists
+   Code length: 3706 chars
+✅ PASS: Optimism contract exists
+   Code length: 3706 chars
+✅ PASS: Polygon contract exists
+
+📊 Event Fetching Tests
+----------------------------------------------------------------------
+⏭️  SKIP: Starknet event fetching (Requires Starknet.js library)
+   Events found: 13168
+✅ PASS: Base fetch events
+   Events found: 8242
+✅ PASS: Ethereum fetch events
+   Events found: 138
+✅ PASS: Arbitrum fetch events
+   Events found: 2282
+✅ PASS: Optimism fetch events
+   Events found: 3304
+✅ PASS: Polygon fetch events
+
+🔍 Address Validation Tests
+----------------------------------------------------------------------
+✅ PASS: Ethereum/EVM valid addresses
+✅ PASS: Ethereum/EVM reject invalid addresses
+✅ PASS: Starknet valid addresses
+✅ PASS: Starknet reject invalid addresses
+
+🔄 Zero-Activity State Tests
+----------------------------------------------------------------------
+✅ PASS: Zero stats object structure
+
+📄 Report Generation Tests
+----------------------------------------------------------------------
+✅ PASS: CSV export format
+✅ PASS: JSON export format
+✅ PASS: PDF report structure
+
+⚙️  Chain Configuration Tests
+----------------------------------------------------------------------
+✅ PASS: All chains have required config
+✅ PASS: Chain types are valid
+
+======================================================================
+
+📊 Test Summary
+----------------------------------------------------------------------
+✅ Passed:  26
+❌ Failed:  0
+⏭️  Skipped: 2
+📈 Total:   28
+🎯 Success Rate: 100.0%
+
+🎉 All tests passed! Contract EDA is working correctly.
+
