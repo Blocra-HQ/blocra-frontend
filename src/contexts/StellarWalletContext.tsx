@@ -40,8 +40,9 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     setIsConnecting(true)
     try {
       // Check for Stellar wallet extensions (Freighter, etc.)
-      if (typeof window !== 'undefined' && (window as any).stellar) {
-        const result = await (window as any).stellar.requestPublicKey()
+      const stellarWindow = window as unknown as { stellar?: { requestPublicKey: () => Promise<string> } };
+      if (typeof window !== 'undefined' && stellarWindow.stellar) {
+        const result = await stellarWindow.stellar.requestPublicKey()
         if (result) {
           setAddress(result)
           setIsConnected(true)
