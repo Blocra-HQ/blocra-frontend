@@ -4,13 +4,12 @@ import React from "react"
 
 import { createContext, useContext, useState, useCallback, useEffect } from 'react'
 
-interface StellarWallet {
-  requestPublicKey: () => Promise<string>;
-}
-
+// Extend Window interface for Stellar wallet
 declare global {
   interface Window {
-    stellar?: StellarWallet;
+    stellar?: {
+      requestPublicKey: () => Promise<string>
+    }
   }
 }
 
@@ -50,9 +49,8 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     setIsConnecting(true)
     try {
       // Check for Stellar wallet extensions (Freighter, etc.)
-      const stellarWindow = window as unknown as { stellar?: { requestPublicKey: () => Promise<string> } };
-      if (typeof window !== 'undefined' && stellarWindow.stellar) {
-        const result = await stellarWindow.stellar.requestPublicKey()
+      if (typeof window !== 'undefined' && window.stellar) {
+        const result = await window.stellar.requestPublicKey()
         if (result) {
           setAddress(result)
           setIsConnected(true)
