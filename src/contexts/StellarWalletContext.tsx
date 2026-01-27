@@ -4,13 +4,12 @@ import React from "react"
 
 import { createContext, useContext, useState, useCallback, useEffect } from 'react'
 
-interface StellarWallet {
-  requestPublicKey: () => Promise<string>;
-}
-
+// Extend Window interface for Stellar wallet
 declare global {
   interface Window {
-    stellar?: StellarWallet;
+    stellar?: {
+      requestPublicKey: () => Promise<string>
+    }
   }
 }
 
