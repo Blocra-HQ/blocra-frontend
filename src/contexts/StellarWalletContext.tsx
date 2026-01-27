@@ -4,6 +4,16 @@ import React from "react"
 
 import { createContext, useContext, useState, useCallback, useEffect } from 'react'
 
+interface StellarWallet {
+  requestPublicKey: () => Promise<string>;
+}
+
+declare global {
+  interface Window {
+    stellar?: StellarWallet;
+  }
+}
+
 interface WalletContextType {
   isConnected: boolean
   address: string | null
