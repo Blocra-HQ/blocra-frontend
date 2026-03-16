@@ -16,7 +16,7 @@ import "@/utils/debug"; // Load debug utilities
 
 // Core pages (immediately loaded)
 import Index from "./pages/Index";
-import Auth from "./pages/Auth";
+// import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
 // Lazily loaded pages - Core features only
@@ -57,78 +57,55 @@ const App = () => (
                     }>
                       <Routes>
                         {/* Public routes */}
-                        <Route path="/auth" element={
+                        {/* <Route path="/auth" element={
                           <ProtectedRoute requireAuth={false}>
                             <Auth />
                           </ProtectedRoute>
                         } />
-                        <Route path="/auth/google/callback" element={<GoogleCallback />} />
+                        <Route path="/auth/google/callback" element={<GoogleCallback />} /> */}
 
                         <Route path="/docs" element={
                           <Docs />
                         } />
 
-                        {/* Protected routes */}
+                        {/* Landing page - now public */}
                         <Route path="/" element={
-                          <ProtectedRoute>
-                            <Index />
-                          </ProtectedRoute>
+                          <Index />
                         } />
+                        {/* Other pages - now public */}
                         <Route path="/profile" element={
-                          <ProtectedRoute>
-                            <Profile />
-                          </ProtectedRoute>
+                          <Profile />
                         } />
                         <Route path="/bounties/create" element={
-                          <ProtectedRoute>
-                            <CreateBounty />
-                          </ProtectedRoute>
+                          <CreateBounty />
                         } />
                         <Route path="/data-explorer" element={
-                          <ProtectedRoute>
-                            <DataExplorerPage />
-                          </ProtectedRoute>
+                          <DataExplorerPage />
                         } />
                         <Route path="/query" element={
-                          <ProtectedRoute>
-                            <QueryEditor />
-                          </ProtectedRoute>
+                          <QueryEditor />
                         } />
                         <Route path="/queries/new" element={
-                          <ProtectedRoute>
-                            <QueryEditor />
-                          </ProtectedRoute>
+                          <QueryEditor />
                         } />
                         <Route path="/library/:type" element={
-                          <ProtectedRoute>
-                            <LibraryPage />
-                          </ProtectedRoute>
+                          <LibraryPage />
                         } />
                         <Route path="/library" element={
-                          <ProtectedRoute>
-                            <LibraryPage />
-                          </ProtectedRoute>
+                          <LibraryPage />
                         } />
                         <Route path="/admin" element={<AdminDashboard />} />
                         <Route path="/bounties" element={
-                          <ProtectedRoute>
-                            <Bounties />
-                          </ProtectedRoute>
+                          <Bounties />
                         } />
                         <Route path="/contract-events-eda" element={
-                          <ProtectedRoute>
-                            <ContractEventsEDA />
-                          </ProtectedRoute>
+                          <ContractEventsEDA />
                         } />
                         <Route path="/settings" element={
-                          <ProtectedRoute>
-                            <Settings />
-                          </ProtectedRoute>
+                          <Settings />
                         } />
                         <Route path="/builder" element={
-                          <ProtectedRoute>
-                            <DashboardBuilder />
-                          </ProtectedRoute>
+                          <DashboardBuilder />
                         } />
 
                         {/* Catch-all route */}
