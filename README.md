@@ -1,11 +1,11 @@
 # BlocRA - Blockchain Resource Allocation Platform
 
-A high-performance blockchain analytics and bounty management platform built with React, Rust, and Starknet.
+A high-performance blockchain analytics and bounty management platform built with React, Rust, and Stellar.
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- **Rust** 1.75+ (for backend)
+- **Rust** 1.75+ (for backend and smart contracts)
 - **Node.js** 18+ (for frontend)
 - **SQLite** (included with Rust backend)
 
@@ -57,14 +57,14 @@ GOOGLE_CLIENT_SECRET=optional
 
 - **Frontend:** React + TypeScript + Vite + TailwindCSS
 - **Backend:** Rust + Actix-web + SQLite
-- **Blockchain:** Starknet (Cairo contracts)
+- **Blockchain:** Stellar (Soroban smart contracts)
 - **RPC:** Multi-endpoint failover system
 
 ## 📊 Features
 
 - ✅ Real-time blockchain analytics dashboard
 - ✅ Bounty creation and management system
-- ✅ Multi-wallet authentication (Argent, Braavos)
+- ✅ Multi-wallet authentication (Freighter, etc.)
 - ✅ Admin panel for platform management
 - ✅ Contract event tracking and analysis
 - ✅ RPC integration with automatic failover
