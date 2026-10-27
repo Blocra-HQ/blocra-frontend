@@ -1,4 +1,4 @@
-# BlocRA - Blockchain Resource Allocation Platform
+# BlocRA - Blockchain Resource Allocation Platformm
 
 A high-performance blockchain analytics and bounty management platform built with React, Rust, and Stellar.
 
