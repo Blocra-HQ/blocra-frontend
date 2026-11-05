@@ -14,14 +14,17 @@ interface BlockchainStats {
   total_transactions: number;
   active_users: number;
   gas_used: number;
-  volume: number;
-  tvl: number;
   unique_senders: number;
   total_fees: string;
   avg_fee: string;
+  /** Token fees are paid in (STRK on Starknet). */
+  fee_unit?: string;
   successful_txs: number;
   failed_txs: number;
-  pending_txs: number;
+  l2_gas?: number;
+  l1_data_gas?: number;
+  /** Transactions per type in the block (INVOKE, DECLARE, ...). */
+  tx_types?: Record<string, number>;
 }
 
 interface BlockchainStatsResponse {
@@ -42,11 +45,10 @@ interface HistoricalDataPoint {
   block_number: number;
   transactions: number;
   gas: number;
-  volume: number;
   addresses: number;
-  gasPrice: number;
-  utilization: number;
+  avgFee: number;
   fees: number;
+  failRate: number;
   block_time: number; // Time between blocks in seconds
 }
 
@@ -105,12 +107,13 @@ const Index = () => {
             timestamp: data.timestamp,
             block_number: data.block_number,
             transactions: data.stats.total_transactions,
-            gas: data.stats.gas_used,
-            volume: data.stats.volume + Math.floor(Math.random() * 100), // Add variation
+            gas: data.stats.gas_used / 1e6,
             addresses: data.stats.unique_senders,
-            gasPrice: parseFloat(data.stats.avg_fee) * 1e9 + (Math.random() * 10), // Add variation in Gwei
-            utilization: (data.stats.gas_used / 5000000) * 100,
+            avgFee: parseFloat(data.stats.avg_fee),
             fees: parseFloat(data.stats.total_fees),
+            failRate: data.stats.total_transactions
+              ? (data.stats.failed_txs / data.stats.total_transactions) * 100
+              : 0,
             block_time: blockTime,
           };
           
@@ -139,12 +142,14 @@ const Index = () => {
     return () => clearInterval(interval);
   }, [currentChain.id]); // Re-fetch when chain changes
 
-  const pieData = stats ? [
-    { name: 'Transfers', value: Math.floor(stats.total_transactions * 0.4), color: '#3b82f6' },
-    { name: 'Swaps', value: Math.floor(stats.total_transactions * 0.3), color: '#8b5cf6' },
-    { name: 'Contract Calls', value: Math.floor(stats.total_transactions * 0.2), color: '#10b981' },
-    { name: 'Other', value: Math.floor(stats.total_transactions * 0.1), color: '#f59e0b' },
-  ] : [];
+  // Real per-type counts from the block's transactions.
+  const TYPE_COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444'];
+  const pieData = Object.entries(stats?.tx_types ?? {}).map(([name, value], i) => ({
+    name: name.replace('_', ' ').toLowerCase().replace(/^\w/, c => c.toUpperCase()),
+    value,
+    color: TYPE_COLORS[i % TYPE_COLORS.length],
+  }));
+  const feeUnit = stats?.fee_unit || currentChain.nativeCurrency;
 
   // Fee distribution based on actual transaction data
   const feeDistributionData = historicalData.length > 0 ? [
@@ -168,17 +173,11 @@ const Index = () => {
       count: historicalData.filter(d => d.fees >= 0.1).length,
       avgFee: '> 0.1'
     },
-  ] : stats ? [
-    { range: `0-0.001 ${currentChain.nativeCurrency}`, count: Math.floor(stats.total_transactions * 0.5), avgFee: '< 0.001' },
-    { range: `0.001-0.01 ${currentChain.nativeCurrency}`, count: Math.floor(stats.total_transactions * 0.3), avgFee: '~0.005' },
-    { range: `0.01-0.1 ${currentChain.nativeCurrency}`, count: Math.floor(stats.total_transactions * 0.15), avgFee: '~0.05' },
-    { range: `0.1+ ${currentChain.nativeCurrency}`, count: Math.floor(stats.total_transactions * 0.05), avgFee: '> 0.1' },
   ] : [];
 
   const successRateData = stats ? [
     { name: 'Success', value: stats.successful_txs, color: '#10b981' },
-    { name: 'Failed', value: stats.failed_txs, color: '#ef4444' },
-    { name: 'Pending', value: stats.pending_txs, color: '#f59e0b' },
+    { name: 'Reverted', value: stats.failed_txs, color: '#ef4444' },
   ].filter(item => item.value > 0) : []; // Only show categories with data
 
   return (
@@ -280,17 +279,17 @@ const Index = () => {
 
               <Card className="border-l-4 border-l-orange-500">
                 <CardContent className="p-3 sm:p-4">
-                  <p className="text-xs font-medium text-muted-foreground mb-1">Volume</p>
-                  <p className="text-xl sm:text-2xl font-bold mb-1">${stats.volume.toLocaleString()}</p>
-                  <p className="text-xs text-muted-foreground">Transaction volume</p>
+                  <p className="text-xs font-medium text-muted-foreground mb-1">Fees</p>
+                  <p className="text-xl sm:text-2xl font-bold mb-1">{parseFloat(stats.total_fees).toFixed(4)} {feeUnit}</p>
+                  <p className="text-xs text-muted-foreground">Paid in the latest block</p>
                 </CardContent>
               </Card>
 
               <Card className="border-l-4 border-l-pink-500">
                 <CardContent className="p-3 sm:p-4">
-                  <p className="text-xs font-medium text-muted-foreground mb-1">TVL</p>
-                  <p className="text-xl sm:text-2xl font-bold mb-1">${(stats.tvl / 1000000).toFixed(0)}M</p>
-                  <p className="text-xs text-muted-foreground">Total value locked</p>
+                  <p className="text-xs font-medium text-muted-foreground mb-1">Success rate</p>
+                  <p className="text-xl sm:text-2xl font-bold mb-1">{stats.total_transactions ? ((stats.successful_txs / stats.total_transactions) * 100).toFixed(1) : '—'}%</p>
+                  <p className="text-xs text-muted-foreground">{stats.failed_txs} reverted in the latest block</p>
                 </CardContent>
               </Card>
             </div>
@@ -364,9 +363,9 @@ const Index = () => {
                 <CardHeader className="p-3 sm:p-6">
                   <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                     <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5 text-green-500 flex-shrink-0" />
-                    <span className="truncate">Network Volume</span>
+                    <span className="truncate">Fees per Block</span>
                   </CardTitle>
-                  <p className="text-xs text-muted-foreground">Transaction volume in USD</p>
+                  <p className="text-xs text-muted-foreground">Total fees paid in each block ({feeUnit})</p>
                 </CardHeader>
                 <CardContent className="p-3 sm:p-6 pt-0">
                   {historicalData.length > 0 ? (
@@ -375,10 +374,10 @@ const Index = () => {
                         <XAxis dataKey="time" />
                         <YAxis />
                         <Tooltip 
-                          formatter={(value: any) => [`$${value.toLocaleString()}`, 'Volume']}
+                          formatter={(value: any) => [`${Number(value).toFixed(4)} ${feeUnit}`, 'Fees']}
                           labelFormatter={(label) => `Time: ${label}`}
                         />
-                        <Bar dataKey="volume" fill="#10b981" name="Volume (USD)" />
+                        <Bar dataKey="fees" fill="#10b981" name={`Fees (${feeUnit})`} />
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (
@@ -438,11 +437,11 @@ const Index = () => {
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">Total Fees</span>
-                    <span className="text-lg font-semibold">{parseFloat(stats.total_fees).toFixed(4)} {currentChain.nativeCurrency}</span>
+                    <span className="text-lg font-semibold">{parseFloat(stats.total_fees).toFixed(4)} {feeUnit}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">Avg Fee</span>
-                    <span className="text-lg font-semibold">{parseFloat(stats.avg_fee).toFixed(6)} {currentChain.nativeCurrency}</span>
+                    <span className="text-lg font-semibold">{parseFloat(stats.avg_fee).toFixed(6)} {feeUnit}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">Block Time</span>
@@ -487,22 +486,22 @@ const Index = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <TrendingUp className="h-5 w-5 text-purple-500" />
-                    Block Utilization
+                    Gas per Block
                   </CardTitle>
-                  <p className="text-xs text-muted-foreground">Percentage of block capacity used</p>
+                  <p className="text-xs text-muted-foreground">L1 + L2 gas consumed in each block (millions)</p>
                 </CardHeader>
                 <CardContent>
                   {historicalData.length > 0 ? (
                     <ResponsiveContainer width="100%" height={300}>
                       <AreaChart data={historicalData}>
                         <XAxis dataKey="time" />
-                        <YAxis label={{ value: 'Utilization %', angle: -90, position: 'insideLeft' }} />
+                        <YAxis label={{ value: 'Gas (M)', angle: -90, position: 'insideLeft' }} />
                         <Tooltip 
-                          formatter={(value: any) => [`${value.toFixed(2)}%`, 'Utilization']}
+                          formatter={(value: any) => [`${Number(value).toFixed(2)}M`, 'Gas']}
                           labelFormatter={(label) => `Time: ${label}`}
                         />
                         <Legend />
-                        <Area type="monotone" dataKey="utilization" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.6} name="Utilization %" />
+                        <Area type="monotone" dataKey="gas" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.6} name="Gas (M)" />
                       </AreaChart>
                     </ResponsiveContainer>
                   ) : (
@@ -549,9 +548,9 @@ const Index = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Zap className="h-5 w-5 text-yellow-500" />
-                    Gas Price Trend
+                    Average Fee Trend
                   </CardTitle>
-                  <p className="text-xs text-muted-foreground">Average gas price per block ({currentChain.nativeCurrency})</p>
+                  <p className="text-xs text-muted-foreground">Average fee per transaction in each block ({feeUnit})</p>
                 </CardHeader>
                 <CardContent>
                   {historicalData.length > 0 ? (
@@ -560,10 +559,10 @@ const Index = () => {
                         <XAxis dataKey="time" />
                         <YAxis />
                         <Tooltip 
-                          formatter={(value: any) => [`${value.toFixed(6)} ${currentChain.nativeCurrency}`, 'Gas Price']}
+                          formatter={(value: any) => [`${Number(value).toFixed(6)} ${feeUnit}`, 'Avg fee']}
                           labelFormatter={(label) => `Time: ${label}`}
                         />
-                        <Line type="monotone" dataKey="gasPrice" stroke="#eab308" strokeWidth={2} dot={{ r: 4 }} name={`Gas Price (${currentChain.nativeCurrency})`} />
+                        <Line type="monotone" dataKey="avgFee" stroke="#eab308" strokeWidth={2} dot={{ r: 4 }} name={`Avg fee (${feeUnit})`} />
                       </LineChart>
                     </ResponsiveContainer>
                   ) : (
@@ -972,19 +971,16 @@ const Index = () => {
                     <AlertCircle className="h-5 w-5 text-red-500" />
                     Failed Transaction Rate
                   </CardTitle>
-                  <p className="text-xs text-muted-foreground">Percentage of failed transactions</p>
+                  <p className="text-xs text-muted-foreground">Share of each block's transactions that reverted</p>
                 </CardHeader>
                 <CardContent>
                   {historicalData.length > 0 ? (
                     <ResponsiveContainer width="100%" height={300}>
-                      <LineChart data={historicalData.map(d => ({ 
-                        time: d.time, 
-                        failRate: (Math.random() * 3).toFixed(2) 
-                      }))}>
+                      <LineChart data={historicalData}>
                         <XAxis dataKey="time" />
                         <YAxis />
                         <Tooltip 
-                          formatter={(value: any) => [`${value}%`, 'Failed Rate']}
+                          formatter={(value: any) => [`${Number(value).toFixed(2)}%`, 'Reverted']}
                           labelFormatter={(label) => `Time: ${label}`}
                         />
                         <Legend />
