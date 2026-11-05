@@ -1,3 +1,5 @@
+import { STARKNET_RPCS } from "@/config/chains";
+
 interface StarknetBlock {
   block_number: number;
   timestamp: number;
@@ -23,10 +25,7 @@ interface DashboardMetrics {
 }
 
 class StarknetRPCService {
-  private endpoints = [
-    "https://rpc.starknet.lava.build",
-    "https://starknet-mainnet.g.alchemy.com/v2/demo"
-  ];
+  private endpoints = STARKNET_RPCS;
 
   private currentEndpointIndex = 0;
 

@@ -1,4 +1,5 @@
 import { RpcProvider } from 'starknet';
+import { STARKNET_RPCS } from "@/config/chains";
 
 interface StarknetMetrics {
   timestamp: string;
@@ -36,7 +37,7 @@ class StarknetDataService {
 
   constructor() {
     this.provider = new RpcProvider({
-      nodeUrl: import.meta.env.VITE_STARKNET_RPC_URL || 'https://rpc.starknet.lava.build'
+      nodeUrl: STARKNET_RPCS[0]
     });
   }
 

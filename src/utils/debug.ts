@@ -1,3 +1,5 @@
+import { STARKNET_RPCS } from "@/config/chains";
+
 /**
  * Debug utilities for troubleshooting mobile and auth issues
  */
@@ -108,7 +110,7 @@ export const debugBackendConnection = async () => {
 export const debugRPCConnection = async () => {
   console.group('⚡ RPC Connection Test');
   
-  const rpcUrl = import.meta.env.VITE_STARKNET_RPC_URL || 'https://rpc.starknet.lava.build';
+  const rpcUrl = STARKNET_RPCS[0];
   console.log('Testing RPC:', rpcUrl);
   
   try {

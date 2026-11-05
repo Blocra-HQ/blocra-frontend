@@ -21,12 +21,10 @@ import { useChain } from '@/contexts/ChainContext';
 import { multiChainRPC } from '@/services/MultiChainRPCService';
 import { validateAddress, getAddressPlaceholder } from '@/services/AddressValidationService';
 import { universalEventFetcher } from '@/services/UniversalEventFetcher';
+import { STARKNET_RPCS } from "@/config/chains";
 
 
-const RPC_ENDPOINTS = [
-  'https://rpc.starknet.lava.build',
-  'https://starknet-mainnet.g.alchemy.com/v2/demo'
-];
+const RPC_ENDPOINTS = STARKNET_RPCS;
 
 let currentRpcIndex = 0;
 

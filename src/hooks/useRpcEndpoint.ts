@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
+import { STARKNET_RPCS } from "@/config/chains";
 
-const RPC_ENDPOINTS = [
-  'https://rpc.starknet.lava.build',
-  'https://starknet-mainnet.g.alchemy.com/v2/demo',
-];
+const RPC_ENDPOINTS = STARKNET_RPCS;
 
 export function useRpcEndpoint() {
   const [activeEndpoint, setActiveEndpoint] = useState<string | null>(null);

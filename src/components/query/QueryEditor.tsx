@@ -14,6 +14,7 @@ import { useChain } from '@/contexts/ChainContext';
 import { validateAddress, getAddressFormatDescription } from '@/services/AddressValidationService';
 import { buildApiUrl } from '@/config/api';
 import { logger } from '@/utils/logger';
+import { STARKNET_RPCS } from "@/config/chains";
 
 interface QueryEditorProps {
   onQueryComplete?: (results: QueryResult[], query: string) => void;
@@ -297,10 +298,7 @@ export function QueryEditor({ onQueryComplete }: QueryEditorProps) {
 
   // REAL RPC QUERY EXECUTION
   const executeRPCQuery = async (sql: string): Promise<QueryResult[]> => {
-    const endpoints = [
-      import.meta.env.VITE_STARKNET_RPC_URL || "https://rpc.starknet.lava.build",
-      "https://starknet-mainnet.g.alchemy.com/v2/demo",
-    ].filter(Boolean);
+    const endpoints = STARKNET_RPCS;
 
     // Parse SQL to determine what blockchain data to fetch
     const sqlLower = sql.toLowerCase();
@@ -1110,12 +1108,7 @@ LIMIT 30;`;
     useEffect(() => {
       const fetchRealTimeInsights = async () => {
         try {
-          const endpoints = [
-            "https://starknet-mainnet.public.blastapi.io",
-            "https://free-rpc.nethermind.io/mainnet-juno",
-            "https://starknet-mainnet.g.alchemy.com/v2/demo",
-            "https://rpc.starknet.lava.build",
-          ];
+          const endpoints = STARKNET_RPCS;
 
           // Get current block data
           const blockResponse = await fetch(endpoints[0], {

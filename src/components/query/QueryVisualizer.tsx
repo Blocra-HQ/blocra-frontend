@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/select';
 import { Chart } from '@/components/ui/chart';
 import { BarChart3, PieChart, LineChart, Table } from 'lucide-react';
+import { STARKNET_RPCS } from "@/config/chains";
 
 interface QueryVisualizerProps {
   data: any[];
@@ -21,7 +22,7 @@ export function QueryVisualizer({ data, onVisualizationSave }: QueryVisualizerPr
   const [xAxis, setXAxis] = useState('');
   const [yAxis, setYAxis] = useState('');
   const [method, setMethod] = useState('starknet_getBlockWithTxs');
-  const [endpoint, setEndpoint] = useState('https://rpc.starknet.lava.build/rpc/v0_6');
+  const [endpoint, setEndpoint] = useState(STARKNET_RPCS[0]);
 
   const columns = useMemo(() => (data.length ? Object.keys(data[0]) : []), [data]);
   const numericColumns = useMemo(
