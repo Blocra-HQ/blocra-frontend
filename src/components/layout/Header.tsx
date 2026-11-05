@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWallet } from "@/hooks/use-wallet";
+import { toast } from "sonner";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useSidebar } from "@/contexts/SidebarContext";
 import { cn } from "@/lib/utils";
@@ -27,14 +28,19 @@ interface HeaderProps {
 
 export function Header({ title, subtitle }: HeaderProps) {
   const { user, profile } = useAuth();
-  const { isConnected, walletAddress, connectWallet } = useWallet();
+  const { isConnected, isAuthenticated, walletAddress, signIn } = useWallet();
   const { theme, setTheme } = useTheme();
   const { toggleSidebar } = useSidebar();
   const { status: rpcStatus, activeEndpoint } = useRpcEndpoint();
 
+  // One click: connect Freighter (if needed) and sign in with it.
   const handleWalletClick = async () => {
-    if (!isConnected) {
-      await connectWallet('argent');
+    if (isAuthenticated) return;
+    try {
+      await signIn();
+      toast.success("Signed in with your Stellar wallet");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Wallet sign-in failed");
     }
   };
 
@@ -115,7 +121,7 @@ export function Header({ title, subtitle }: HeaderProps) {
               "flex items-center gap-2",
               !isConnected && "text-muted-foreground hover:text-foreground"
             )}
-            title={isConnected ? "Wallet Connected" : "Connect Wallet"}
+            title={isAuthenticated ? "Signed in with Stellar wallet" : isConnected ? "Sign in with Freighter" : "Connect Freighter wallet"}
           >
             <Wallet className={cn("w-4 h-4 sm:w-5 sm:h-5", isConnected && "text-primary")} />
             {isConnected && (

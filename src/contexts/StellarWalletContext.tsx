@@ -1,244 +1,157 @@
-'use client'
+// Stellar wallet connection and sign-in.
+//
+// Adapted from stellar-insights' wallet context: same provider shape
+// (connect / disconnect / authenticate / logout, address remembered between
+// visits, auth token never kept in long-lived storage by this module), but
+// using @stellar/freighter-api instead of window globals, and BlocRA's
+// backend challenge flow:
+//   POST /api/auth/stellar/challenge {account}       → {challenge}
+//   Freighter signMessage(challenge)                  (SEP-53)
+//   POST /api/auth/stellar/verify {challenge, signature} → {token, user}
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import {
+  getAddress,
+  isConnected as freighterInstalled,
+  requestAccess,
+  signMessage,
+} from "@stellar/freighter-api";
+import { apiClient } from "@/lib/api";
+import { NETWORK_PASSPHRASE } from "@/integrations/stellar-network";
 
-import React from "react"
-
-import { createContext, useContext, useState, useCallback, useEffect } from 'react'
-import { sep10AuthService } from '../../services/sep10Auth'
-import { logger } from "@/lib/logger"
-
-// Extend Window interface for the generic `stellar` wallet bridge.
-// freighter/albedo/xBullSDK/rabet are typed globally in services/sep10Auth.ts —
-// declaring them again here with different types would conflict.
-declare global {
-  interface Window {
-    stellar?: {
-      requestPublicKey: () => Promise<string>
-    }
-  }
+interface StellarWalletContextType {
+  isConnected: boolean;
+  address: string | null;
+  isConnecting: boolean;
+  isAuthenticated: boolean;
+  error: string | null;
+  /** Ask Freighter for access and remember the account. */
+  connectWallet: () => Promise<string>;
+  disconnectWallet: () => void;
+  /** Prove control of the connected account to the backend and get a session. */
+  signIn: () => Promise<void>;
+  logout: () => void;
 }
 
-interface WalletContextType {
-  isConnected: boolean
-  address: string | null
-  isConnecting: boolean
-  isAuthenticated: boolean
-  authToken: string | null
-  connectWallet: () => Promise<void>
-  disconnectWallet: () => void
-  authenticateWithSep10: () => Promise<void>
-  logout: () => Promise<void>
-}
-
-const WalletContext = createContext<WalletContextType | undefined>(undefined)
+const StellarWalletContext = createContext<StellarWalletContextType | undefined>(undefined);
 
 const STORAGE_KEYS = {
-  ADDRESS: 'stellar_wallet_address',
-  // Legacy keys — the auth token now lives in an httpOnly cookie set by the
-  // backend after SEP-10. These are only referenced to purge old values.
-  LEGACY_AUTH_TOKEN: 'stellar_sep10_token',
-  LEGACY_TOKEN_EXPIRY: 'stellar_sep10_token_expiry',
+  ADDRESS: "stellar_wallet_address",
+  // Starknet-era keys, purged so old Argent/Braavos sessions don't linger.
+  LEGACY: ["wallet_address", "wallet_type", "wallet_chain_id"],
+};
+
+const FREIGHTER_URL = "https://www.freighter.app/";
+
+function toBase64(signed: string | Uint8Array | null): string {
+  if (!signed) throw new Error("The wallet did not sign the message.");
+  if (typeof signed === "string") return signed;
+  let binary = "";
+  signed.forEach((b) => (binary += String.fromCharCode(b)));
+  return btoa(binary);
 }
 
-// The SEP-10 home domain is server-authoritative. We fetch it from the config
-// endpoint rather than trusting `window.location.hostname`, which breaks on
-// preview deployments and localhost and lets the client pick the domain.
-const CONFIG_ENDPOINT = '/api/v1/config'
+export function StellarWalletProvider({ children }: { children: ReactNode }) {
+  const [address, setAddress] = useState<string | null>(null);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-async function fetchHomeDomain(): Promise<string> {
-  const response = await fetch(CONFIG_ENDPOINT, {
-    method: 'GET',
-    headers: { Accept: 'application/json' },
-    credentials: 'same-origin',
-  })
-
-  if (!response.ok) {
-    throw new Error(`Failed to load config (status ${response.status})`)
-  }
-
-  const data: unknown = await response.json()
-  const homeDomain =
-    data && typeof data === 'object'
-      ? (data as { home_domain?: unknown }).home_domain
-      : undefined
-
-  if (typeof homeDomain !== 'string' || homeDomain.trim() === '') {
-    throw new Error('Config endpoint did not return a valid home_domain')
-  }
-
-  return homeDomain.trim()
-}
-
-export function WalletProvider({ children }: { children: React.ReactNode }) {
-  const [isConnected, setIsConnected] = useState(false)
-  const [address, setAddress] = useState<string | null>(null)
-  const [isConnecting, setIsConnecting] = useState(false)
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [authToken, setAuthToken] = useState<string | null>(null)
-
-  // Check if wallet is already connected and authenticated on mount
   useEffect(() => {
-    const checkWalletConnection = async () => {
-      try {
-        // Migration: purge any legacy token values left in localStorage so an
-        // XSS can no longer read them. The token is now held in an httpOnly
-        // cookie that JS cannot access.
-        localStorage.removeItem(STORAGE_KEYS.LEGACY_AUTH_TOKEN)
-        localStorage.removeItem(STORAGE_KEYS.LEGACY_TOKEN_EXPIRY)
-
-        const savedAddress = localStorage.getItem(STORAGE_KEYS.ADDRESS)
-
-        if (savedAddress) {
-          setAddress(savedAddress)
-          setIsConnected(true)
-        }
-
-        // The SEP-10 token is held in memory only (never in localStorage), so
-        // a reload starts unauthenticated until the backend offers an
-        // httpOnly session cookie that could be checked here.
-      } catch (error) {
-        logger.error('Error checking wallet connection:', error as string)
-      }
-    }
-
-    checkWalletConnection()
-  }, [])
+    STORAGE_KEYS.LEGACY.forEach((k) => localStorage.removeItem(k));
+    const saved = localStorage.getItem(STORAGE_KEYS.ADDRESS);
+    if (saved) setAddress(saved);
+  }, []);
 
   const connectWallet = useCallback(async () => {
-    setIsConnecting(true)
+    setIsConnecting(true);
+    setError(null);
     try {
-      let publicKey: string | null = null
-
-      // Try Freighter wallet
-      if (typeof window !== 'undefined' && window.freighter) {
-        try {
-          publicKey = await window.freighter.getPublicKey()
-        } catch (error) {
-          logger.error('Freighter connection failed:', error)
-        }
+      const installed = await freighterInstalled();
+      if (!installed.isConnected) {
+        window.open(FREIGHTER_URL, "_blank", "noopener");
+        throw new Error("Freighter is not installed. Install it, then try again.");
       }
-
-      // Try generic stellar interface
-      if (!publicKey && typeof window !== 'undefined' && window.stellar) {
-        try {
-          publicKey = await window.stellar.requestPublicKey()
-        } catch (error) {
-          logger.error('Stellar wallet connection failed:', error)
-        }
+      const access = await requestAccess();
+      if (access.error || !access.address) {
+        throw new Error(access.error?.message || "Wallet access was declined.");
       }
-
-      // Try Albedo wallet
-      if (!publicKey && typeof window !== 'undefined' && window.albedo) {
-        try {
-          const result = await window.albedo.publicKey({})
-          publicKey = result.pubkey
-        } catch (error) {
-          logger.error('Albedo connection failed:', error)
-        }
-      }
-
-      // Try Rabet wallet
-      if (!publicKey && typeof window !== 'undefined' && window.rabet) {
-        try {
-          const result = await window.rabet.connect()
-          publicKey = result.publicKey
-        } catch (error) {
-          logger.error('Rabet connection failed:', error)
-        }
-      }
-
-      if (publicKey) {
-        setAddress(publicKey)
-        setIsConnected(true)
-        localStorage.setItem(STORAGE_KEYS.ADDRESS, publicKey)
-      } else {
-        throw new Error(
-          'No compatible Stellar wallet found. Please install Freighter, Albedo, xBull, or Rabet.'
-        )
-      }
-    } catch (error) {
-      logger.error('Error connecting wallet:', error)
-      setIsConnecting(false)
-      throw error
+      localStorage.setItem(STORAGE_KEYS.ADDRESS, access.address);
+      setAddress(access.address);
+      return access.address;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to connect wallet";
+      setError(message);
+      throw err;
     } finally {
-      setIsConnecting(false)
+      setIsConnecting(false);
     }
-  }, [])
+  }, []);
 
-  const authenticateWithSep10 = useCallback(async () => {
-    if (!address) {
-      throw new Error('Wallet not connected')
-    }
+  const disconnectWallet = useCallback(() => {
+    localStorage.removeItem(STORAGE_KEYS.ADDRESS);
+    setAddress(null);
+    setIsAuthenticated(false);
+    apiClient.clearToken();
+  }, []);
 
+  const signIn = useCallback(async () => {
+    setError(null);
     try {
-      // Resolve the server-configured home domain. If the config endpoint is
-      // unavailable or returns no domain, fail closed rather than falling back
-      // to a client-controlled value.
-      const homeDomain = await fetchHomeDomain()
+      // Use the account Freighter has selected now, not a stale saved one.
+      const current = await getAddress();
+      const account = current.address || address || (await connectWallet());
 
-      // Perform SEP-10 authentication and keep the bearer token in memory
-      // only, out of reach of anything that can read localStorage.
-      const { token } = await sep10AuthService.authenticate(address, { homeDomain })
+      const { challenge } = await apiClient.request<{ challenge: string }>(
+        "/auth/stellar/challenge",
+        { method: "POST", body: JSON.stringify({ account }) },
+      );
+      const signed = await signMessage(challenge, {
+        address: account,
+        networkPassphrase: NETWORK_PASSPHRASE,
+      });
+      if (signed.error) throw new Error(signed.error.message || "Signing was declined.");
 
-      setAuthToken(token)
-      setIsAuthenticated(true)
-    } catch (error) {
-      logger.error('SEP-10 authentication failed:', error)
-      throw error
+      const session = await apiClient.request<{ token: string }>("/auth/stellar/verify", {
+        method: "POST",
+        body: JSON.stringify({ challenge, signature: toBase64(signed.signedMessage) }),
+      });
+      apiClient.setToken(session.token);
+      localStorage.setItem(STORAGE_KEYS.ADDRESS, account);
+      setAddress(account);
+      setIsAuthenticated(true);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Sign-in failed";
+      setError(message);
+      throw err;
     }
-  }, [address])
+  }, [address, connectWallet]);
 
-  const logout = useCallback(async () => {
-    try {
-      // Invalidate the session server-side while we still hold the token.
-      if (authToken) {
-        await sep10AuthService.logout(authToken)
-      }
-    } catch (error) {
-      logger.error('Logout failed:', error)
-    }
-
-    // Clear authentication state
-    setAuthToken(null)
-    setIsAuthenticated(false)
-    localStorage.removeItem(STORAGE_KEYS.LEGACY_AUTH_TOKEN)
-    localStorage.removeItem(STORAGE_KEYS.LEGACY_TOKEN_EXPIRY)
-  }, [authToken])
-
-  const disconnectWallet = useCallback(async () => {
-    // Logout first if authenticated
-    if (isAuthenticated) {
-      await logout()
-    }
-
-    // Clear wallet connection
-    setAddress(null)
-    setIsConnected(false)
-    localStorage.removeItem(STORAGE_KEYS.ADDRESS)
-  }, [isAuthenticated, logout])
+  const logout = useCallback(() => {
+    apiClient.clearToken();
+    setIsAuthenticated(false);
+  }, []);
 
   return (
-    <WalletContext.Provider
+    <StellarWalletContext.Provider
       value={{
-        isConnected,
+        isConnected: !!address,
         address,
         isConnecting,
         isAuthenticated,
-        authToken,
+        error,
         connectWallet,
         disconnectWallet,
-        authenticateWithSep10,
+        signIn,
         logout,
       }}
     >
       {children}
-    </WalletContext.Provider>
-  )
+    </StellarWalletContext.Provider>
+  );
 }
 
-export function useWallet() {
-  const context = useContext(WalletContext)
-  if (!context) {
-    throw new Error('useWallet must be used within a WalletProvider')
-  }
-  return context
+export function useStellarWallet() {
+  const context = useContext(StellarWalletContext);
+  if (!context) throw new Error("useStellarWallet must be used within a StellarWalletProvider");
+  return context;
 }

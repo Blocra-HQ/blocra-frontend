@@ -8,6 +8,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ThemeController } from "@/components/ThemeController";
 import { ChainProvider } from "@/contexts/ChainContext";
+import { StellarWalletProvider } from "@/contexts/StellarWalletContext";
 import { SidebarProvider } from "@/contexts/SidebarContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
@@ -41,6 +42,7 @@ const App = () => (
         <ChainProvider>
           <ThemeController />
           <AuthProvider>
+          <StellarWalletProvider>
             <SidebarProvider>
               <TooltipProvider>
                 <Toaster />
@@ -107,6 +109,7 @@ const App = () => (
                 </BrowserRouter>
               </TooltipProvider>
             </SidebarProvider>
+          </StellarWalletProvider>
           </AuthProvider>
         </ChainProvider>
       </ThemeProvider>
