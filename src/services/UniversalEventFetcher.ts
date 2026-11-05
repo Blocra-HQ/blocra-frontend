@@ -35,6 +35,15 @@ export interface EventFetchResult {
   chainType: string;
 }
 
+// Soroban token events use lowercase names; match the names the analytics use.
+const STELLAR_EVENT_NAMES: Record<string, string> = {
+  transfer: 'Transfer',
+  approve: 'Approval',
+  mint: 'Mint',
+  burn: 'Burn',
+  clawback: 'Clawback',
+};
+
 export class UniversalEventFetcher {
   /**
    * Fetch events for any blockchain
@@ -124,12 +133,27 @@ export class UniversalEventFetcher {
           for (const e of result.events ?? []) {
             if (e.ledger > end) break;
             const topics = (e.topic ?? []).map(decode).map(plain);
+            const value = plain(decode(e.value));
+            const name = typeof topics[0] === 'string' ? topics[0] : 'event';
+            // Token (SEP-41 / Stellar Asset Contract) events put the parties in
+            // the topics and the amount in the value (or value.amount).
+            const amount =
+              typeof value === 'string' && /^-?\d+$/.test(value) ? value
+                : value && typeof value === 'object' && 'amount' in value ? String((value as { amount: unknown }).amount)
+                : undefined;
+            const isAddr = (x: unknown) => typeof x === 'string' && /^[GCM][A-Z2-7]{55,68}$/.test(x);
             events.push({
               blockNumber: e.ledger,
               transactionHash: e.txHash,
-              eventName: typeof topics[0] === 'string' ? topics[0] : 'event',
+              eventName: STELLAR_EVENT_NAMES[name] ?? name,
               address: e.contractId,
-              data: { topics, value: plain(decode(e.value)) },
+              data: {
+                topics,
+                value,
+                ...(isAddr(topics[1]) ? { from: topics[1] } : {}),
+                ...(isAddr(topics[2]) ? { to: topics[2] } : {}),
+                ...(amount !== undefined ? { amount } : {}),
+              },
               timestamp: Math.floor(new Date(e.ledgerClosedAt).getTime() / 1000),
             });
           }
@@ -137,25 +161,15 @@ export class UniversalEventFetcher {
           if (!result.events?.length || result.events.length < 100) break;
         }
 
-        // Transactions are the distinct transactions that emitted events.
-        const seen = new Set<string>();
-        const transactions: Transaction[] = events
-          .filter(e => !seen.has(e.transactionHash) && seen.add(e.transactionHash))
-          .map(e => ({
-            hash: e.transactionHash,
-            blockNumber: e.blockNumber,
-            from: '',
-            to: contractAddress,
-            value: '0',
-            methodName: e.eventName,
-            timestamp: e.timestamp,
-          }));
+        // The events already carry their transaction hashes; returning them
+        // again as "transactions" would count every event twice.
+        const totalTransactions = new Set(events.map(e => e.transactionHash)).size;
 
         return {
           events,
-          transactions,
+          transactions: [],
           totalFetched: events.length,
-          totalTransactions: transactions.length,
+          totalTransactions,
           blockRange: { from: start, to: end },
           chainType: 'stellar',
         };

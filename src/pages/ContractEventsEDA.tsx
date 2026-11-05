@@ -387,6 +387,17 @@ export default function ContractEventsEDA() {
           ev.decoded_data?.owner
         ]).filter(Boolean))];
 
+        // Users seen in more than one transaction.
+        const txsByUser = new Map<string, Set<string>>();
+        for (const ev of evs) {
+          for (const u of [ev.decoded_data?.from, ev.decoded_data?.to, ev.decoded_data?.user, ev.decoded_data?.owner]) {
+            if (!u) continue;
+            if (!txsByUser.has(u)) txsByUser.set(u, new Set());
+            txsByUser.get(u)!.add(ev.transaction_hash);
+          }
+        }
+        const repeatUsers = [...txsByUser.values()].filter(t => t.size > 1).length;
+
         // Calculate activity patterns
         const blockActivity = blocks.length;
         const avgEventsPerBlock = evs.length / blockActivity;
@@ -394,16 +405,19 @@ export default function ContractEventsEDA() {
 
         // Calculate value flows (for Transfer events)
         const transferEvents = evs.filter(ev => ev.event_name === 'Transfer');
+        // Token amounts are integers in the token's smallest unit: 7 decimals
+        // on Stellar, 18 on EVM/Starknet tokens.
+        const unit = currentChain.type === 'stellar' ? 1e7 : 1e18;
         const totalVolume = transferEvents.reduce((sum, ev) => {
-          const amount = ev.decoded_data?.amount ? parseInt(ev.decoded_data.amount) : 0;
-          return sum + amount;
+          const amount = ev.decoded_data?.amount ? Number(ev.decoded_data.amount) : 0;
+          return sum + (Number.isFinite(amount) ? amount : 0);
         }, 0);
 
         // Calculate volume over time for chart
         const volumeOverTime = transferEvents
           .sort((a, b) => a.block_number - b.block_number)
           .reduce((acc: any[], ev) => {
-            const amount = ev.decoded_data?.amount ? parseInt(ev.decoded_data.amount) / 1e18 : 0;
+            const amount = ev.decoded_data?.amount ? Number(ev.decoded_data.amount) / unit : 0;
             const lastVol = acc.length > 0 ? acc[acc.length - 1].value : 0;
             const lastTx = acc.length > 0 ? acc[acc.length - 1].transactions : 0;
 
@@ -486,8 +500,6 @@ export default function ContractEventsEDA() {
             acc[date].total_eth_volume += valueInEth;
           }
           
-          // Mock gas price (in real implementation, fetch from transaction receipt)
-          acc[date].gas_prices.push(Math.random() * 50 + 20); // 20-70 gwei
           
           return acc;
         }, {});
@@ -501,7 +513,7 @@ export default function ContractEventsEDA() {
           total_eth_volume: day.total_eth_volume.toFixed(8),
           avg_gas_price: day.gas_prices.length > 0 
             ? (day.gas_prices.reduce((a: number, b: number) => a + b, 0) / day.gas_prices.length).toFixed(2)
-            : '0.00'
+            : 'n/a' // gas prices need transaction receipts, which events don't include
         })).sort((a, b) => b.day.localeCompare(a.day)); // Most recent first
 
         setStats({
@@ -518,7 +530,7 @@ export default function ContractEventsEDA() {
           avgTxPerBlock: (transactions.length / blocks.length).toFixed(2),
 
           // Value metrics
-          totalVolume: (totalVolume / 1e18).toFixed(6),
+          totalVolume: (totalVolume / unit).toFixed(currentChain.type === 'stellar' ? 2 : 6),
           transferCount: transferEvents.length,
           volumeOverTime, // Real data for chart
 
@@ -541,8 +553,10 @@ export default function ContractEventsEDA() {
           hasTransfers: transferEvents.length > 0,
           hasApprovals: evs.some(ev => ev.event_name === 'Approval'),
 
-          // Error rate (mock for now as we don't fetch failed txs easily without indexer)
-          errorRate: { rate: 2.5 }
+          // Events only come from successful transactions, so a failure rate
+          // can't be measured here; the UI shows it as not measured.
+          errorRate: undefined,
+          repeatUsers
         });
 
         setError(`✓ Successfully fetched ${evs.length} ${totalTransactions > 0 ? 'transactions' : 'events'} from ${validContracts.length} ${currentChain.name} contract(s)${totalTransactions > 0 ? ' (showing transaction activity)' : ''}`);
@@ -1167,25 +1181,25 @@ Tip: Verify the contract address on ${currentChain.explorer.replace('https://', 
                           cx="72"
                           cy="72"
                           r="60"
-                          stroke={(100 - (stats.errorRate?.rate || 2.5)) > 95 ? '#10b981' : '#f59e0b'}
+                          stroke={stats.errorRate ? ((100 - stats.errorRate.rate) > 95 ? '#10b981' : '#f59e0b') : '#6b7280'}
                           strokeWidth="12"
                           fill="none"
-                          strokeDasharray={`${2 * Math.PI * 60 * (100 - (stats.errorRate?.rate || 2.5)) / 100} ${2 * Math.PI * 60}`}
+                          strokeDasharray={`${stats.errorRate ? 2 * Math.PI * 60 * (100 - stats.errorRate.rate) / 100 : 0} ${2 * Math.PI * 60}`}
                           strokeLinecap="round"
                         />
                       </svg>
                       <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <span className="text-3xl font-bold">{(100 - (stats.errorRate?.rate || 2.5)).toFixed(1)}%</span>
+                        <span className="text-3xl font-bold">{stats.errorRate ? `${(100 - stats.errorRate.rate).toFixed(1)}%` : 'n/a'}</span>
                         <span className="text-xs text-muted-foreground">Success</span>
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="p-2 bg-green-50 dark:bg-green-950/20 rounded text-center">
-                        <p className="text-lg font-bold text-green-600">{stats.totalTransactions - Math.floor(stats.totalTransactions * ((stats.errorRate?.rate || 2.5) / 100))}</p>
+                        <p className="text-lg font-bold text-green-600">{stats.errorRate ? stats.totalTransactions - Math.floor(stats.totalTransactions * (stats.errorRate.rate / 100)) : stats.totalTransactions}</p>
                         <p className="text-xs text-muted-foreground">Successful</p>
                       </div>
                       <div className="p-2 bg-red-50 dark:bg-red-950/20 rounded text-center">
-                        <p className="text-lg font-bold text-red-600">{Math.floor(stats.totalTransactions * ((stats.errorRate?.rate || 2.5) / 100))}</p>
+                        <p className="text-lg font-bold text-red-600">{stats.errorRate ? Math.floor(stats.totalTransactions * (stats.errorRate.rate / 100)) : 'n/a'}</p>
                         <p className="text-xs text-muted-foreground">Failed</p>
                       </div>
                     </div>
@@ -1275,18 +1289,18 @@ Tip: Verify the contract address on ${currentChain.explorer.replace('https://', 
                     <div>
                       <div className="flex justify-between mb-2">
                         <span className="text-sm">Retention Rate</span>
-                        <span className="text-sm font-mono font-bold">{((stats.uniqueUsers > 0 ? Math.floor(stats.uniqueUsers * 0.285) / stats.uniqueUsers : 0.285) * 100).toFixed(1)}%</span>
+                        <span className="text-sm font-mono font-bold">{stats.uniqueUsers > 0 ? ((stats.repeatUsers / stats.uniqueUsers) * 100).toFixed(1) : '0.0'}%</span>
                       </div>
                       <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
                         <div
                           className="bg-gradient-to-r from-purple-500 to-purple-600 h-3 rounded-full transition-all duration-500"
-                          style={{ width: `${(stats.uniqueUsers > 0 ? Math.floor(stats.uniqueUsers * 0.285) / stats.uniqueUsers : 0.285) * 100}%` }}
+                          style={{ width: `${stats.uniqueUsers > 0 ? (stats.repeatUsers / stats.uniqueUsers) * 100 : 0}%` }}
                         ></div>
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-3 my-3">
                       <div className="p-3 bg-purple-50 dark:bg-purple-950/20 rounded-lg text-center">
-                        <p className="text-xl font-bold text-purple-600">{Math.floor(stats.uniqueUsers * 0.285)}</p>
+                        <p className="text-xl font-bold text-purple-600">{stats.repeatUsers ?? 0}</p>
                         <p className="text-xs text-muted-foreground">Repeat Users</p>
                       </div>
                       <div className="p-3 bg-orange-50 dark:bg-orange-950/20 rounded-lg text-center">
@@ -1297,11 +1311,11 @@ Tip: Verify the contract address on ${currentChain.explorer.replace('https://', 
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between p-2 bg-gray-50 dark:bg-gray-800/50 rounded">
                         <span>New Users:</span>
-                        <span className="font-mono">{stats.uniqueUsers - Math.floor(stats.uniqueUsers * 0.285)}</span>
+                        <span className="font-mono">{stats.uniqueUsers - (stats.repeatUsers ?? 0)}</span>
                       </div>
                       <div className="flex justify-between p-2 bg-gray-50 dark:bg-gray-800/50 rounded">
                         <span>Loyalty Score:</span>
-                        <span className="font-mono">{((Math.floor(stats.uniqueUsers * 0.285) / stats.uniqueUsers) * 100).toFixed(0)}/100</span>
+                        <span className="font-mono">{stats.uniqueUsers > 0 ? (((stats.repeatUsers ?? 0) / stats.uniqueUsers) * 100).toFixed(0) : 0}/100</span>
                       </div>
                     </div>
                   </div>
