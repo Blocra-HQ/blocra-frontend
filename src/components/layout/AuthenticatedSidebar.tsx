@@ -12,6 +12,7 @@ import {
   Home,
   LogOut,
   Activity,
+  ShieldCheck,
   Book,
   X
 } from "lucide-react";
@@ -22,6 +23,7 @@ const navigation = [
   { name: "Dashboard Builder", href: "/builder", icon: Layout },
   { name: "Library", href: "/library", icon: Book },
   { name: "Contract Analysis", href: "/contract-events-eda", icon: Activity },
+  { name: "Verify Report", href: "/verify-report", icon: ShieldCheck },
   { name: "Settings", href: "/settings", icon: Settings },
 ];
 

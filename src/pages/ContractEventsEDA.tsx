@@ -4,7 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Download, BarChart3, PieChart, TrendingUp, FileText, ExternalLink, Bot, Activity, Users, Zap, Camera, Plus, X, Bell, Network } from 'lucide-react';
+import { Download, BarChart3, PieChart, TrendingUp, FileText, ExternalLink, Bot, Activity, Users, Zap, Camera, Plus, X, Bell, Network, ShieldCheck } from 'lucide-react';
+import { useStellarWallet } from '@/contexts/StellarWalletContext';
+import { publishReport } from '@/integrations/report-registry';
+import { EXPLORER_URL } from '@/integrations/stellar-network';
 import { useNavigate } from 'react-router-dom';
 import { AIAnalysisService } from '@/services/AIAnalysisService';
 import { DocumentService } from '@/services/DocumentService';
@@ -255,6 +258,11 @@ export default function ContractEventsEDA() {
   const [contractInfo, setContractInfo] = useState<any>(null);
   const [comprehensiveData, setComprehensiveData] = useState<any>(null);
   const [aiReport, setAiReport] = useState<any>(null);
+  // The exact PDF last downloaded; publishing hashes these bytes.
+  const [reportBlob, setReportBlob] = useState<Blob | null>(null);
+  const [publishing, setPublishing] = useState(false);
+  const [published, setPublished] = useState<{ id: number; hash: string; txHash: string } | null>(null);
+  const { address: walletAddress, connectWallet } = useStellarWallet();
   const [generatingReport, setGeneratingReport] = useState(false);
   const [exportingImage, setExportingImage] = useState(false);
   const [dependencyGraph, setDependencyGraph] = useState<any>(null);
@@ -742,6 +750,8 @@ Tip: Verify the contract address on ${currentChain.explorer.replace('https://', 
         currentChain.name
       );
 
+      setReportBlob(blob);
+      setPublished(null);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -753,6 +763,29 @@ Tip: Verify the contract address on ${currentChain.explorer.replace('https://', 
     } catch (error) {
       console.error('Failed to generate report:', error);
       setError('❌ Failed to generate report: ' + error.message);
+    }
+  };
+
+  // Records the downloaded PDF's sha256 on Stellar so anyone holding the
+  // file can verify it at /verify-report.
+  const publishReportOnStellar = async () => {
+    if (!reportBlob) return;
+    setPublishing(true);
+    try {
+      const author = walletAddress || (await connectWallet());
+      const result = await publishReport({
+        author,
+        file: reportBlob,
+        title: `${contracts.map(c => c.name || 'Contract').join(', ')} analysis`,
+        chain: currentChain.id,
+        subject: contracts.map(c => c.address).join(','),
+      });
+      setPublished(result);
+      setError('✅ Report published on Stellar.');
+    } catch (err) {
+      setError('❌ Could not publish the report: ' + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setPublishing(false);
     }
   };
 
@@ -1722,7 +1755,25 @@ Tip: Verify the contract address on ${currentChain.explorer.replace('https://', 
                         <Download className="h-4 w-4 mr-2" />
                         Download PDF
                       </Button>
+                      <Button
+                        variant="outline"
+                        onClick={publishReportOnStellar}
+                        disabled={!reportBlob || publishing}
+                        title={reportBlob ? 'Record this PDF on Stellar so it can be verified' : 'Download the PDF first'}
+                      >
+                        <ShieldCheck className="h-4 w-4 mr-2" />
+                        {publishing ? 'Publishing…' : 'Publish on Stellar'}
+                      </Button>
                     </div>
+                    {published && (
+                      <p className="text-xs text-muted-foreground mt-3 break-all">
+                        Report #{published.id} · sha256 {published.hash} ·{' '}
+                        <a className="underline" href={`${EXPLORER_URL}/tx/${published.txHash}`} target="_blank" rel="noreferrer">
+                          view transaction
+                        </a>{' '}
+                        · <a className="underline" href="/verify-report">verify a copy</a>
+                      </p>
+                    )}
                   </div>
                 )}
               </CardContent>
