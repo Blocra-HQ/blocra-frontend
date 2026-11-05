@@ -84,10 +84,6 @@ export function AIChatBox({ isOpen, onClose }: AIChatBoxProps) {
       return "For transaction analysis, try: SELECT transaction_hash, sender_address, max_fee, type FROM transactions LIMIT 15; This gives you recent transaction details from the Starknet network.";
     }
     
-    // Bounty analysis
-    if (input.includes('bounty') || input.includes('reward')) {
-      return "For bounty analysis, use: SELECT id, title, reward, status FROM bounties WHERE status = 'active' ORDER BY reward DESC LIMIT 10; This shows active bounties sorted by reward amount.";
-    }
     
     // Default responses with more specific guidance
     const responses = [

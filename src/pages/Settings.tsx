@@ -643,7 +643,6 @@ const Settings = (): JSX.Element => {
                 <li>Real-time contract monitoring</li>
                 <li>Advanced query editor</li>
                 <li>Event data analysis</li>
-                <li>Bounty system</li>
               </ul>
             </div>
           </div>

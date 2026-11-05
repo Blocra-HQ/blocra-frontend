@@ -7,11 +7,9 @@ import { ChainSelector } from "@/components/ChainSelector";
 import {
   Database,
   Layout,
-  Trophy,
   Settings,
   Search,
   Home,
-  Plus,
   LogOut,
   Activity,
   Book,
@@ -24,7 +22,6 @@ const navigation = [
   { name: "Dashboard Builder", href: "/builder", icon: Layout },
   { name: "Library", href: "/library", icon: Book },
   { name: "Contract Analysis", href: "/contract-events-eda", icon: Activity },
-  { name: "Bounties", href: "/bounties", icon: Trophy },
   { name: "Settings", href: "/settings", icon: Settings },
 ];
 
@@ -137,21 +134,6 @@ export function AuthenticatedSidebar({ className }: AuthenticatedSidebarProps) {
             })}
 
             {/* Quick Actions */}
-            <div className="pt-4">
-              <div className="px-3 py-2">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Quick Actions
-                </p>
-              </div>
-              <Link
-                to="/create-bounty"
-                onClick={handleLinkClick}
-                className="flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all duration-200 group text-muted-foreground hover:bg-muted hover:text-foreground"
-              >
-                <Plus className="w-5 h-5 transition-colors text-muted-foreground group-hover:text-foreground" />
-                <span>Create Bounty</span>
-              </Link>
-            </div>
           </nav>
 
           {/* Footer */}

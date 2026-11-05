@@ -22,11 +22,6 @@ const examplePrompts = [
     title: "High Fee Transactions", 
     prompt: "Find transactions with highest fees",
     sql: "SELECT transaction_hash, sender_address, max_fee FROM transactions ORDER BY max_fee DESC LIMIT 20;"
-  },
-  {
-    title: "Active Bounties",
-    prompt: "Show all active bounties with rewards",
-    sql: "SELECT id, title, reward, status FROM bounties WHERE status = 'active' ORDER BY reward DESC LIMIT 10;"
   }
 ];
 
@@ -51,8 +46,6 @@ export function AIAssistant({ onQueryGenerated }: AIAssistantProps) {
         generatedSQL = "SELECT block_number, timestamp, transaction_count, gas_used FROM blocks ORDER BY block_number DESC LIMIT 10;";
       } else if (promptLower.includes('transaction')) {
         generatedSQL = "SELECT transaction_hash, sender_address, max_fee, type FROM transactions ORDER BY max_fee DESC LIMIT 20;";
-      } else if (promptLower.includes('bounty')) {
-        generatedSQL = "SELECT id, title, reward, status FROM bounties WHERE status = 'active' ORDER BY reward DESC LIMIT 10;";
       } else {
         generatedSQL = "SELECT block_number, timestamp, transaction_count FROM blocks ORDER BY block_number DESC LIMIT 10;";
       }

@@ -4,7 +4,7 @@ export const QUERY_LIMITS = {
   MAX_QUERY_LENGTH: 5000,
   RATE_LIMIT_REQUESTS: 10, // per minute
   RATE_LIMIT_WINDOW: 60000, // 1 minute in ms
-  ALLOWED_TABLES: ['blocks', 'transactions', 'bounties', 'contracts']
+  ALLOWED_TABLES: ['blocks', 'transactions', 'contracts']
 };
 
 class QueryRateLimiter {

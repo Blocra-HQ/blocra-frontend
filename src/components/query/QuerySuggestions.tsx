@@ -9,28 +9,28 @@ interface QuerySuggestionsProps {
 
 const suggestions = [
   {
-    title: 'Active Bounties',
-    query: 'SELECT * FROM bounties WHERE status = "active" ORDER BY created_at DESC;',
-    description: 'Get all currently active bounties',
-    category: 'Bounties'
+    title: 'Latest Blocks',
+    query: 'SELECT block_number, timestamp, transaction_count FROM blocks ORDER BY block_number DESC LIMIT 10;',
+    description: 'The 10 most recent blocks',
+    category: 'Blocks'
   },
   {
-    title: 'Top Rewards',
-    query: 'SELECT title, reward_amount FROM bounties ORDER BY reward_amount DESC LIMIT 10;',
-    description: 'Find bounties with highest rewards',
-    category: 'Analytics'
+    title: 'Highest Fees',
+    query: 'SELECT transaction_hash, sender_address, max_fee FROM transactions ORDER BY max_fee DESC LIMIT 20;',
+    description: 'Transactions that paid the most',
+    category: 'Transactions'
   },
   {
-    title: 'Recent Activity',
-    query: 'SELECT * FROM bounty_submissions WHERE created_at > NOW() - INTERVAL 7 DAY;',
-    description: 'Show submissions from last 7 days',
+    title: 'Busiest Senders',
+    query: 'SELECT sender_address, COUNT(*) AS tx_count FROM transactions GROUP BY sender_address ORDER BY tx_count DESC LIMIT 10;',
+    description: 'Addresses sending the most transactions',
     category: 'Activity'
   },
   {
-    title: 'User Statistics',
-    query: 'SELECT user_id, COUNT(*) as bounties_won FROM bounties WHERE winner IS NOT NULL GROUP BY winner;',
-    description: 'Count bounties won by each user',
-    category: 'Users'
+    title: 'Contracts',
+    query: 'SELECT * FROM contracts LIMIT 20;',
+    description: 'Browse known contracts',
+    category: 'Contracts'
   }
 ];
 

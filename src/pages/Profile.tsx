@@ -15,7 +15,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
   User, 
   Wallet, 
-  Trophy, 
   TrendingUp, 
   Edit, 
   Save, 
@@ -100,10 +99,6 @@ export default function Profile() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleViewBounties = () => {
-    navigate('/bounties', { state: { filter: 'my-bounties' } });
   };
 
   const handleViewAchievements = () => {
@@ -286,7 +281,7 @@ export default function Profile() {
                 <CardContent>
                   {transactions.length === 0 ? (
                     <p className="text-muted-foreground text-center py-8">
-                      No transactions yet. Start participating in bounties to see your transaction history!
+                      No transactions yet. Connect a wallet to see your transaction history.
                     </p>
                   ) : (
                     <div className="space-y-4">
@@ -373,10 +368,6 @@ export default function Profile() {
                   <CardTitle>Quick Actions</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <Button variant="outline" className="w-full justify-start" onClick={handleViewBounties}>
-                    <Trophy className="w-4 h-4 mr-2" />
-                    View My Bounties
-                  </Button>
                   <Button variant="outline" className="w-full justify-start" onClick={handleViewAchievements}>
                     <Award className="w-4 h-4 mr-2" />
                     Achievements

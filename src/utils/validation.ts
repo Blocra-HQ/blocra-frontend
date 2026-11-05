@@ -36,10 +36,6 @@ export const validateWalletAddress = (address: string): boolean => {
   return starknetRegex.test(address);
 };
 
-export const validateBountyAmount = (amount: number): boolean => {
-  return amount > 0 && amount <= 1000000; // Max 1M tokens
-};
-
 export const validateDeadline = (deadline: string): boolean => {
   const deadlineDate = new Date(deadline);
   if (isNaN(deadlineDate.getTime())) {

@@ -41,5 +41,4 @@ export const rateLimiters = {
   api: new RateLimiter(15 * 60 * 1000, 100),
   auth: new RateLimiter(15 * 60 * 1000, 5),
   query: new RateLimiter(60 * 1000, 10),
-  bounty: new RateLimiter(60 * 60 * 1000, 5)
 };

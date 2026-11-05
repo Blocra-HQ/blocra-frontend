@@ -122,55 +122,6 @@ class ApiClient {
       body: JSON.stringify(updates),
     });
   }
-
-  // Bounty endpoints
-  async getBounties(filters: any = {}) {
-    const params = new URLSearchParams(filters);
-    return this.request(`/bounties?${params}`);
-  }
-
-  async createBounty(bountyData: any) {
-    return this.request('/bounties', {
-      method: 'POST',
-      body: JSON.stringify(bountyData),
-    });
-  }
-
-  async getBounty(id: string) {
-    return this.request(`/bounties/${id}`);
-  }
-
-  async updateBounty(id: string, updates: any) {
-    return this.request(`/bounties/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(updates),
-    });
-  }
-
-  async joinBounty(id: string) {
-    return this.request(`/bounties/${id}/join`, {
-      method: 'POST',
-    });
-  }
-
-  async submitSolution(id: string, solution: any) {
-    return this.request(`/bounties/${id}/submit`, {
-      method: 'POST',
-      body: JSON.stringify(solution),
-    });
-  }
-
-  async selectWinner(id: string, winnerId: string) {
-    return this.request(`/bounties/${id}/winner`, {
-      method: 'POST',
-      body: JSON.stringify({ winnerId }),
-    });
-  }
-
-  // Stats endpoints
-  async getStats() {
-    return this.request('/bounties/stats');
-  }
 }
 
 export const apiClient = new ApiClient(API_CONFIG.apiUrl);

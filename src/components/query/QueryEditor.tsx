@@ -550,7 +550,7 @@ export function QueryEditor({ onQueryComplete }: QueryEditorProps) {
 
   // Auto-save query when enabled
   useEffect(() => {
-    if (isAutosaveEnabled && query.trim() && query !== 'SELECT * FROM bounties LIMIT 10;') {
+    if (isAutosaveEnabled && query.trim() && query !== 'SELECT * FROM blocks LIMIT 10;') {
       const timeoutId = setTimeout(() => {
         saveQueryToCollection(query, true);
       }, 1000);

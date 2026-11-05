@@ -118,30 +118,7 @@ export async function invokeContract<T = unknown>(
   return { result, hash: sent.hash };
 }
 
-// blocra-contracts bounty/src/errors.rs, so users see why a call failed.
-const BOUNTY_ERRORS: Record<number, string> = {
-  1: "You are not allowed to do this.",
-  2: "That bounty does not exist.",
-  3: "This bounty is no longer open.",
-  4: "The reward must be greater than zero.",
-  5: "The deadline must be in the future.",
-  6: "Allow at least one participant.",
-  7: "Title or description is empty or too long.",
-  8: "You can't join your own bounty.",
-  9: "You have already joined this bounty.",
-  10: "This bounty is full.",
-  11: "You haven't joined this bounty.",
-  12: "The deadline has passed.",
-  13: "The deadline hasn't passed yet.",
-  14: "The winner must have submitted a solution.",
-  15: "Solutions were submitted, so pick a winner instead of refunding.",
-  16: "Someone has joined, so the bounty can't be cancelled.",
-  17: "This bounty isn't in dispute.",
-  19: "Bounties are paused right now.",
-};
-
+/** Trims long RPC/host errors to something readable. */
 export function contractErrorMessage(raw: string): string {
-  const code = /Error\(Contract, #(\d+)\)/.exec(raw)?.[1];
-  if (code && BOUNTY_ERRORS[Number(code)]) return BOUNTY_ERRORS[Number(code)];
   return raw.length > 200 ? `${raw.slice(0, 200)}…` : raw;
 }

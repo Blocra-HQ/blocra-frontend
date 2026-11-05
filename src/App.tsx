@@ -29,9 +29,6 @@ const DataExplorerPage = lazy(() => import("./pages/DataExplorerPage"));
 const LibraryPage = lazy(() => import("./pages/LibraryPage"));
 const GoogleCallback = lazy(() => import("./pages/auth/GoogleCallback"));
 
-// Bounty features - consolidated
-const Bounties = lazy(() => import("./pages/Bounties"));
-const CreateBounty = lazy(() => import("./pages/CreateBounty"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const DashboardBuilder = lazy(() => import("./pages/DashboardBuilder"));
 
@@ -76,9 +73,6 @@ const App = () => (
                         <Route path="/profile" element={
                           <Profile />
                         } />
-                        <Route path="/bounties/create" element={
-                          <CreateBounty />
-                        } />
                         <Route path="/data-explorer" element={
                           <DataExplorerPage />
                         } />
@@ -95,9 +89,6 @@ const App = () => (
                           <LibraryPage />
                         } />
                         <Route path="/admin" element={<AdminDashboard />} />
-                        <Route path="/bounties" element={
-                          <Bounties />
-                        } />
                         <Route path="/contract-events-eda" element={
                           <ContractEventsEDA />
                         } />

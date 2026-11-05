@@ -6,7 +6,6 @@ export function EnvDebug() {
     VITE_SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY ? '***LOADED***' : 'NOT LOADED',
     VITE_SUPABASE_PUBLISHABLE_KEY: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ? '***LOADED***' : 'NOT LOADED',
     VITE_STARKNET_RPC_URL: import.meta.env.VITE_STARKNET_RPC_URL,
-    VITE_BOUNTY_CONTRACT_ADDRESS: import.meta.env.VITE_BOUNTY_CONTRACT_ADDRESS,
     VITE_APP_ENV: import.meta.env.VITE_APP_ENV,
     NODE_ENV: import.meta.env.NODE_ENV,
     MODE: import.meta.env.MODE,

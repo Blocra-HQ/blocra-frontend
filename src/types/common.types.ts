@@ -12,7 +12,7 @@ export interface Profile {
   full_name?: string;
   avatar_url?: string;
   bio?: string;
-  role: 'analyst' | 'bounty_creator' | 'admin';
+  role: 'analyst' | 'admin';
   wallet_address?: string;
   email_verified: boolean;
   onboarding_completed: boolean;
