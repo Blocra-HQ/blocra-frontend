@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Wand2, Search, TrendingUp, Lightbulb } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { sanitizeSQL } from '@/utils/sqlSanitizer';
+import { AIService } from '@/services/AIService';
 
 interface AIAssistantProps {
   onQueryGenerated: (query: string) => void;
@@ -34,39 +35,25 @@ export function AIAssistant({ onQueryGenerated }: AIAssistantProps) {
 
   const generateSQLFromPrompt = async () => {
     if (!prompt.trim()) return;
-    
+
     setLoading(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      let generatedSQL = '';
-      const promptLower = prompt.toLowerCase();
-      
-      if (promptLower.includes('block')) {
-        generatedSQL = "SELECT block_number, timestamp, transaction_count, gas_used FROM blocks ORDER BY block_number DESC LIMIT 10;";
-      } else if (promptLower.includes('transaction')) {
-        generatedSQL = "SELECT transaction_hash, sender_address, max_fee, type FROM transactions ORDER BY max_fee DESC LIMIT 20;";
-      } else {
-        generatedSQL = "SELECT block_number, timestamp, transaction_count FROM blocks ORDER BY block_number DESC LIMIT 10;";
-      }
-      
-      const sanitizedSQL = sanitizeSQL(generatedSQL);
-      onQueryGenerated(sanitizedSQL);
-      
+      const generatedSQL = await AIService.sql(prompt);
+      onQueryGenerated(sanitizeSQL(generatedSQL));
       toast({
         title: "SQL Generated",
-        description: "AI has generated SQL from your prompt"
+        description: "The AI analyst wrote a query for your question. Review it before running."
       });
     } catch (error) {
       toast({
         title: "Generation Failed",
-        description: "Please try again or write SQL manually",
+        description: error instanceof Error ? error.message : "Please try again or write SQL manually",
         variant: "destructive"
       });
     } finally {
       setLoading(false);
     }
-  };
+  };;
 
   const analyzeContract = async () => {
     if (!contractAddress.trim()) return;
