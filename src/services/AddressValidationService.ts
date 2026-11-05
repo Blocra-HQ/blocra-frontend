@@ -1,3 +1,4 @@
+import { StrKey } from '@stellar/stellar-sdk';
 /**
  * Address Validation Service
  * Provides chain-aware address validation for different blockchain types
@@ -8,7 +9,7 @@ export interface ValidationResult {
     error?: string;
 }
 
-export type ChainType = 'evm' | 'starknet' | 'solana' | 'cosmos' | 'substrate';
+export type ChainType = 'stellar' | 'evm' | 'starknet' | 'solana' | 'cosmos' | 'substrate';
 
 /**
  * Validates a blockchain address based on the chain type
@@ -27,6 +28,9 @@ export function validateAddress(address: string, chainType: ChainType): Validati
     }
 
     switch (chainType) {
+        case 'stellar':
+            return validateStellarAddress(trimmedAddress);
+
         case 'evm':
             return validateEvmAddress(trimmedAddress);
 
@@ -48,6 +52,19 @@ export function validateAddress(address: string, chainType: ChainType): Validati
                 error: `Unsupported chain type: ${chainType}`
             };
     }
+}
+
+/**
+ * Validates a Stellar contract (C...) or account (G...) id, checksum included.
+ */
+function validateStellarAddress(address: string): ValidationResult {
+    if (StrKey.isValidContract(address) || StrKey.isValidEd25519PublicKey(address)) {
+        return { isValid: true };
+    }
+    return {
+        isValid: false,
+        error: 'Enter a Stellar contract id (C..., 56 characters) or account (G...)'
+    };
 }
 
 /**
@@ -178,6 +195,10 @@ function validateSubstrateAddress(address: string): ValidationResult {
  */
 export function getAddressPlaceholder(chainType: ChainType): string {
     switch (chainType) {
+        case 'stellar':
+            // USDC's Stellar Asset Contract on mainnet
+            return 'CCW67TSZV3SSS2HXMBQ5JFGCKJNXKZM7UQUWUZPUTHXSTZLEO7SJMI75';
+
         case 'evm':
             return '0x3ca17667BBFC93db8bf2866E167C784B33220ACA';
 
@@ -203,6 +224,9 @@ export function getAddressPlaceholder(chainType: ChainType): string {
  */
 export function getAddressFormatDescription(chainType: ChainType): string {
     switch (chainType) {
+        case 'stellar':
+            return 'Stellar contract ids start with C and are 56 characters (accounts start with G)';
+
         case 'evm':
             return 'EVM addresses are 42 characters: 0x followed by 40 hexadecimal characters';
 

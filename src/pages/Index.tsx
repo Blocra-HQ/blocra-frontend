@@ -23,7 +23,9 @@ interface BlockchainStats {
   failed_txs: number;
   l2_gas?: number;
   l1_data_gas?: number;
-  /** Transactions per type in the block (INVOKE, DECLARE, ...). */
+  /** Operations in the ledger (Stellar only). */
+  operations?: number;
+  /** Transactions (Starknet) or operations (Stellar) per type. */
   tx_types?: Record<string, number>;
 }
 
@@ -85,7 +87,8 @@ const Index = () => {
         const response = await fetch(buildApiUrl(`dashboards/stats?chain=${currentChain.id}`));
         
         if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+          const body = await response.json().catch(() => null);
+          throw new Error(body?.message || `HTTP error! status: ${response.status}`);
         }
         
         const data: BlockchainStatsResponse = await response.json();
@@ -107,7 +110,8 @@ const Index = () => {
             timestamp: data.timestamp,
             block_number: data.block_number,
             transactions: data.stats.total_transactions,
-            gas: data.stats.gas_used / 1e6,
+            // Stellar has no gas: chart operations per ledger instead.
+            gas: currentChain.type === 'stellar' ? (data.stats.operations ?? 0) : data.stats.gas_used / 1e6,
             addresses: data.stats.unique_senders,
             avgFee: parseFloat(data.stats.avg_fee),
             fees: parseFloat(data.stats.total_fees),
@@ -150,6 +154,9 @@ const Index = () => {
     color: TYPE_COLORS[i % TYPE_COLORS.length],
   }));
   const feeUnit = stats?.fee_unit || currentChain.nativeCurrency;
+  const isStellar = currentChain.type === 'stellar';
+  const blockWord = isStellar ? 'ledger' : 'block';
+  const workLabel = isStellar ? 'Operations' : 'Gas (M)';
 
   // Fee distribution based on actual transaction data
   const feeDistributionData = historicalData.length > 0 ? [
@@ -211,7 +218,7 @@ const Index = () => {
           </div>
           {blockInfo && !error && (
             <div className="text-xs sm:text-sm text-muted-foreground flex flex-wrap items-center gap-1 sm:gap-2 w-full sm:w-auto">
-              <span className="whitespace-nowrap">Block #{blockInfo.block_number.toLocaleString()}</span>
+              <span className="whitespace-nowrap">{isStellar ? 'Ledger' : 'Block'} #{blockInfo.block_number.toLocaleString()}</span>
               <span className="hidden sm:inline">•</span>
               <span className="whitespace-nowrap">{new Date(blockInfo.timestamp * 1000).toLocaleTimeString()}</span>
               {loading && <span className="animate-pulse whitespace-nowrap">• Updating...</span>}
@@ -257,7 +264,7 @@ const Index = () => {
                 <CardContent className="p-3 sm:p-4">
                   <p className="text-xs font-medium text-muted-foreground mb-1">Total Transactions</p>
                   <p className="text-xl sm:text-2xl font-bold mb-1">{stats.total_transactions.toLocaleString()}</p>
-                  <p className="text-xs text-muted-foreground">In latest block</p>
+                  <p className="text-xs text-muted-foreground">In latest {blockWord}</p>
                 </CardContent>
               </Card>
 
@@ -271,9 +278,11 @@ const Index = () => {
 
               <Card className="border-l-4 border-l-purple-500">
                 <CardContent className="p-3 sm:p-4">
-                  <p className="text-xs font-medium text-muted-foreground mb-1">Gas Used</p>
-                  <p className="text-xl sm:text-2xl font-bold mb-1">{(stats.gas_used / 1000000).toFixed(1)}M</p>
-                  <p className="text-xs text-muted-foreground">Total gas consumed</p>
+                  <p className="text-xs font-medium text-muted-foreground mb-1">{isStellar ? 'Operations' : 'Gas Used'}</p>
+                  <p className="text-xl sm:text-2xl font-bold mb-1">
+                    {isStellar ? (stats.operations ?? 0).toLocaleString() : `${(stats.gas_used / 1000000).toFixed(1)}M`}
+                  </p>
+                  <p className="text-xs text-muted-foreground">{isStellar ? 'In the latest ledger' : 'Total gas consumed'}</p>
                 </CardContent>
               </Card>
 
@@ -281,7 +290,7 @@ const Index = () => {
                 <CardContent className="p-3 sm:p-4">
                   <p className="text-xs font-medium text-muted-foreground mb-1">Fees</p>
                   <p className="text-xl sm:text-2xl font-bold mb-1">{parseFloat(stats.total_fees).toFixed(4)} {feeUnit}</p>
-                  <p className="text-xs text-muted-foreground">Paid in the latest block</p>
+                  <p className="text-xs text-muted-foreground">Paid in the latest {blockWord}</p>
                 </CardContent>
               </Card>
 
@@ -289,7 +298,7 @@ const Index = () => {
                 <CardContent className="p-3 sm:p-4">
                   <p className="text-xs font-medium text-muted-foreground mb-1">Success rate</p>
                   <p className="text-xl sm:text-2xl font-bold mb-1">{stats.total_transactions ? ((stats.successful_txs / stats.total_transactions) * 100).toFixed(1) : '—'}%</p>
-                  <p className="text-xs text-muted-foreground">{stats.failed_txs} reverted in the latest block</p>
+                  <p className="text-xs text-muted-foreground">{stats.failed_txs} failed in the latest {blockWord}</p>
                 </CardContent>
               </Card>
             </div>
@@ -302,7 +311,7 @@ const Index = () => {
                     <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-blue-500 flex-shrink-0" />
                     <span className="truncate">Transaction Volume</span>
                   </CardTitle>
-                  <p className="text-xs text-muted-foreground">Number of transactions per block</p>
+                  <p className="text-xs text-muted-foreground">Number of transactions per {blockWord}</p>
                 </CardHeader>
                 <CardContent className="p-3 sm:p-6 pt-0">
                   {historicalData.length > 0 ? (
@@ -330,9 +339,9 @@ const Index = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Zap className="h-5 w-5 text-purple-500" />
-                    Gas Usage Trend
+                    {isStellar ? 'Operations Trend' : 'Gas Usage Trend'}
                   </CardTitle>
-                  <p className="text-xs text-muted-foreground">Total gas consumed per block</p>
+                  <p className="text-xs text-muted-foreground">{isStellar ? 'Operations per ledger' : 'Gas consumed per block (millions)'}</p>
                 </CardHeader>
                 <CardContent>
                   {historicalData.length > 0 ? (
@@ -341,11 +350,11 @@ const Index = () => {
                         <XAxis dataKey="time" />
                         <YAxis />
                         <Tooltip 
-                          formatter={(value: any) => [`${value.toLocaleString()} gas`, 'Gas Used']}
+                          formatter={(value: any) => [Number(value).toLocaleString(), workLabel]}
                           labelFormatter={(label) => `Time: ${label}`}
                         />
                         <Legend />
-                        <Area type="monotone" dataKey="gas" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.6} name="Gas Used" />
+                        <Area type="monotone" dataKey="gas" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.6} name={workLabel} />
                       </AreaChart>
                     </ResponsiveContainer>
                   ) : (
@@ -363,9 +372,9 @@ const Index = () => {
                 <CardHeader className="p-3 sm:p-6">
                   <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                     <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5 text-green-500 flex-shrink-0" />
-                    <span className="truncate">Fees per Block</span>
+                    <span className="truncate">Fees per {isStellar ? 'Ledger' : 'Block'}</span>
                   </CardTitle>
-                  <p className="text-xs text-muted-foreground">Total fees paid in each block ({feeUnit})</p>
+                  <p className="text-xs text-muted-foreground">Total fees paid in each {blockWord} ({feeUnit})</p>
                 </CardHeader>
                 <CardContent className="p-3 sm:p-6 pt-0">
                   {historicalData.length > 0 ? (
@@ -392,7 +401,7 @@ const Index = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Activity className="h-5 w-5 text-orange-500" />
-                    Transaction Types
+                    {isStellar ? 'Operation Types' : 'Transaction Types'}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="flex items-center justify-center">
@@ -444,7 +453,7 @@ const Index = () => {
                     <span className="text-lg font-semibold">{parseFloat(stats.avg_fee).toFixed(6)} {feeUnit}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Block Time</span>
+                    <span className="text-sm text-muted-foreground">{isStellar ? 'Ledger' : 'Block'} Time</span>
                     <span className="text-lg font-semibold">
                       {historicalData.length > 0 
                         ? `${historicalData[historicalData.length - 1].block_time.toFixed(1)}s`
@@ -463,7 +472,7 @@ const Index = () => {
                     <DollarSign className="h-5 w-5 text-green-500" />
                     Fee Distribution
                   </CardTitle>
-                  <p className="text-xs text-muted-foreground">Distribution of transaction fees across blocks</p>
+                  <p className="text-xs text-muted-foreground">Distribution of transaction fees across {blockWord}s</p>
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>
@@ -486,22 +495,22 @@ const Index = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <TrendingUp className="h-5 w-5 text-purple-500" />
-                    Gas per Block
+                    {isStellar ? 'Operations per Ledger' : 'Gas per Block'}
                   </CardTitle>
-                  <p className="text-xs text-muted-foreground">L1 + L2 gas consumed in each block (millions)</p>
+                  <p className="text-xs text-muted-foreground">{isStellar ? 'Operations applied in each ledger' : 'L1 + L2 gas consumed in each block (millions)'}</p>
                 </CardHeader>
                 <CardContent>
                   {historicalData.length > 0 ? (
                     <ResponsiveContainer width="100%" height={300}>
                       <AreaChart data={historicalData}>
                         <XAxis dataKey="time" />
-                        <YAxis label={{ value: 'Gas (M)', angle: -90, position: 'insideLeft' }} />
+                        <YAxis label={{ value: workLabel, angle: -90, position: 'insideLeft' }} />
                         <Tooltip 
-                          formatter={(value: any) => [`${Number(value).toFixed(2)}M`, 'Gas']}
+                          formatter={(value: any) => [isStellar ? Number(value).toLocaleString() : `${Number(value).toFixed(2)}M`, workLabel]}
                           labelFormatter={(label) => `Time: ${label}`}
                         />
                         <Legend />
-                        <Area type="monotone" dataKey="gas" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.6} name="Gas (M)" />
+                        <Area type="monotone" dataKey="gas" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.6} name={workLabel} />
                       </AreaChart>
                     </ResponsiveContainer>
                   ) : (
@@ -521,7 +530,7 @@ const Index = () => {
                     <Activity className="h-5 w-5 text-blue-500" />
                     Active Addresses Trend
                   </CardTitle>
-                  <p className="text-xs text-muted-foreground">Unique senders per block</p>
+                  <p className="text-xs text-muted-foreground">Unique senders per {blockWord}</p>
                 </CardHeader>
                 <CardContent>
                   {historicalData.length > 0 ? (
@@ -550,7 +559,7 @@ const Index = () => {
                     <Zap className="h-5 w-5 text-yellow-500" />
                     Average Fee Trend
                   </CardTitle>
-                  <p className="text-xs text-muted-foreground">Average fee per transaction in each block ({feeUnit})</p>
+                  <p className="text-xs text-muted-foreground">Average fee per transaction in each {blockWord} ({feeUnit})</p>
                 </CardHeader>
                 <CardContent>
                   {historicalData.length > 0 ? (
@@ -630,7 +639,7 @@ const Index = () => {
                     <BarChart3 className="h-5 w-5 text-indigo-500" />
                     Block Size Trend
                   </CardTitle>
-                  <p className="text-xs text-muted-foreground">Block size over time</p>
+                  <p className="text-xs text-muted-foreground">{isStellar ? 'Ledger' : 'Block'} size over time</p>
                 </CardHeader>
                 <CardContent>
                   {historicalData.length > 0 ? (
@@ -722,7 +731,7 @@ const Index = () => {
                     <Zap className="h-5 w-5 text-red-500" />
                     Gas Usage Pattern
                   </CardTitle>
-                  <p className="text-xs text-muted-foreground">Recent block gas consumption</p>
+                  <p className="text-xs text-muted-foreground">{isStellar ? 'Recent operations per ledger' : 'Recent gas consumption (millions)'}</p>
                 </CardHeader>
                 <CardContent>
                   {historicalData.length > 0 ? (
@@ -731,10 +740,10 @@ const Index = () => {
                         <XAxis dataKey="time" />
                         <YAxis />
                         <Tooltip 
-                          formatter={(value: any) => [`${value.toLocaleString()} gas`, 'Gas Used']}
+                          formatter={(value: any) => [Number(value).toLocaleString(), workLabel]}
                           labelFormatter={(label) => `Time: ${label}`}
                         />
-                        <Bar dataKey="gas" fill="#ef4444" name="Gas Usage" />
+                        <Bar dataKey="gas" fill="#ef4444" name={workLabel} />
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (
@@ -755,7 +764,7 @@ const Index = () => {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Block Time</span>
+                    <span className="text-sm text-muted-foreground">{isStellar ? 'Ledger' : 'Block'} Time</span>
                     <span className="text-lg font-semibold">
                       {historicalData.length > 0 
                         ? `${historicalData[historicalData.length - 1].block_time.toFixed(1)}s`
@@ -786,7 +795,7 @@ const Index = () => {
                     <Users className="h-5 w-5 text-teal-500" />
                     Active Users
                   </CardTitle>
-                  <p className="text-xs text-muted-foreground">Recent block unique addresses</p>
+                  <p className="text-xs text-muted-foreground">Recent {blockWord} unique addresses</p>
                 </CardHeader>
                 <CardContent>
                   {historicalData.length > 0 ? (
@@ -816,7 +825,7 @@ const Index = () => {
                     <DollarSign className="h-5 w-5 text-lime-500" />
                     Average Fee Trend
                   </CardTitle>
-                  <p className="text-xs text-muted-foreground">Recent block average fees</p>
+                  <p className="text-xs text-muted-foreground">Recent {blockWord} average fees</p>
                 </CardHeader>
                 <CardContent>
                   {historicalData.length > 0 ? (
@@ -878,7 +887,7 @@ const Index = () => {
                     <Activity className="h-5 w-5 text-sky-500" />
                     Block Metrics
                   </CardTitle>
-                  <p className="text-xs text-muted-foreground">Block time and transactions per block</p>
+                  <p className="text-xs text-muted-foreground">{isStellar ? 'Ledger' : 'Block'} time and transactions per {blockWord}</p>
                 </CardHeader>
                 <CardContent>
                   {historicalData.length > 0 ? (
@@ -971,7 +980,7 @@ const Index = () => {
                     <AlertCircle className="h-5 w-5 text-red-500" />
                     Failed Transaction Rate
                   </CardTitle>
-                  <p className="text-xs text-muted-foreground">Share of each block's transactions that reverted</p>
+                  <p className="text-xs text-muted-foreground">Share of each {blockWord}'s transactions that reverted</p>
                 </CardHeader>
                 <CardContent>
                   {historicalData.length > 0 ? (
@@ -1034,7 +1043,7 @@ const Index = () => {
               <Card className="border-l-4 border-l-green-500">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs font-medium text-muted-foreground">Block Time</p>
+                    <p className="text-xs font-medium text-muted-foreground">{isStellar ? 'Ledger' : 'Block'} Time</p>
                     <DollarSign className="h-4 w-4 text-green-500" />
                   </div>
                   <div className="text-xl font-bold">

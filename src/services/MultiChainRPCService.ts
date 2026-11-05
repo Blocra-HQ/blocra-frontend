@@ -19,7 +19,7 @@ interface ChainData {
 
 class MultiChainRPCService {
   private getCurrentChain(): ChainConfig {
-    const chainId = localStorage.getItem('selectedChain') || 'starknet';
+    const chainId = localStorage.getItem('selectedChain') || 'stellar';
     return SUPPORTED_CHAINS.find(c => c.id === chainId) || SUPPORTED_CHAINS[0];
   }
 
@@ -34,7 +34,7 @@ class MultiChainRPCService {
           body: JSON.stringify({
             jsonrpc: '2.0',
             method: this.getChainMethod(chain.type, method),
-            params,
+            ...(chain.type === 'stellar' && params.length === 0 ? {} : { params }),
             id: Date.now()
           })
         });
@@ -79,6 +79,11 @@ class MultiChainRPCService {
     const chain = this.getCurrentChain();
 
     switch (chain.type) {
+      case 'stellar': {
+        const ledger = await this.makeRPCCall('getLatestLedger');
+        return ledger.sequence;
+      }
+
       case 'starknet':
         const starknetResult = await this.makeRPCCall('starknet_blockNumber');
         return parseInt(starknetResult, 16);

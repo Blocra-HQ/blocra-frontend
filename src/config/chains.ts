@@ -1,4 +1,5 @@
-// Chains BlocRA can analyze, with fallback RPCs in priority order.
+// Chains BlocRA can analyze, with fallback RPCs in priority order. Stellar is
+// first, so it is the default chain.
 //
 // Generated from blocra-research/chains.json, where every endpoint is checked
 // by scripts/check_rpcs.py (alive, real head block, callable from a browser).
@@ -8,12 +9,28 @@ export interface ChainConfig {
   id: string;
   name: string;
   rpcs: string[];
-  type: 'evm' | 'cosmos' | 'solana' | 'starknet' | 'substrate';
+  type: 'stellar' | 'evm' | 'cosmos' | 'solana' | 'starknet' | 'substrate';
+  /** Horizon servers (Stellar only). */
+  horizon?: string[];
   nativeCurrency: string;
   explorer: string;
 }
 
 export const SUPPORTED_CHAINS: ChainConfig[] = [
+  {
+    id: 'stellar',
+    name: 'Stellar',
+    rpcs: [
+      'https://mainnet.sorobanrpc.com',
+      'https://soroban-rpc.mainnet.stellar.gateway.fm',
+      'https://rpc.lightsail.network',
+      'https://stellar.api.onfinality.io/public'
+    ],
+    horizon: ['https://horizon.stellar.org', 'https://horizon.stellar.lobstr.co'],
+    type: 'stellar',
+    nativeCurrency: 'XLM',
+    explorer: 'https://stellar.expert/explorer/public'
+  },
   {
     id: 'starknet',
     name: 'Starknet',

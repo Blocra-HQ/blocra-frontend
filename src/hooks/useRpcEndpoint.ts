@@ -1,70 +1,74 @@
-import { useState, useEffect } from 'react';
-import { STARKNET_RPCS } from "@/config/chains";
+import { useEffect, useState } from 'react';
+import { useChain } from '@/contexts/ChainContext';
+import type { ChainConfig } from '@/config/chains';
 
-const RPC_ENDPOINTS = STARKNET_RPCS;
+/** A cheap "are you alive" call for each chain type. */
+function probe(chain: ChainConfig): { method: string; params?: unknown[] } {
+  switch (chain.type) {
+    case 'stellar':
+      return { method: 'getLatestLedger' };
+    case 'starknet':
+      return { method: 'starknet_chainId', params: [] };
+    case 'solana':
+      return { method: 'getSlot', params: [] };
+    default:
+      return { method: 'eth_chainId', params: [] };
+  }
+}
 
+/**
+ * Finds the first working RPC for the selected chain, for the header's
+ * status indicator. Re-checks whenever the chain changes.
+ */
 export function useRpcEndpoint() {
+  const { currentChain } = useChain();
   const [activeEndpoint, setActiveEndpoint] = useState<string | null>(null);
   const [status, setStatus] = useState<'connecting' | 'connected' | 'error'>('connecting');
 
   useEffect(() => {
-    const checkEndpoint = async (endpoint: string) => {
-      try {
-        console.log(`Checking RPC connection to ${endpoint}...`);
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+    let cancelled = false;
 
+    const check = async (endpoint: string) => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      try {
         const response = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            jsonrpc: '2.0',
-            id: 1,
-            method: 'starknet_chainId',
-            params: []
-          }),
-          signal: controller.signal
+          body: JSON.stringify({ jsonrpc: '2.0', id: 1, ...probe(currentChain) }),
+          signal: controller.signal,
         });
+        const data = response.ok ? await response.json() : null;
+        return !!data && data.result !== undefined && !data.error;
+      } catch {
+        return false;
+      } finally {
         clearTimeout(timeoutId);
-
-        if (response.ok) {
-          console.log(`Connected to ${endpoint}`);
-          setActiveEndpoint(endpoint);
-          setStatus('connected');
-          return true;
-        } else {
-          console.warn(`RPC ${endpoint} returned ${response.status}`);
-        }
-      } catch (error) {
-        console.warn(`Failed to connect to ${endpoint}:`, error);
       }
-      return false;
     };
 
-    const connectToEndpoint = async () => {
-      setStatus('connecting');
-
-      // Try each endpoint in sequence until one works
-      for (const endpoint of RPC_ENDPOINTS) {
-        if (await checkEndpoint(endpoint)) {
+    const connect = async () => {
+      for (const endpoint of currentChain.rpcs) {
+        if (await check(endpoint)) {
+          if (!cancelled) {
+            setActiveEndpoint(endpoint);
+            setStatus('connected');
+          }
           return;
         }
       }
-
-      console.error('All RPC endpoints failed');
-      setStatus('error');
+      if (!cancelled) setStatus('error');
     };
 
-    connectToEndpoint();
+    setStatus('connecting');
+    setActiveEndpoint(null);
+    connect();
+    const interval = setInterval(connect, 30000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [currentChain]);
 
-    // Periodically check connection
-    const interval = setInterval(connectToEndpoint, 30000);
-    return () => clearInterval(interval);
-  }, []);
-
-  return {
-    activeEndpoint,
-    status,
-    endpoints: RPC_ENDPOINTS
-  };
+  return { activeEndpoint, status, endpoints: currentChain.rpcs };
 }

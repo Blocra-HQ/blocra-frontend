@@ -47,6 +47,9 @@ export class UniversalEventFetcher {
     onProgress?: (message: string) => void
   ): Promise<EventFetchResult> {
     switch (chain.type) {
+      case 'stellar':
+        return this.fetchStellarEvents(chain, contractAddress, fromBlock, toBlock, onProgress);
+
       case 'starknet':
         return this.fetchStarknetEvents(chain, contractAddress, fromBlock, toBlock, onProgress);
       
@@ -59,6 +62,109 @@ export class UniversalEventFetcher {
       default:
         throw new Error(`Unsupported chain type: ${chain.type}`);
     }
+  }
+
+  /**
+   * Fetch Soroban contract events with Stellar RPC getEvents. Blocks are
+   * ledgers. Public RPCs keep about 7 days of events (~120,000 ledgers), so
+   * the range is clamped to that window.
+   */
+  private async fetchStellarEvents(
+    chain: ChainConfig,
+    contractAddress: string,
+    fromBlock: number,
+    toBlock: number,
+    onProgress?: (message: string) => void
+  ): Promise<EventFetchResult> {
+    const { xdr, scValToNative } = await import('@stellar/stellar-sdk');
+    const decode = (b64: string) => {
+      try {
+        return scValToNative(xdr.ScVal.fromXDR(b64, 'base64'));
+      } catch {
+        return b64;
+      }
+    };
+    const plain = (v: unknown): unknown =>
+      typeof v === 'bigint' ? v.toString()
+        : Array.isArray(v) ? v.map(plain)
+        : v instanceof Uint8Array ? Array.from(v, b => b.toString(16).padStart(2, '0')).join('')
+        : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, plain(x)]))
+        : v;
+
+    const MAX_PAGES = 10;
+    let lastError: unknown;
+    for (const rpcUrl of chain.rpcs) {
+      try {
+        const call = async (method: string, params?: unknown) => {
+          const res = await fetch(rpcUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, ...(params ? { params } : {}) }),
+          });
+          const data = await res.json();
+          if (data.error) throw new Error(data.error.message);
+          return data.result;
+        };
+
+        const latest = await call('getLatestLedger');
+        const oldest = Math.max(1, latest.sequence - 120_000);
+        const start = Math.min(Math.max(fromBlock, oldest), latest.sequence);
+        const end = Math.min(toBlock || latest.sequence, latest.sequence);
+
+        const events: UniversalEvent[] = [];
+        let cursor: string | undefined;
+        for (let page = 0; page < MAX_PAGES; page++) {
+          onProgress?.(`Fetching Soroban events (page ${page + 1})...`);
+          const params = {
+            ...(cursor ? {} : { startLedger: start }),
+            filters: [{ type: 'contract', contractIds: [contractAddress] }],
+            pagination: { limit: 100, ...(cursor ? { cursor } : {}) },
+          };
+          const result = await call('getEvents', params);
+          for (const e of result.events ?? []) {
+            if (e.ledger > end) break;
+            const topics = (e.topic ?? []).map(decode).map(plain);
+            events.push({
+              blockNumber: e.ledger,
+              transactionHash: e.txHash,
+              eventName: typeof topics[0] === 'string' ? topics[0] : 'event',
+              address: e.contractId,
+              data: { topics, value: plain(decode(e.value)) },
+              timestamp: Math.floor(new Date(e.ledgerClosedAt).getTime() / 1000),
+            });
+          }
+          cursor = result.cursor;
+          if (!result.events?.length || result.events.length < 100) break;
+        }
+
+        // Transactions are the distinct transactions that emitted events.
+        const seen = new Set<string>();
+        const transactions: Transaction[] = events
+          .filter(e => !seen.has(e.transactionHash) && seen.add(e.transactionHash))
+          .map(e => ({
+            hash: e.transactionHash,
+            blockNumber: e.blockNumber,
+            from: '',
+            to: contractAddress,
+            value: '0',
+            methodName: e.eventName,
+            timestamp: e.timestamp,
+          }));
+
+        return {
+          events,
+          transactions,
+          totalFetched: events.length,
+          totalTransactions: transactions.length,
+          blockRange: { from: start, to: end },
+          chainType: 'stellar',
+        };
+      } catch (error) {
+        lastError = error;
+        console.warn(`Stellar RPC ${rpcUrl} failed:`, error);
+      }
+    }
+    throw new Error(`All Stellar RPCs failed: ${lastError instanceof Error ? lastError.message : lastError}`);
   }
 
   /**
@@ -657,6 +763,16 @@ export class UniversalEventFetcher {
     for (const rpcUrl of chain.rpcs) {
       try {
         switch (chain.type) {
+          case 'stellar': {
+            const response = await fetch(rpcUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ jsonrpc: '2.0', method: 'getLatestLedger', id: 1 })
+            });
+            const data = await response.json();
+            return data.result.sequence;
+          }
+
           case 'starknet': {
             const { RpcProvider } = await import('starknet');
             const provider = new RpcProvider({ nodeUrl: rpcUrl });
