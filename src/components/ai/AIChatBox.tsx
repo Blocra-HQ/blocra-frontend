@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { X, Send, Bot, User } from 'lucide-react';
+import { AIService, type ChatTurn } from '@/services/AIService';
+import { useChain } from '@/contexts/ChainContext';
 
 interface AIChatBoxProps {
   isOpen: boolean;
@@ -21,16 +23,17 @@ export function AIChatBox({ isOpen, onClose }: AIChatBoxProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      content: 'Hello! I\'m your AI assistant with real-time Starknet access. I can analyze contracts, build prediction models, and help with blockchain queries. What would you like to explore?',
+      content: 'Hi, I\'m BlocRA\'s AI analyst. Ask me about contracts, on-chain activity, or how to write a query.',
       sender: 'ai',
       timestamp: new Date()
     }
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const { currentChain } = useChain();
 
   const sendMessage = async () => {
-    if (!input.trim()) return;
+    if (!input.trim() || loading) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -38,61 +41,29 @@ export function AIChatBox({ isOpen, onClose }: AIChatBoxProps) {
       sender: 'user',
       timestamp: new Date()
     };
-
-    setMessages(prev => [...prev, userMessage]);
+    const history = [...messages, userMessage];
+    setMessages(history);
     setInput('');
     setLoading(true);
 
-    // Simulate AI response
-    setTimeout(() => {
-      const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: getAIResponse(input),
-        sender: 'ai',
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, aiMessage]);
-      setLoading(false);
-    }, 1000);
-  };
-
-  const getAIResponse = (userInput: string): string => {
-    const input = userInput.toLowerCase();
-    
-    // Contract analysis responses
-    if (input.includes('contract') || input.includes('0x')) {
-      return "I can analyze any Starknet contract for you! Use the Contract Analysis tab in the Query Editor to examine transaction patterns, gas usage, and activity metrics for specific contract addresses.";
+    let reply: string;
+    try {
+      // The greeting is UI copy, not part of the conversation.
+      const turns: ChatTurn[] = history.slice(1).map(m => ({
+        role: m.sender === 'user' ? 'user' : 'assistant',
+        content: m.content,
+      }));
+      reply = await AIService.chat(turns, { chain: currentChain.name });
+    } catch (err) {
+      reply = `The AI analyst is unavailable right now (${err instanceof Error ? err.message : 'request failed'}).`;
     }
-    
-    // Prediction model responses
-    if (input.includes('predict') || input.includes('forecast') || input.includes('trend')) {
-      return "I can help you build prediction models! Try the Prediction Models tab to forecast gas prices, transaction volumes, DeFi TVL trends, or user growth using historical blockchain data.";
-    }
-    
-    // Gas analysis
-    if (input.includes('gas') || input.includes('fee')) {
-      return "For gas analysis, try: SELECT sender_address, AVG(CAST(max_fee as DECIMAL)) as avg_fee FROM transactions GROUP BY sender_address ORDER BY avg_fee DESC LIMIT 10; This shows which addresses pay the highest fees.";
-    }
-    
-    // Block analysis
-    if (input.includes('block') || input.includes('latest')) {
-      return "For block analysis, use: SELECT block_number, timestamp, transaction_count, gas_used FROM blocks ORDER BY block_number DESC LIMIT 5; This shows recent block activity with real RPC data.";
-    }
-    
-    // Transaction analysis
-    if (input.includes('transaction') || input.includes('tx')) {
-      return "For transaction analysis, try: SELECT transaction_hash, sender_address, max_fee, type FROM transactions LIMIT 15; This gives you recent transaction details from the Starknet network.";
-    }
-    
-    
-    // Default responses with more specific guidance
-    const responses = [
-      "I have access to real-time Starknet data! Ask me about analyzing contracts, building prediction models, or querying blockchain data.",
-      "Try asking about specific contract addresses, gas optimization, or transaction patterns. I can generate SQL queries and build predictive models.",
-      "I can help with: Contract analysis (any 0x address), prediction models (gas prices, volume forecasts), and real-time blockchain queries.",
-      "Want to analyze a specific contract? Just provide the address. Need predictions? I can build models for gas prices, transaction volumes, and more!"
-    ];
-    return responses[Math.floor(Math.random() * responses.length)];
+    setMessages(prev => [...prev, {
+      id: (Date.now() + 1).toString(),
+      content: reply,
+      sender: 'ai',
+      timestamp: new Date()
+    }]);
+    setLoading(false);
   };
 
   if (!isOpen) return null;

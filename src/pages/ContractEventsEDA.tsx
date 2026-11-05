@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { AIAnalysisService } from '@/services/AIAnalysisService';
 import { DocumentService } from '@/services/DocumentService';
 import { PDFReportService } from '@/services/PDFReportService';
+import { AIService } from '@/services/AIService';
 import { DatabaseService } from '@/services/DatabaseService';
 import { StateAnalysisService } from '@/services/StateAnalysisService';
 import { DependencyGraphService } from '@/services/DependencyGraphService';
@@ -762,18 +763,33 @@ Tip: Verify the contract address on ${currentChain.explorer.replace('https://', 
     }
 
     setGeneratingReport(true);
-    setError('🤖 Blocra Intelligence Engine analyzing contract data...');
+    setError('🤖 BlocRA AI analyst is writing the report...');
+
+    const contractAddress = contracts.map(c => c.address).join(', ');
+    const contractName = contracts.map(c => c.name || 'Contract').join(', ') || 'Multi-Contract Analysis';
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 3000));
-
-      const report = await AIAnalysisService.generateBlockcraReport({
-        contractAddress: contracts.map(c => c.address).join(', '),
-        contractName: contracts.map(c => c.name || 'Contract').join(', ') || 'Multi-Contract Analysis',
-        contractInfo,
-        stats,
-        events
-      });
+      let report: string;
+      try {
+        ({ report } = await AIService.report({
+          contractName,
+          contractAddress,
+          chain: currentChain.name,
+          stats: { ...stats, contractInfo, eventsAnalyzed: events.length },
+        }));
+      } catch (aiError) {
+        // No AI configured (or it failed): fall back to the statistical
+        // summary so a report can still be generated, and say so.
+        console.warn('AI report unavailable, using statistical summary:', aiError);
+        const summary = await AIAnalysisService.generateBlockcraReport({
+          contractAddress,
+          contractName,
+          contractInfo,
+          stats,
+          events
+        });
+        report = `Note: written from BlocRA's statistics without the AI analyst (${aiError instanceof Error ? aiError.message : 'unavailable'}).\n\n${summary}`;
+      }
 
       setAiReport(report);
       setError('');

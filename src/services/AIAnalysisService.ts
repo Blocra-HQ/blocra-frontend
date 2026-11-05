@@ -26,9 +26,10 @@ export class AIAnalysisService {
   }) {
     const { contractAddress, contractName, contractInfo, stats, events } = data;
     
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    const successRate = 100 - (stats?.errorRate?.rate || 2.5);
+    // Only report what was measured; never fill gaps with made-up numbers.
+    const measuredErrorRate: number | undefined = stats?.errorRate?.rate;
+    const successRate = measuredErrorRate === undefined ? 100 : 100 - measuredErrorRate;
+    const errorRateText = measuredErrorRate === undefined ? 'not measured' : `${measuredErrorRate.toFixed(2)}%`;
     const reliabilityScore = Math.floor(successRate * (stats?.uniqueUsers > 10 ? 0.95 : 0.8));
     
     return `**EXECUTIVE SUMMARY**
@@ -38,8 +39,7 @@ The ${contractInfo?.contractType || 'smart contract'} "${contractName}" demonstr
 Key Performance Indicators:
 
 • User Engagement: ${stats?.uniqueUsers || 0} unique addresses with ${stats?.avgEventsPerBlock || '0.00'} events per block
-• Gas Efficiency: Average ${Math.floor(stats?.totalTransactions * 75000 / 100)} gas units (${stats?.totalTransactions > 100 ? 'Moderate' : 'Standard'} efficiency rating)
-• Reliability: ${successRate > 95 ? 'High' : successRate > 85 ? 'Moderate' : 'Low'} reliability with ${(stats?.errorRate?.rate || 2.5).toFixed(2)}% error rate
+• Reliability: ${successRate > 95 ? 'High' : successRate > 85 ? 'Moderate' : 'Low'} reliability with an error rate of ${errorRateText}
 • Transaction Volume: ${stats?.totalTransactions || 0} transactions generating ${Number(stats?.totalVolume || 0).toFixed(6)} in value
 
 Strategic Assessment:
@@ -69,16 +69,11 @@ The contract implements standard ${contractInfo?.contractType || 'smart contract
 
 Performance Metrics & Efficiency Analysis
 
-Gas Usage Analysis:
-
-• Average Gas Consumption: ${Math.floor(stats?.totalTransactions * 75000 / 100)} units
-• Minimum Gas Usage: ${Math.floor(stats?.totalTransactions * 45000 / 100)} units
-• Maximum Gas Usage: ${Math.floor(stats?.totalTransactions * 120000 / 100)} units
-• Efficiency Rating: ${stats?.totalTransactions > 100 ? 'Moderate' : 'Standard'}
+Gas usage is not part of this summary (it isn't measured from events).
 
 Reliability Metrics:
 
-• Error/Revert Rate: ${(stats?.errorRate?.rate || 2.5).toFixed(2)}% (${Math.floor(stats?.totalTransactions * ((stats?.errorRate?.rate || 2.5) / 100))} failed transactions)
+• Error/Revert Rate: ${errorRateText}${measuredErrorRate === undefined ? '' : ` (${Math.floor((stats?.totalTransactions || 0) * (measuredErrorRate / 100))} failed transactions)`}
 • Success Rate: ${successRate.toFixed(2)}%
 • Reliability Classification: ${successRate > 95 ? 'High' : successRate > 85 ? 'Moderate' : 'Low'}
 
@@ -136,7 +131,7 @@ Risk Assessment & Security Analysis
 
 Technical Risk Factors:
 
-• Error Rate Risk: ${(stats?.errorRate?.rate || 2.5) > 10 ? 'HIGH' : (stats?.errorRate?.rate || 2.5) > 5 ? 'MEDIUM' : 'LOW'} (${(stats?.errorRate?.rate || 2.5).toFixed(2)}% failure rate)
+• Error Rate Risk: ${(measuredErrorRate ?? 0) > 10 ? 'HIGH' : (measuredErrorRate ?? 0) > 5 ? 'MEDIUM' : 'LOW'} (${errorRateText} failure rate)
 • Activity Risk: ${stats?.isActive ? 'LOW' : 'MEDIUM'} (based on usage patterns)
 • Contract Type Risk: ${this.getContractRisk(contractInfo?.contractType)}
 
@@ -152,7 +147,7 @@ Market Risks:
 • Volume Risk: ${(stats?.totalVolume || 0) < 100 ? 'MEDIUM - Low transaction volume' : 'LOW - Adequate volume'}
 • Sustainability Risk: ${stats?.isActive ? 'LOW - Active usage' : 'MEDIUM - Declining activity'}
 
-Overall Risk Rating: ${this.calculateOverallRisk((stats?.errorRate?.rate || 2.5), (stats?.uniqueUsers || 0), stats?.isActive)}
+Overall Risk Rating: ${this.calculateOverallRisk((measuredErrorRate ?? 0), (stats?.uniqueUsers || 0), stats?.isActive)}
 
 **TECHNICAL ANALYSIS**
 
@@ -213,7 +208,7 @@ Strategic Recommendations
 
 Immediate Actions (0-30 days):
 
-${(stats?.errorRate?.rate || 2.5) > 5 ? '• PRIORITY: Investigate and reduce error rate from ' + (stats?.errorRate?.rate || 2.5).toFixed(2) + '%' : '• Maintain current reliability standards'}
+${(measuredErrorRate ?? 0) > 5 ? '• PRIORITY: Investigate and reduce error rate from ' + errorRateText : '• Maintain current reliability standards'}
 ${stats?.totalTransactions < 100 ? '• Optimize gas usage to reduce user costs' : '• Continue gas efficiency monitoring'}
 ${(stats?.uniqueUsers || 0) < 50 ? '• Implement user acquisition strategies' : '• Focus on user retention programs'}
 
@@ -234,7 +229,7 @@ Long-term Strategy (3-12 months):
 Technical Recommendations:
 
 • Gas Optimization: ${stats?.totalTransactions > 100 ? 'Maintain current efficiency' : 'Reduce average gas by 15-20%'}
-• Error Handling: ${(stats?.errorRate?.rate || 2.5) < 2 ? 'Excellent reliability' : 'Implement better error recovery'}
+• Error Handling: ${(measuredErrorRate ?? 0) < 2 ? 'Excellent reliability' : 'Implement better error recovery'}
 • User Experience: Focus on ${(stats?.uniqueUsers || 0) < 100 ? 'user acquisition' : 'user retention'}
 
 Business Development:
