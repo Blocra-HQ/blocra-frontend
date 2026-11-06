@@ -105,7 +105,10 @@ export function fmtNum(n: number | null | undefined, maxDigits = 2): string {
 }
 
 export function fmtPct(n: number | null | undefined): string {
-  return isNum(n) ? `${n.toLocaleString("en-US", { maximumFractionDigits: 1 })}%` : DASH;
+  if (!isNum(n)) return DASH;
+  // Tiny but non-zero shares would otherwise round to a misleading "0%".
+  if (n > 0 && n < 0.05) return "<0.1%";
+  return `${n.toLocaleString("en-US", { maximumFractionDigits: 1 })}%`;
 }
 
 /** "+12.5%" / "-3%" vs the previous period, or "—" without one. */
