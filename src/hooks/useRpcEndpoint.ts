@@ -3,7 +3,7 @@ import { useChain } from '@/contexts/ChainContext';
 import type { ChainConfig } from '@/config/chains';
 
 /** A cheap "are you alive" call for each chain type. */
-function probe(chain: ChainConfig): { method: string; params?: unknown[] } {
+function probe(chain: ChainConfig): { method: string; params?: unknown } {
   switch (chain.type) {
     case 'stellar':
       return { method: 'getLatestLedger' };
@@ -11,6 +11,8 @@ function probe(chain: ChainConfig): { method: string; params?: unknown[] } {
       return { method: 'starknet_chainId', params: [] };
     case 'solana':
       return { method: 'getSlot', params: [] };
+    case 'cosmos':
+      return { method: 'status', params: {} };
     default:
       return { method: 'eth_chainId', params: [] };
   }

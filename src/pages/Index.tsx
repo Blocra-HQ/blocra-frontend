@@ -1,67 +1,57 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { Header } from "@/components/layout/Header";
-import { AuthenticatedSidebar } from "@/components/layout/AuthenticatedSidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AIChatBox } from "@/components/ai/AIChatBox";
 import { AIFloatingButton } from "@/components/ai/AIFloatingButton";
 import { useChain } from "@/contexts/ChainContext";
-import { Activity, TrendingUp, Users, Zap, DollarSign, BarChart3, AlertCircle } from "lucide-react";
-import { LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { Activity, TrendingUp, Users, Zap, DollarSign, BarChart3, AlertCircle, Info } from "lucide-react";
+import { LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { buildApiUrl } from '@/config/api';
 import { logger } from '@/utils/logger';
+import {
+  type BlockchainStats,
+  type BlockchainStatsResponse,
+  type HistoryPoint,
+  DASH,
+  chainLabels,
+  feeDistribution,
+  feeUnit as statsFeeUnit,
+  formatAge,
+  formatAmount,
+  formatPercent,
+  formatSeconds,
+  formatWorkChartValue,
+  historyPoint,
+  statusSlices,
+  summarize,
+  txKindRows,
+  txTypeSlices,
+} from '@/lib/dashboardFormat';
 
-interface BlockchainStats {
-  total_transactions: number;
-  active_users: number;
-  gas_used: number;
-  unique_senders: number;
-  total_fees: string;
-  avg_fee: string;
-  /** Token fees are paid in (STRK on Starknet). */
-  fee_unit?: string;
-  successful_txs: number;
-  failed_txs: number;
-  l2_gas?: number;
-  l1_data_gas?: number;
-  /** Operations in the ledger (Stellar only). */
-  operations?: number;
-  /** Transactions (Starknet) or operations (Stellar) per type. */
-  tx_types?: Record<string, number>;
-}
-
-interface BlockchainStatsResponse {
-  success: boolean;
-  block_number: number;
-  timestamp: number;
-  stats: BlockchainStats;
-  block_info: {
-    block_number: number;
-    timestamp: number;
-    transaction_count: number;
-  };
-}
-
-interface HistoricalDataPoint {
-  time: string;
-  timestamp: number;
-  block_number: number;
-  transactions: number;
-  gas: number;
-  addresses: number;
-  avgFee: number;
-  fees: number;
-  failRate: number;
-  block_time: number; // Time between blocks in seconds
+/** Chart area, or a placeholder until there is data to plot. */
+function ChartBox({ height, ready, empty = 'Collecting data...', children }: {
+  height: number;
+  ready: boolean;
+  empty?: string;
+  children: ReactNode;
+}) {
+  if (!ready) {
+    return (
+      <div className="flex items-center justify-center text-muted-foreground text-sm text-center px-4" style={{ height }}>
+        {empty}
+      </div>
+    );
+  }
+  return <ResponsiveContainer width="100%" height={height}>{children as React.ReactElement}</ResponsiveContainer>;
 }
 
 const Index = () => {
   const { currentChain } = useChain();
   const [chatOpen, setChatOpen] = useState(false);
-  const [stats, setStats] = useState<BlockchainStats | null>(null);
-  const [blockInfo, setBlockInfo] = useState<{ block_number: number; timestamp: number } | null>(null);
+  const [response, setResponse] = useState<BlockchainStatsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [historicalData, setHistoricalData] = useState<HistoricalDataPoint[]>([]);
+  const [historicalData, setHistoricalData] = useState<HistoryPoint[]>([]);
   const [previousChain, setPreviousChain] = useState(currentChain.name);
   const [showChainSwitch, setShowChainSwitch] = useState(false);
 
@@ -70,127 +60,87 @@ const Index = () => {
     if (previousChain !== currentChain.name) {
       setShowChainSwitch(true);
       setPreviousChain(currentChain.name);
-      // Clear historical data on chain switch
-      setHistoricalData([]);
-      // Hide notification after 5 seconds
-      setTimeout(() => setShowChainSwitch(false), 5000);
+      const timer = setTimeout(() => setShowChainSwitch(false), 5000);
+      return () => clearTimeout(timer);
     }
   }, [currentChain.name, previousChain]);
 
   useEffect(() => {
+    let cancelled = false;
+    const chain = currentChain;
+    setResponse(null);
+    setHistoricalData([]);
+
     const fetchStats = async () => {
+      // The backend falls back through several RPCs; don't wait forever on a stalled one.
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 60000);
       try {
         setError(null);
         setLoading(true);
-        
-        // Only fetch for the currently selected chain
-        const response = await fetch(buildApiUrl(`dashboards/stats?chain=${currentChain.id}`));
-        
-        if (!response.ok) {
-          const body = await response.json().catch(() => null);
-          throw new Error(body?.message || `HTTP error! status: ${response.status}`);
+        const res = await fetch(buildApiUrl(`dashboards/stats?chain=${chain.id}`), { signal: controller.signal });
+        if (!res.ok) {
+          const body = await res.json().catch(() => null);
+          throw new Error(body?.message || `HTTP error! status: ${res.status}`);
         }
-        
-        const data: BlockchainStatsResponse = await response.json();
-        
-        if (data.success && data.stats) {
-          setStats(data.stats);
-          setBlockInfo(data.block_info);
-          
-          // Calculate block time from previous block
-          const prevBlock = historicalData.length > 0 ? historicalData[historicalData.length - 1] : null;
-          const blockTime = prevBlock ? data.timestamp - prevBlock.timestamp : 6; // Default to 6s if first block
-          
-          // Add new data point to historical data
-          const newDataPoint: HistoricalDataPoint = {
-            time: new Date(data.timestamp * 1000).toLocaleTimeString('en-US', { 
-              hour: '2-digit', 
-              minute: '2-digit' 
-            }),
-            timestamp: data.timestamp,
-            block_number: data.block_number,
-            transactions: data.stats.total_transactions,
-            // Stellar has no gas: chart operations per ledger instead.
-            gas: currentChain.type === 'stellar' ? (data.stats.operations ?? 0) : data.stats.gas_used / 1e6,
-            addresses: data.stats.unique_senders,
-            avgFee: parseFloat(data.stats.avg_fee),
-            fees: parseFloat(data.stats.total_fees),
-            failRate: data.stats.total_transactions
-              ? (data.stats.failed_txs / data.stats.total_transactions) * 100
-              : 0,
-            block_time: blockTime,
-          };
-          
-          setHistoricalData(prev => {
-            // Check if this block is already in history
-            const exists = prev.some(p => p.block_number === newDataPoint.block_number);
-            if (exists) return prev;
-            
-            // Add new point and keep last 20 data points
-            const updated = [...prev, newDataPoint];
-            return updated.slice(-20);
-          });
-        } else {
-          throw new Error('Invalid response format');
-        }
+        const data: BlockchainStatsResponse = await res.json();
+        if (!data.success || !data.stats) throw new Error('Invalid response format');
+        // A response for the previous chain must not land on this one.
+        if (cancelled) return;
+
+        setResponse(data);
+        setHistoricalData(prev => {
+          if (prev.some(p => p.block_number === data.block_number)) return prev;
+          const point = historyPoint(data, chain.type, prev[prev.length - 1]);
+          return [...prev, point].slice(-20);
+        });
       } catch (err) {
+        if (cancelled) return;
         logger.error('Failed to fetch blockchain stats', err);
-        setError(err instanceof Error ? err.message : 'Failed to fetch stats');
+        const timedOut = err instanceof DOMException && err.name === 'AbortError';
+        setError(timedOut
+          ? `${chain.name} stats took longer than 60 seconds; its RPC endpoints may be slow. Retrying in 30 seconds.`
+          : err instanceof Error ? err.message : 'Failed to fetch stats');
       } finally {
-        setLoading(false);
+        clearTimeout(timer);
+        if (!cancelled) setLoading(false);
       }
     };
 
     fetchStats();
     const interval = setInterval(fetchStats, 30000);
-    return () => clearInterval(interval);
-  }, [currentChain.id]); // Re-fetch when chain changes
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [currentChain]);
 
-  // Real per-type counts from the block's transactions.
-  const TYPE_COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444'];
-  const pieData = Object.entries(stats?.tx_types ?? {}).map(([name, value], i) => ({
-    name: name.replace('_', ' ').toLowerCase().replace(/^\w/, c => c.toUpperCase()),
-    value,
-    color: TYPE_COLORS[i % TYPE_COLORS.length],
-  }));
-  const feeUnit = stats?.fee_unit || currentChain.nativeCurrency;
-  const isStellar = currentChain.type === 'stellar';
-  const blockWord = isStellar ? 'ledger' : 'block';
-  const workLabel = isStellar ? 'Operations' : 'Gas (M)';
+  const stats: BlockchainStats | null = response?.stats ?? null;
+  const type = currentChain.type;
+  const labels = chainLabels(type);
+  const { blockWord, BlockWord } = labels;
+  const workTitle = labels.work.replace(/\b\w/g, c => c.toUpperCase());
+  const isStellar = type === 'stellar';
+  const unit = statsFeeUnit(stats, currentChain);
+  const summary = response ? summarize(response, currentChain) : null;
 
-  // Fee distribution based on actual transaction data
-  const feeDistributionData = historicalData.length > 0 ? [
-    { 
-      range: `0-0.001 ${currentChain.nativeCurrency}`, 
-      count: historicalData.filter(d => d.fees < 0.001).length,
-      avgFee: '< 0.001'
-    },
-    { 
-      range: `0.001-0.01 ${currentChain.nativeCurrency}`, 
-      count: historicalData.filter(d => d.fees >= 0.001 && d.fees < 0.01).length,
-      avgFee: '~0.005'
-    },
-    { 
-      range: `0.01-0.1 ${currentChain.nativeCurrency}`, 
-      count: historicalData.filter(d => d.fees >= 0.01 && d.fees < 0.1).length,
-      avgFee: '~0.05'
-    },
-    { 
-      range: `0.1+ ${currentChain.nativeCurrency}`, 
-      count: historicalData.filter(d => d.fees >= 0.1).length,
-      avgFee: '> 0.1'
-    },
-  ] : [];
-
-  const successRateData = stats ? [
-    { name: 'Success', value: stats.successful_txs, color: '#10b981' },
-    { name: 'Reverted', value: stats.failed_txs, color: '#ef4444' },
-  ].filter(item => item.value > 0) : []; // Only show categories with data
+  const pieData = stats ? txTypeSlices(stats) : [];
+  const successRateData = stats ? statusSlices(stats, type) : [];
+  const kindRows = stats ? txKindRows(stats, type) : [];
+  const feeDistributionData = feeDistribution(historicalData, unit);
+  const latest = historicalData[historicalData.length - 1];
+  const latestBlockTime = latest?.block_time ?? null;
+  const latestTps = latest?.tps ?? null;
+  const hasHistory = historicalData.length > 0;
+  const hasUtilization = historicalData.some(p => p.utilization !== null);
+  const headAge = response ? Math.max(0, Date.now() / 1000 - response.timestamp) : null;
+  const live = headAge !== null && headAge < 600;
+  const timeTooltip = (label: unknown) => `Time: ${label}`;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       <Header title="Dashboard" subtitle="Real-time blockchain analytics" />
-      
+
       {/* Chain Switch Notification */}
       {showChainSwitch && (
         <div className="fixed top-16 sm:top-20 right-2 sm:right-4 z-50 animate-in slide-in-from-top max-w-[calc(100vw-1rem)] sm:max-w-sm">
@@ -203,30 +153,28 @@ const Index = () => {
           </div>
         </div>
       )}
-      
-      <main className="w-full px-2 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6 space-y-3 sm:space-y-4">{/* Responsive padding */}
-        {/* Chain Info Banner - Responsive */}
+
+      <main className="w-full px-2 sm:px-4 lg:px-6 py-3 sm:py-4 lg:py-6 space-y-3 sm:space-y-4">
+        {/* Chain Info Banner */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4 p-3 sm:p-4 bg-card border rounded-lg shadow-sm">
           <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto">
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse flex-shrink-0"></div>
+              <div className={`w-2 h-2 rounded-full flex-shrink-0 ${error ? 'bg-red-500' : 'bg-green-500 animate-pulse'}`}></div>
               <span className="font-semibold text-sm sm:text-base">{currentChain.name}</span>
             </div>
             <div className="text-xs sm:text-sm text-muted-foreground">
               {currentChain.nativeCurrency}
             </div>
           </div>
-          {blockInfo && !error && (
+          {response && summary && !error && (
             <div className="text-xs sm:text-sm text-muted-foreground flex flex-wrap items-center gap-1 sm:gap-2 w-full sm:w-auto">
-              <span className="whitespace-nowrap">{isStellar ? 'Ledger' : 'Block'} #{blockInfo.block_number.toLocaleString()}</span>
+              <span className="whitespace-nowrap">{summary.block}</span>
               <span className="hidden sm:inline">•</span>
-              <span className="whitespace-nowrap">{new Date(blockInfo.timestamp * 1000).toLocaleTimeString()}</span>
+              <span className="whitespace-nowrap">{new Date(response.timestamp * 1000).toLocaleTimeString()}</span>
               {loading && <span className="animate-pulse whitespace-nowrap">• Updating...</span>}
             </div>
           )}
         </div>
-
-
 
         {/* Error State */}
         {error && (
@@ -239,7 +187,7 @@ const Index = () => {
           </div>
         )}
 
-        {/* Loading State - Responsive Grid */}
+        {/* Loading State */}
         {loading && !stats && (
           <div className="grid gap-2 sm:gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             {[...Array(5)].map((_, i) => (
@@ -256,14 +204,14 @@ const Index = () => {
           </div>
         )}
 
-        {/* Key Metrics - Responsive Grid */}
-        {stats && (
+        {stats && summary && (
           <>
+            {/* Key Metrics */}
             <div className="grid gap-2 sm:gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
               <Card className="border-l-4 border-l-blue-500">
                 <CardContent className="p-3 sm:p-4">
                   <p className="text-xs font-medium text-muted-foreground mb-1">Total Transactions</p>
-                  <p className="text-xl sm:text-2xl font-bold mb-1">{stats.total_transactions.toLocaleString()}</p>
+                  <p className="text-xl sm:text-2xl font-bold mb-1">{summary.transactions}</p>
                   <p className="text-xs text-muted-foreground">In latest {blockWord}</p>
                 </CardContent>
               </Card>
@@ -271,25 +219,25 @@ const Index = () => {
               <Card className="border-l-4 border-l-green-500">
                 <CardContent className="p-3 sm:p-4">
                   <p className="text-xs font-medium text-muted-foreground mb-1">Active Users</p>
-                  <p className="text-xl sm:text-2xl font-bold mb-1">{stats.active_users.toLocaleString()}</p>
-                  <p className="text-xs text-muted-foreground">Unique addresses</p>
+                  <p className="text-xl sm:text-2xl font-bold mb-1">{summary.activeUsers}</p>
+                  <p className="text-xs text-muted-foreground">{type === 'solana' ? 'Unique fee payers' : 'Unique senders'}</p>
                 </CardContent>
               </Card>
 
               <Card className="border-l-4 border-l-purple-500">
                 <CardContent className="p-3 sm:p-4">
-                  <p className="text-xs font-medium text-muted-foreground mb-1">{isStellar ? 'Operations' : 'Gas Used'}</p>
-                  <p className="text-xl sm:text-2xl font-bold mb-1">
-                    {isStellar ? (stats.operations ?? 0).toLocaleString() : `${(stats.gas_used / 1000000).toFixed(1)}M`}
+                  <p className="text-xs font-medium text-muted-foreground mb-1">{summary.workTitle}</p>
+                  <p className="text-xl sm:text-2xl font-bold mb-1">{summary.work}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {isStellar ? 'In the latest ledger' : type === 'starknet' ? 'L1 + L2 gas in the latest block' : `In the latest ${blockWord}`}
                   </p>
-                  <p className="text-xs text-muted-foreground">{isStellar ? 'In the latest ledger' : 'Total gas consumed'}</p>
                 </CardContent>
               </Card>
 
               <Card className="border-l-4 border-l-orange-500">
                 <CardContent className="p-3 sm:p-4">
                   <p className="text-xs font-medium text-muted-foreground mb-1">Fees</p>
-                  <p className="text-xl sm:text-2xl font-bold mb-1">{parseFloat(stats.total_fees).toFixed(4)} {feeUnit}</p>
+                  <p className="text-xl sm:text-2xl font-bold mb-1">{summary.totalFees}</p>
                   <p className="text-xs text-muted-foreground">Paid in the latest {blockWord}</p>
                 </CardContent>
               </Card>
@@ -297,13 +245,22 @@ const Index = () => {
               <Card className="border-l-4 border-l-pink-500">
                 <CardContent className="p-3 sm:p-4">
                   <p className="text-xs font-medium text-muted-foreground mb-1">Success rate</p>
-                  <p className="text-xl sm:text-2xl font-bold mb-1">{stats.total_transactions ? ((stats.successful_txs / stats.total_transactions) * 100).toFixed(1) : '—'}%</p>
-                  <p className="text-xs text-muted-foreground">{stats.failed_txs} failed in the latest {blockWord}</p>
+                  <p className="text-xl sm:text-2xl font-bold mb-1">{summary.successRate}</p>
+                  <p className="text-xs text-muted-foreground">{summary.failedLine}</p>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Primary Charts - Responsive Grid */}
+            {summary.notes.length > 0 && (
+              <div className="flex items-start gap-2 px-3 py-2 text-xs text-muted-foreground border rounded-md bg-muted/30">
+                <Info className="h-3.5 w-3.5 mt-0.5 flex-shrink-0" />
+                <div className="space-y-0.5">
+                  {summary.notes.map(note => <p key={note}>{note}</p>)}
+                </div>
+              </div>
+            )}
+
+            {/* Primary Charts */}
             <div className="grid gap-2 sm:gap-3 grid-cols-1 lg:grid-cols-2">
               <Card>
                 <CardHeader className="p-3 sm:p-6">
@@ -314,24 +271,15 @@ const Index = () => {
                   <p className="text-xs text-muted-foreground">Number of transactions per {blockWord}</p>
                 </CardHeader>
                 <CardContent className="p-3 sm:p-6 pt-0">
-                  {historicalData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={200} className="sm:h-[250px]">
-                      <LineChart data={historicalData}>
-                        <XAxis dataKey="time" />
-                        <YAxis />
-                        <Tooltip 
-                          formatter={(value: any) => [`${value} txs`, 'Transactions']}
-                          labelFormatter={(label) => `Time: ${label}`}
-                        />
-                        <Legend />
-                        <Line type="monotone" dataKey="transactions" stroke="#3b82f6" strokeWidth={2} name="Transactions" />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="h-[250px] flex items-center justify-center text-muted-foreground">
-                      Collecting data...
-                    </div>
-                  )}
+                  <ChartBox height={250} ready={hasHistory}>
+                    <LineChart data={historicalData}>
+                      <XAxis dataKey="time" />
+                      <YAxis />
+                      <Tooltip formatter={(value: any) => [`${value} txs`, 'Transactions']} labelFormatter={timeTooltip} />
+                      <Legend />
+                      <Line type="monotone" dataKey="transactions" stroke="#3b82f6" strokeWidth={2} name="Transactions" />
+                    </LineChart>
+                  </ChartBox>
                 </CardContent>
               </Card>
 
@@ -339,61 +287,43 @@ const Index = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Zap className="h-5 w-5 text-purple-500" />
-                    {isStellar ? 'Operations Trend' : 'Gas Usage Trend'}
+                    {workTitle} Trend
                   </CardTitle>
-                  <p className="text-xs text-muted-foreground">{isStellar ? 'Operations per ledger' : 'Gas consumed per block (millions)'}</p>
+                  <p className="text-xs text-muted-foreground">{labels.workDescription}</p>
                 </CardHeader>
                 <CardContent>
-                  {historicalData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={250}>
-                      <AreaChart data={historicalData}>
-                        <XAxis dataKey="time" />
-                        <YAxis />
-                        <Tooltip 
-                          formatter={(value: any) => [Number(value).toLocaleString(), workLabel]}
-                          labelFormatter={(label) => `Time: ${label}`}
-                        />
-                        <Legend />
-                        <Area type="monotone" dataKey="gas" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.6} name={workLabel} />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="h-[250px] flex items-center justify-center text-muted-foreground">
-                      Collecting data...
-                    </div>
-                  )}
+                  <ChartBox height={250} ready={hasHistory}>
+                    <AreaChart data={historicalData}>
+                      <XAxis dataKey="time" />
+                      <YAxis />
+                      <Tooltip formatter={(value: any) => [formatWorkChartValue(value, type), labels.workChart]} labelFormatter={timeTooltip} />
+                      <Legend />
+                      <Area type="monotone" dataKey="work" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.6} name={labels.workChart} />
+                    </AreaChart>
+                  </ChartBox>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Secondary Charts Grid - Responsive */}
+            {/* Secondary Charts */}
             <div className="grid gap-2 sm:gap-3 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
               <Card>
                 <CardHeader className="p-3 sm:p-6">
                   <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                     <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5 text-green-500 flex-shrink-0" />
-                    <span className="truncate">Fees per {isStellar ? 'Ledger' : 'Block'}</span>
+                    <span className="truncate">Fees per {BlockWord}</span>
                   </CardTitle>
-                  <p className="text-xs text-muted-foreground">Total fees paid in each {blockWord} ({feeUnit})</p>
+                  <p className="text-xs text-muted-foreground">Total fees paid in each {blockWord} ({unit})</p>
                 </CardHeader>
                 <CardContent className="p-3 sm:p-6 pt-0">
-                  {historicalData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={180} className="sm:h-[200px]">
-                      <BarChart data={historicalData}>
-                        <XAxis dataKey="time" />
-                        <YAxis />
-                        <Tooltip 
-                          formatter={(value: any) => [`${Number(value).toFixed(4)} ${feeUnit}`, 'Fees']}
-                          labelFormatter={(label) => `Time: ${label}`}
-                        />
-                        <Bar dataKey="fees" fill="#10b981" name={`Fees (${feeUnit})`} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="h-[200px] flex items-center justify-center text-muted-foreground">
-                      Collecting data...
-                    </div>
-                  )}
+                  <ChartBox height={200} ready={hasHistory}>
+                    <BarChart data={historicalData}>
+                      <XAxis dataKey="time" />
+                      <YAxis />
+                      <Tooltip formatter={(value: any) => [formatAmount(value, unit, 4), 'Fees']} labelFormatter={timeTooltip} />
+                      <Bar dataKey="fees" fill="#10b981" name={`Fees (${unit})`} />
+                    </BarChart>
+                  </ChartBox>
                 </CardContent>
               </Card>
 
@@ -401,34 +331,25 @@ const Index = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Activity className="h-5 w-5 text-orange-500" />
-                    {isStellar ? 'Operation Types' : 'Transaction Types'}
+                    {isStellar ? 'Operation Types' : type === 'cosmos' ? 'Message Types' : 'Transaction Types'}
                   </CardTitle>
+                  <p className="text-xs text-muted-foreground">
+                    {isStellar ? 'Operations in the latest ledger'
+                      : type === 'cosmos' ? 'First message of each transaction'
+                      : type === 'solana' ? 'Transaction message versions'
+                      : type === 'evm' ? 'Transaction envelope types' : 'Transactions by type'}
+                  </p>
                 </CardHeader>
                 <CardContent className="flex items-center justify-center">
-                  <ResponsiveContainer width="100%" height={250}>
+                  <ChartBox height={250} ready={pieData.length > 0} empty={`No transactions in the latest ${blockWord}`}>
                     <PieChart>
-                      <Pie
-                        data={pieData}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={false}
-                        outerRadius={70}
-                        fill="#8884d8"
-                        dataKey="value"
-                      >
-                        {pieData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
+                      <Pie data={pieData} cx="50%" cy="50%" labelLine={false} label={false} outerRadius={70} dataKey="value">
+                        {pieData.map((entry) => <Cell key={entry.name} fill={entry.color} />)}
                       </Pie>
                       <Tooltip />
-                      <Legend 
-                        verticalAlign="bottom" 
-                        height={36}
-                        formatter={(value, entry: any) => `${value}: ${entry.payload.value}`}
-                      />
+                      <Legend verticalAlign="bottom" formatter={(value, entry: any) => `${value}: ${entry.payload.value}`} />
                     </PieChart>
-                  </ResponsiveContainer>
+                  </ChartBox>
                 </CardContent>
               </Card>
 
@@ -442,29 +363,31 @@ const Index = () => {
                 <CardContent className="space-y-4">
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">Unique Senders</span>
-                    <span className="text-lg font-semibold">{stats.unique_senders.toLocaleString()}</span>
+                    <span className="text-lg font-semibold">{summary.uniqueSenders}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">Total Fees</span>
-                    <span className="text-lg font-semibold">{parseFloat(stats.total_fees).toFixed(4)} {feeUnit}</span>
+                    <span className="text-lg font-semibold">{summary.totalFees}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">Avg Fee</span>
-                    <span className="text-lg font-semibold">{parseFloat(stats.avg_fee).toFixed(6)} {feeUnit}</span>
+                    <span className="text-lg font-semibold">{summary.avgFee}</span>
                   </div>
+                  {type === 'solana' && stats.vote_txs != null && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Vote transactions</span>
+                      <span className="text-lg font-semibold">{stats.vote_txs.toLocaleString()}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">{isStellar ? 'Ledger' : 'Block'} Time</span>
-                    <span className="text-lg font-semibold">
-                      {historicalData.length > 0 
-                        ? `${historicalData[historicalData.length - 1].block_time.toFixed(1)}s`
-                        : '~6s'}
-                    </span>
+                    <span className="text-sm text-muted-foreground">{BlockWord} Time</span>
+                    <span className="text-lg font-semibold">{formatSeconds(latestBlockTime)}</span>
                   </div>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Additional Charts - Full Width Fee Distribution and Block Utilization */}
+            {/* Fee Distribution and Work per Block */}
             <div className="grid gap-3 md:grid-cols-2">
               <Card>
                 <CardHeader>
@@ -472,22 +395,17 @@ const Index = () => {
                     <DollarSign className="h-5 w-5 text-green-500" />
                     Fee Distribution
                   </CardTitle>
-                  <p className="text-xs text-muted-foreground">Distribution of transaction fees across {blockWord}s</p>
+                  <p className="text-xs text-muted-foreground">Observed {blockWord}s grouped by their total fees ({unit})</p>
                 </CardHeader>
                 <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
+                  <ChartBox height={300} ready={feeDistributionData.length > 0} empty={hasHistory ? `Fees unavailable for these ${blockWord}s` : 'Collecting data...'}>
                     <BarChart data={feeDistributionData}>
                       <XAxis dataKey="range" />
-                      <YAxis label={{ value: 'Block Count', angle: -90, position: 'insideLeft' }} />
-                      <Tooltip 
-                        formatter={(value: any, name: string, props: any) => [
-                          `${value} blocks`,
-                          `Avg: ${props.payload.avgFee} ${currentChain.nativeCurrency}`
-                        ]}
-                      />
-                      <Bar dataKey="count" fill="#10b981" name="Blocks" />
+                      <YAxis allowDecimals={false} label={{ value: `${BlockWord}s`, angle: -90, position: 'insideLeft' }} />
+                      <Tooltip formatter={(value: any) => [`${value} ${blockWord}s`, 'Count']} />
+                      <Bar dataKey="count" fill="#10b981" name={`${BlockWord}s`} />
                     </BarChart>
-                  </ResponsiveContainer>
+                  </ChartBox>
                 </CardContent>
               </Card>
 
@@ -495,34 +413,25 @@ const Index = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <TrendingUp className="h-5 w-5 text-purple-500" />
-                    {isStellar ? 'Operations per Ledger' : 'Gas per Block'}
+                    {workTitle} per {BlockWord}
                   </CardTitle>
-                  <p className="text-xs text-muted-foreground">{isStellar ? 'Operations applied in each ledger' : 'L1 + L2 gas consumed in each block (millions)'}</p>
+                  <p className="text-xs text-muted-foreground">{labels.workDescription}</p>
                 </CardHeader>
                 <CardContent>
-                  {historicalData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={300}>
-                      <AreaChart data={historicalData}>
-                        <XAxis dataKey="time" />
-                        <YAxis label={{ value: workLabel, angle: -90, position: 'insideLeft' }} />
-                        <Tooltip 
-                          formatter={(value: any) => [isStellar ? Number(value).toLocaleString() : `${Number(value).toFixed(2)}M`, workLabel]}
-                          labelFormatter={(label) => `Time: ${label}`}
-                        />
-                        <Legend />
-                        <Area type="monotone" dataKey="gas" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.6} name={workLabel} />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                      Collecting data...
-                    </div>
-                  )}
+                  <ChartBox height={300} ready={hasHistory}>
+                    <AreaChart data={historicalData}>
+                      <XAxis dataKey="time" />
+                      <YAxis label={{ value: labels.workChart, angle: -90, position: 'insideLeft' }} />
+                      <Tooltip formatter={(value: any) => [formatWorkChartValue(value, type), labels.workChart]} labelFormatter={timeTooltip} />
+                      <Legend />
+                      <Area type="monotone" dataKey="work" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.6} name={labels.workChart} />
+                    </AreaChart>
+                  </ChartBox>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Advanced Analytics - Full Width */}
+            {/* Addresses, Average Fee, Status */}
             <div className="grid gap-3 md:grid-cols-3">
               <Card>
                 <CardHeader>
@@ -533,23 +442,14 @@ const Index = () => {
                   <p className="text-xs text-muted-foreground">Unique senders per {blockWord}</p>
                 </CardHeader>
                 <CardContent>
-                  {historicalData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={300}>
-                      <LineChart data={historicalData}>
-                        <XAxis dataKey="time" />
-                        <YAxis />
-                        <Tooltip 
-                          formatter={(value: any) => [`${value} addresses`, 'Unique Senders']}
-                          labelFormatter={(label) => `Time: ${label}`}
-                        />
-                        <Line type="monotone" dataKey="addresses" stroke="#3b82f6" strokeWidth={2} dot={{ r: 4 }} name="Addresses" />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                      Collecting data...
-                    </div>
-                  )}
+                  <ChartBox height={300} ready={hasHistory}>
+                    <LineChart data={historicalData}>
+                      <XAxis dataKey="time" />
+                      <YAxis />
+                      <Tooltip formatter={(value: any) => [`${value} addresses`, 'Unique Senders']} labelFormatter={timeTooltip} />
+                      <Line type="monotone" dataKey="addresses" stroke="#3b82f6" strokeWidth={2} dot={{ r: 4 }} name="Addresses" />
+                    </LineChart>
+                  </ChartBox>
                 </CardContent>
               </Card>
 
@@ -559,26 +459,17 @@ const Index = () => {
                     <Zap className="h-5 w-5 text-yellow-500" />
                     Average Fee Trend
                   </CardTitle>
-                  <p className="text-xs text-muted-foreground">Average fee per transaction in each {blockWord} ({feeUnit})</p>
+                  <p className="text-xs text-muted-foreground">Average fee per transaction in each {blockWord} ({unit})</p>
                 </CardHeader>
                 <CardContent>
-                  {historicalData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={300}>
-                      <LineChart data={historicalData}>
-                        <XAxis dataKey="time" />
-                        <YAxis />
-                        <Tooltip 
-                          formatter={(value: any) => [`${Number(value).toFixed(6)} ${feeUnit}`, 'Avg fee']}
-                          labelFormatter={(label) => `Time: ${label}`}
-                        />
-                        <Line type="monotone" dataKey="avgFee" stroke="#eab308" strokeWidth={2} dot={{ r: 4 }} name={`Avg fee (${feeUnit})`} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                      Collecting data...
-                    </div>
-                  )}
+                  <ChartBox height={300} ready={hasHistory}>
+                    <LineChart data={historicalData}>
+                      <XAxis dataKey="time" />
+                      <YAxis width={80} tickFormatter={(v: number) => Number(v.toPrecision(2)).toString()} />
+                      <Tooltip formatter={(value: any) => [formatAmount(value, unit, 6), 'Avg fee']} labelFormatter={timeTooltip} />
+                      <Line type="monotone" dataKey="avgFee" stroke="#eab308" strokeWidth={2} dot={{ r: 4 }} name={`Avg fee (${unit})`} />
+                    </LineChart>
+                  </ChartBox>
                 </CardContent>
               </Card>
 
@@ -588,113 +479,76 @@ const Index = () => {
                     <BarChart3 className="h-5 w-5 text-pink-500" />
                     Transaction Status
                   </CardTitle>
-                  <p className="text-xs text-muted-foreground">Success, failed, and pending transactions</p>
+                  <p className="text-xs text-muted-foreground">Succeeded and {labels.failed.toLowerCase()} transactions in the latest {blockWord}</p>
                 </CardHeader>
                 <CardContent>
-                  {successRateData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={300}>
-                      <PieChart>
-                        <Pie
-                          data={successRateData}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={50}
-                          outerRadius={90}
-                          fill="#8884d8"
-                          dataKey="value"
-                          label={false}
-                        >
-                          {successRateData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
-                          ))}
-                        </Pie>
-                        <Tooltip 
-                          formatter={(value: any, name: string) => [`${value} txs`, name]}
-                        />
-                        <Legend 
-                          verticalAlign="bottom" 
-                          height={36}
-                          formatter={(value, entry: any) => {
-                            const total = stats!.total_transactions;
-                            const percent = ((entry.payload.value / total) * 100).toFixed(1);
-                            return `${value}: ${entry.payload.value} (${percent}%)`;
-                          }}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                      No transaction data
-                    </div>
-                  )}
+                  <ChartBox
+                    height={300}
+                    ready={successRateData.length > 0}
+                    empty={stats.successful_txs == null ? 'Status unavailable for this block' : `No transactions in the latest ${blockWord}`}
+                  >
+                    <PieChart>
+                      <Pie data={successRateData} cx="50%" cy="50%" innerRadius={50} outerRadius={90} dataKey="value" label={false}>
+                        {successRateData.map((entry) => <Cell key={entry.name} fill={entry.color} />)}
+                      </Pie>
+                      <Tooltip formatter={(value: any, name: string) => [`${value} txs`, name]} />
+                      <Legend
+                        verticalAlign="bottom"
+                        formatter={(value, entry: any) => `${value}: ${entry.payload.value} (${formatPercent(entry.payload.value, stats.total_transactions)})`}
+                      />
+                    </PieChart>
+                  </ChartBox>
                 </CardContent>
               </Card>
             </div>
 
-            {/* More Analytics - 2 Column Layout */}
+            {/* Block size and kinds */}
             <div className="grid gap-3 md:grid-cols-2">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <BarChart3 className="h-5 w-5 text-indigo-500" />
-                    Block Size Trend
+                    {BlockWord} Size Trend
                   </CardTitle>
-                  <p className="text-xs text-muted-foreground">{isStellar ? 'Ledger' : 'Block'} size over time</p>
+                  <p className="text-xs text-muted-foreground">Transactions in each observed {blockWord}</p>
                 </CardHeader>
                 <CardContent>
-                  {historicalData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={300}>
-                      <AreaChart data={historicalData}>
-                        <XAxis dataKey="time" />
-                        <YAxis />
-                        <Tooltip 
-                          formatter={(value: any) => [`${value} txs`, 'Block Size']}
-                          labelFormatter={(label) => `Time: ${label}`}
-                        />
-                        <Legend />
-                        <Area type="monotone" dataKey="transactions" stroke="#6366f1" fill="#6366f1" fillOpacity={0.6} name="Block Size" />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                      Collecting data...
-                    </div>
-                  )}
+                  <ChartBox height={300} ready={hasHistory}>
+                    <AreaChart data={historicalData}>
+                      <XAxis dataKey="time" />
+                      <YAxis />
+                      <Tooltip formatter={(value: any) => [`${value} txs`, `${BlockWord} size`]} labelFormatter={timeTooltip} />
+                      <Legend />
+                      <Area type="monotone" dataKey="transactions" stroke="#6366f1" fill="#6366f1" fillOpacity={0.6} name={`${BlockWord} size`} />
+                    </AreaChart>
+                  </ChartBox>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Activity className="h-5 w-5 text-cyan-500" />
-                    Network Activity
+                    <Activity className="h-5 w-5 text-violet-500" />
+                    Transaction Kinds
                   </CardTitle>
-                  <p className="text-xs text-muted-foreground">Transaction activity over time</p>
+                  <p className="text-xs text-muted-foreground">
+                    {type === 'solana' ? 'Vote and non-vote transactions in the latest block' : `Transfers, contract calls and contract creations in the latest ${blockWord}`}
+                  </p>
                 </CardHeader>
                 <CardContent>
-                  {historicalData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={300}>
-                      <LineChart data={historicalData}>
-                        <XAxis dataKey="time" />
-                        <YAxis />
-                        <Tooltip 
-                          formatter={(value: any) => [`${value} txs`, 'Activity']}
-                          labelFormatter={(label) => `Time: ${label}`}
-                        />
-                        <Legend />
-                        <Line type="monotone" dataKey="transactions" stroke="#06b6d4" strokeWidth={2} name="Activity" />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                      Collecting data...
-                    </div>
-                  )}
+                  <ChartBox height={300} ready={kindRows.length > 0} empty={`Not reported for ${currentChain.name}`}>
+                    <BarChart data={kindRows}>
+                      <XAxis dataKey="name" />
+                      <YAxis allowDecimals={false} />
+                      <Tooltip formatter={(value: any) => [`${value} txs`, 'Transactions']} />
+                      <Bar dataKey="value" fill="#8b5cf6" name="Transactions" />
+                    </BarChart>
+                  </ChartBox>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Extended Analytics - 3 Column Layout */}
+            {/* Throughput */}
             <div className="grid gap-3 md:grid-cols-3">
               <Card>
                 <CardHeader>
@@ -702,26 +556,17 @@ const Index = () => {
                     <Zap className="h-5 w-5 text-amber-500" />
                     TPS Trend
                   </CardTitle>
-                  <p className="text-xs text-muted-foreground">Transactions per second</p>
+                  <p className="text-xs text-muted-foreground">Transactions per second, from each {blockWord}'s size and the measured {blockWord} time</p>
                 </CardHeader>
                 <CardContent>
-                  {historicalData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={300}>
-                      <LineChart data={historicalData.map(d => ({ ...d, tps: d.transactions / (d.block_time || 6) }))}>
-                        <XAxis dataKey="time" />
-                        <YAxis />
-                        <Tooltip 
-                          formatter={(value: any) => [`${value.toFixed(2)} TPS`, 'TPS']}
-                          labelFormatter={(label) => `Time: ${label}`}
-                        />
-                        <Line type="monotone" dataKey="tps" stroke="#f59e0b" strokeWidth={2} name="TPS" />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                      Collecting data...
-                    </div>
-                  )}
+                  <ChartBox height={300} ready={historicalData.some(p => p.tps !== null)} empty={`Measuring ${blockWord} time...`}>
+                    <LineChart data={historicalData}>
+                      <XAxis dataKey="time" />
+                      <YAxis />
+                      <Tooltip formatter={(value: any) => [value == null ? DASH : `${Number(value).toFixed(2)} TPS`, 'TPS']} labelFormatter={timeTooltip} />
+                      <Line type="monotone" dataKey="tps" stroke="#f59e0b" strokeWidth={2} name="TPS" />
+                    </LineChart>
+                  </ChartBox>
                 </CardContent>
               </Card>
 
@@ -729,28 +574,19 @@ const Index = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Zap className="h-5 w-5 text-red-500" />
-                    Gas Usage Pattern
+                    Block Utilization
                   </CardTitle>
-                  <p className="text-xs text-muted-foreground">{isStellar ? 'Recent operations per ledger' : 'Recent gas consumption (millions)'}</p>
+                  <p className="text-xs text-muted-foreground">Gas used as a share of the block gas limit</p>
                 </CardHeader>
                 <CardContent>
-                  {historicalData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={300}>
-                      <BarChart data={historicalData}>
-                        <XAxis dataKey="time" />
-                        <YAxis />
-                        <Tooltip 
-                          formatter={(value: any) => [Number(value).toLocaleString(), workLabel]}
-                          labelFormatter={(label) => `Time: ${label}`}
-                        />
-                        <Bar dataKey="gas" fill="#ef4444" name={workLabel} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                      Collecting data...
-                    </div>
-                  )}
+                  <ChartBox height={300} ready={hasUtilization} empty={`Not reported for ${currentChain.name}`}>
+                    <BarChart data={historicalData}>
+                      <XAxis dataKey="time" />
+                      <YAxis unit="%" />
+                      <Tooltip formatter={(value: any) => [value == null ? DASH : `${Number(value).toFixed(1)}%`, 'Utilization']} labelFormatter={timeTooltip} />
+                      <Bar dataKey="utilization" fill="#ef4444" name="Utilization" />
+                    </BarChart>
+                  </ChartBox>
                 </CardContent>
               </Card>
 
@@ -760,217 +596,50 @@ const Index = () => {
                     <Activity className="h-5 w-5 text-emerald-500" />
                     Network Health
                   </CardTitle>
-                  <p className="text-xs text-muted-foreground">Real-time network status</p>
+                  <p className="text-xs text-muted-foreground">From the latest {blockWord}</p>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">{isStellar ? 'Ledger' : 'Block'} Time</span>
-                    <span className="text-lg font-semibold">
-                      {historicalData.length > 0 
-                        ? `${historicalData[historicalData.length - 1].block_time.toFixed(1)}s`
-                        : '~6s'}
-                    </span>
+                    <span className="text-sm text-muted-foreground">{BlockWord} Time</span>
+                    <span className="text-lg font-semibold">{formatSeconds(latestBlockTime)}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">TPS</span>
-                    <span className="text-lg font-semibold">{(stats.total_transactions / 6).toFixed(1)}</span>
+                    <span className="text-lg font-semibold">{latestTps === null ? DASH : latestTps.toFixed(1)}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Uptime</span>
-                    <span className="text-lg font-semibold text-green-600">99.8%</span>
+                    <span className="text-sm text-muted-foreground">Head produced</span>
+                    <span className="text-lg font-semibold">{formatAge(response?.timestamp, Date.now() / 1000)}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">Status</span>
-                    <span className="text-lg font-semibold text-green-600">Healthy</span>
+                    <span className={`text-lg font-semibold ${live ? 'text-green-600' : 'text-amber-600'}`}>{live ? 'Live' : 'Lagging'}</span>
                   </div>
                 </CardContent>
               </Card>
             </div>
 
-            {/* More Charts - 2 Column Layout */}
-            <div className="grid gap-3 md:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Users className="h-5 w-5 text-teal-500" />
-                    Active Users
-                  </CardTitle>
-                  <p className="text-xs text-muted-foreground">Recent {blockWord} unique addresses</p>
-                </CardHeader>
-                <CardContent>
-                  {historicalData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={300}>
-                      <AreaChart data={historicalData}>
-                        <XAxis dataKey="time" />
-                        <YAxis />
-                        <Tooltip 
-                          formatter={(value: any) => [`${value} users`, 'Active Users']}
-                          labelFormatter={(label) => `Time: ${label}`}
-                        />
-                        <Legend />
-                        <Area type="monotone" dataKey="addresses" stroke="#14b8a6" fill="#14b8a6" fillOpacity={0.6} name="Users" />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                      Collecting data...
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <DollarSign className="h-5 w-5 text-lime-500" />
-                    Average Fee Trend
-                  </CardTitle>
-                  <p className="text-xs text-muted-foreground">Recent {blockWord} average fees</p>
-                </CardHeader>
-                <CardContent>
-                  {historicalData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={300}>
-                      <LineChart data={historicalData}>
-                        <XAxis dataKey="time" />
-                        <YAxis />
-                        <Tooltip 
-                          formatter={(value: any) => [`${value.toFixed(6)} ${currentChain.nativeCurrency}`, 'Avg Fee']}
-                          labelFormatter={(label) => `Time: ${label}`}
-                        />
-                        <Legend />
-                        <Line type="monotone" dataKey="fees" stroke="#84cc16" strokeWidth={2} name="Fees" />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                      Collecting data...
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Additional Charts - 3 Column Layout */}
-            <div className="grid gap-3 md:grid-cols-3">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <BarChart3 className="h-5 w-5 text-violet-500" />
-                    Top Contracts
-                  </CardTitle>
-                  <p className="text-xs text-muted-foreground">Most active smart contracts</p>
-                </CardHeader>
-                <CardContent>
-                  {historicalData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={300}>
-                      <BarChart data={historicalData.slice(-5)}>
-                        <XAxis dataKey="time" />
-                        <YAxis />
-                        <Tooltip 
-                          formatter={(value: any) => [`${value} txs`, 'Transactions']}
-                          labelFormatter={(label) => `Time: ${label}`}
-                        />
-                        <Bar dataKey="transactions" fill="#8b5cf6" name="Contracts" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                      Collecting data...
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Activity className="h-5 w-5 text-sky-500" />
-                    Block Metrics
-                  </CardTitle>
-                  <p className="text-xs text-muted-foreground">{isStellar ? 'Ledger' : 'Block'} time and transactions per {blockWord}</p>
-                </CardHeader>
-                <CardContent>
-                  {historicalData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={300}>
-                      <LineChart data={historicalData}>
-                        <XAxis dataKey="time" />
-                        <YAxis />
-                        <Tooltip 
-                          formatter={(value: any) => [`${value}`, 'Transactions']}
-                          labelFormatter={(label) => `Time: ${label}`}
-                        />
-                        <Line type="monotone" dataKey="transactions" stroke="#0ea5e9" strokeWidth={2} name="Metrics" />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                      Collecting data...
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5 text-rose-500" />
-                    Unique Wallet Growth
-                  </CardTitle>
-                  <p className="text-xs text-muted-foreground">New unique addresses over time</p>
-                </CardHeader>
-                <CardContent>
-                  {historicalData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={300}>
-                      <AreaChart data={historicalData.map((d, i) => ({ ...d, growth: d.addresses + i * 0.5 }))}>
-                        <XAxis dataKey="time" />
-                        <YAxis />
-                        <Tooltip 
-                          formatter={(value: any) => [`${value.toFixed(1)} wallets`, 'Growth']}
-                          labelFormatter={(label) => `Time: ${label}`}
-                        />
-                        <Area type="monotone" dataKey="growth" stroke="#f43f5e" fill="#f43f5e" fillOpacity={0.6} name="Growth" />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                      Collecting data...
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Final Charts - 2 Column Layout */}
+            {/* Status and failure trend */}
             <div className="grid gap-3 md:grid-cols-2">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <BarChart3 className="h-5 w-5 text-fuchsia-500" />
-                    Pending vs Confirmed
+                    Succeeded vs {labels.failed}
                   </CardTitle>
-                  <p className="text-xs text-muted-foreground">Transaction status over time</p>
+                  <p className="text-xs text-muted-foreground">Transaction outcomes in each observed {blockWord}</p>
                 </CardHeader>
                 <CardContent>
-                  {historicalData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={300}>
-                      <LineChart data={historicalData.map(d => ({ 
-                        time: d.time, 
-                        confirmed: Math.floor(d.transactions * 0.9), 
-                        pending: Math.floor(d.transactions * 0.1) 
-                      }))}>
-                        <XAxis dataKey="time" />
-                        <YAxis />
-                        <Tooltip />
-                        <Legend />
-                        <Line type="monotone" dataKey="confirmed" stroke="#10b981" strokeWidth={2} name="Confirmed" />
-                        <Line type="monotone" dataKey="pending" stroke="#f59e0b" strokeWidth={2} name="Pending" />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                      Collecting data...
-                    </div>
-                  )}
+                  <ChartBox height={300} ready={hasHistory}>
+                    <LineChart data={historicalData}>
+                      <XAxis dataKey="time" />
+                      <YAxis />
+                      <Tooltip labelFormatter={timeTooltip} />
+                      <Legend />
+                      <Line type="monotone" dataKey="succeeded" stroke="#10b981" strokeWidth={2} name="Succeeded" />
+                      <Line type="monotone" dataKey="failed" stroke="#ef4444" strokeWidth={2} name={labels.failed} />
+                    </LineChart>
+                  </ChartBox>
                 </CardContent>
               </Card>
 
@@ -978,34 +647,25 @@ const Index = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <AlertCircle className="h-5 w-5 text-red-500" />
-                    Failed Transaction Rate
+                    {labels.failed} Transaction Rate
                   </CardTitle>
-                  <p className="text-xs text-muted-foreground">Share of each {blockWord}'s transactions that reverted</p>
+                  <p className="text-xs text-muted-foreground">Share of each {blockWord}'s transactions that {labels.failed === 'Reverted' ? 'reverted' : 'failed'}</p>
                 </CardHeader>
                 <CardContent>
-                  {historicalData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={300}>
-                      <LineChart data={historicalData}>
-                        <XAxis dataKey="time" />
-                        <YAxis />
-                        <Tooltip 
-                          formatter={(value: any) => [`${Number(value).toFixed(2)}%`, 'Reverted']}
-                          labelFormatter={(label) => `Time: ${label}`}
-                        />
-                        <Legend />
-                        <Line type="monotone" dataKey="failRate" stroke="#ef4444" strokeWidth={2} name="Failed Rate" />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                      Collecting data...
-                    </div>
-                  )}
+                  <ChartBox height={300} ready={hasHistory}>
+                    <LineChart data={historicalData}>
+                      <XAxis dataKey="time" />
+                      <YAxis unit="%" />
+                      <Tooltip formatter={(value: any) => [value == null ? DASH : `${Number(value).toFixed(2)}%`, labels.failed]} labelFormatter={timeTooltip} />
+                      <Legend />
+                      <Line type="monotone" dataKey="failRate" stroke="#ef4444" strokeWidth={2} name={`${labels.failed} rate`} />
+                    </LineChart>
+                  </ChartBox>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Additional Insights */}
+            {/* Insights */}
             <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
               <Card className="border-l-4 border-l-blue-500">
                 <CardContent className="p-4">
@@ -1013,8 +673,8 @@ const Index = () => {
                     <p className="text-xs font-medium text-muted-foreground">Network Status</p>
                     <Activity className="h-4 w-4 text-blue-500" />
                   </div>
-                  <div className="text-xl font-bold text-green-600">Healthy</div>
-                  <p className="text-xs text-muted-foreground mt-1">All systems operational</p>
+                  <div className={`text-xl font-bold ${live ? 'text-green-600' : 'text-amber-600'}`}>{live ? 'Live' : 'Lagging'}</div>
+                  <p className="text-xs text-muted-foreground mt-1">Latest {blockWord} {formatAge(response?.timestamp, Date.now() / 1000)}</p>
                 </CardContent>
               </Card>
 
@@ -1024,7 +684,7 @@ const Index = () => {
                     <p className="text-xs font-medium text-muted-foreground">TPS</p>
                     <Zap className="h-4 w-4 text-purple-500" />
                   </div>
-                  <div className="text-xl font-bold">{(stats.total_transactions / 6).toFixed(1)}</div>
+                  <div className="text-xl font-bold">{latestTps === null ? DASH : latestTps.toFixed(1)}</div>
                   <p className="text-xs text-muted-foreground mt-1">Transactions per second</p>
                 </CardContent>
               </Card>
@@ -1032,26 +692,24 @@ const Index = () => {
               <Card className="border-l-4 border-l-orange-500">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs font-medium text-muted-foreground">Network Load</p>
+                    <p className="text-xs font-medium text-muted-foreground">Block Utilization</p>
                     <BarChart3 className="h-4 w-4 text-orange-500" />
                   </div>
-                  <div className="text-xl font-bold">Medium</div>
-                  <p className="text-xs text-muted-foreground mt-1">Optimal performance</p>
+                  <div className="text-xl font-bold">{summary.utilization}</div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {summary.utilization === DASH ? `Not reported for ${currentChain.name}` : 'Gas used of the block gas limit'}
+                  </p>
                 </CardContent>
               </Card>
 
               <Card className="border-l-4 border-l-green-500">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs font-medium text-muted-foreground">{isStellar ? 'Ledger' : 'Block'} Time</p>
+                    <p className="text-xs font-medium text-muted-foreground">{BlockWord} Time</p>
                     <DollarSign className="h-4 w-4 text-green-500" />
                   </div>
-                  <div className="text-xl font-bold">
-                    {historicalData.length > 0 
-                      ? `${historicalData[historicalData.length - 1].block_time.toFixed(1)}s`
-                      : 'Calculating...'}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">From RPC data</p>
+                  <div className="text-xl font-bold">{latestBlockTime === null ? 'Measuring...' : formatSeconds(latestBlockTime)}</div>
+                  <p className="text-xs text-muted-foreground mt-1">Between observed {blockWord}s</p>
                 </CardContent>
               </Card>
             </div>

@@ -1,9 +1,10 @@
 // Chains BlocRA can analyze, with fallback RPCs in priority order. Stellar is
 // first, so it is the default chain.
 //
-// Generated from blocra-research/chains.json, where every endpoint is checked
-// by scripts/check_rpcs.py (alive, real head block, callable from a browser).
-// Last verified 2026-11-05. Re-run the checker before adding or changing RPCs.
+// Generated from blocra-research/chains.json by scripts/gen_chains_ts.py; do
+// not edit by hand. Every endpoint is checked by scripts/check_rpcs.py (alive,
+// fresh head block, callable from a browser). Last verified 2026-11-06. Re-run the
+// checker before adding or changing RPCs. CometBFT chains have type 'cosmos'.
 
 export interface ChainConfig {
   id: string;
@@ -95,7 +96,7 @@ export const SUPPORTED_CHAINS: ChainConfig[] = [
     rpcs: [
       'https://polygon-bor-rpc.publicnode.com',
       'https://polygon.drpc.org',
-      'https://1rpc.io/matic'
+      'https://polygon.gateway.tenderly.co'
     ],
     type: 'evm',
     nativeCurrency: 'POL',
@@ -153,16 +154,6 @@ export const SUPPORTED_CHAINS: ChainConfig[] = [
     type: 'evm',
     nativeCurrency: 'ETH',
     explorer: 'https://scrollscan.com'
-  },
-  {
-    id: 'blast',
-    name: 'Blast',
-    rpcs: [
-      'https://rpc.blast.io'
-    ],
-    type: 'evm',
-    nativeCurrency: 'ETH',
-    explorer: 'https://blastscan.io'
   },
   {
     id: 'zora',
@@ -236,26 +227,6 @@ export const SUPPORTED_CHAINS: ChainConfig[] = [
     type: 'evm',
     nativeCurrency: 'ETH',
     explorer: 'https://explorer.aurora.dev'
-  },
-  {
-    id: 'moonbeam',
-    name: 'Moonbeam',
-    rpcs: [
-      'https://1rpc.io/glmr'
-    ],
-    type: 'evm',
-    nativeCurrency: 'GLMR',
-    explorer: 'https://moonscan.io'
-  },
-  {
-    id: 'moonriver',
-    name: 'Moonriver',
-    rpcs: [
-      'https://moonriver.drpc.org'
-    ],
-    type: 'evm',
-    nativeCurrency: 'MOVR',
-    explorer: 'https://moonriver.moonscan.io'
   },
   {
     id: 'gnosis',
@@ -409,6 +380,36 @@ export const SUPPORTED_CHAINS: ChainConfig[] = [
     type: 'solana',
     nativeCurrency: 'SOL',
     explorer: 'https://solscan.io'
+  },
+  {
+    id: 'axelar',
+    name: 'Axelar',
+    rpcs: [
+      'https://axelar.publicnode.dev'
+    ],
+    type: 'cosmos',
+    nativeCurrency: 'AXL',
+    explorer: 'https://axelarscan.io'
+  },
+  {
+    id: 'celer',
+    name: 'Celer',
+    rpcs: [
+      'https://celer.publicnode.dev'
+    ],
+    type: 'cosmos',
+    nativeCurrency: 'CELR',
+    explorer: 'https://celerscan.com'
+  },
+  {
+    id: 'saga',
+    name: 'Saga',
+    rpcs: [
+      'https://saga.publicnode.dev'
+    ],
+    type: 'cosmos',
+    nativeCurrency: 'SAGA',
+    explorer: 'https://www.mintscan.io/saga'
   }
 ];
 

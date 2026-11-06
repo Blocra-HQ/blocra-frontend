@@ -45,6 +45,23 @@ const STELLAR_EVENT_NAMES: Record<string, string> = {
   clawback: 'Clawback',
 };
 
+/** Chain types whose contract events this fetcher can read. */
+const EVENT_CHAIN_TYPES: ChainConfig['type'][] = ['stellar', 'starknet', 'evm', 'solana'];
+
+/**
+ * Throws a readable error for chains whose contract events are not supported
+ * yet (Cosmos chains have no contract event API this fetcher can use).
+ */
+export function assertEventsSupported(chain: ChainConfig): void {
+  if (!EVENT_CHAIN_TYPES.includes(chain.type)) {
+    const family = chain.type === 'cosmos' ? 'Cosmos SDK' : chain.type;
+    throw new Error(
+      `Contract event analysis is not supported for ${chain.name} (${family}) yet; ` +
+      'switch to a Stellar, Starknet, EVM or Solana chain to analyze contracts'
+    );
+  }
+}
+
 export class UniversalEventFetcher {
   /**
    * Fetch events for any blockchain
@@ -56,6 +73,7 @@ export class UniversalEventFetcher {
     toBlock: number,
     onProgress?: (message: string) => void
   ): Promise<EventFetchResult> {
+    assertEventsSupported(chain);
     switch (chain.type) {
       case 'stellar':
         return this.fetchStellarEvents(chain, contractAddress, fromBlock, toBlock, onProgress);
@@ -775,6 +793,7 @@ export class UniversalEventFetcher {
    * Get latest block number for a chain
    */
   async getLatestBlock(chain: ChainConfig): Promise<number> {
+    assertEventsSupported(chain);
     for (const rpcUrl of chain.rpcs) {
       try {
         switch (chain.type) {

@@ -16,8 +16,9 @@ React · TypeScript · Vite · Tailwind CSS · Stellar SDK · Freighter
 
 BlocRA lets analysts explore on-chain activity, analyze smart contracts, write queries, build
 dashboards and produce reports that can be verified on Stellar. Stellar is the default chain. The app
-supports 37 chains in total: Stellar, Starknet, Solana and 34 EVM networks (Ethereum, Base,
-Arbitrum, Optimism, Polygon, BNB Smart Chain, Avalanche and others).
+supports 37 chains in total: Stellar, Starknet, Solana, 31 EVM networks (Ethereum, Base,
+Arbitrum, Optimism, Polygon, BNB Smart Chain, Avalanche and others) and three Cosmos SDK chains
+(Axelar, Celer, Saga).
 
 This repository is the browser app. It works with:
 
@@ -31,8 +32,8 @@ This repository is the browser app. It works with:
 
 | Page | Route | What it does |
 |------|-------|--------------|
-| Dashboard | `/` | Live stats for the latest Stellar ledger (transactions, operations, XLM fees, success rate, operation types) or Starknet block, from the backend. Charts build up as new ledgers arrive. |
-| Contract Analysis | `/contract-events-eda` | Fetches a contract's events and activity: Soroban contracts through Stellar RPC `getEvents`, EVM contracts through logs, Starknet through `starknet_getEvents`. Shows event mix, users, transfer volume, top callers and timelines, with CSV/JSON/image export. |
+| Dashboard | `/` | Live stats for the selected chain's latest ledger or block, from the backend: transactions, active users, gas (compute units on Solana, operations on Stellar), fees in the chain's fee token, success rate, and transaction, message or operation types. EVM chains also show transfers vs contract calls and block utilization. Figures the backend cannot read exactly show as "—" with a note. Charts build up as new blocks arrive. |
+| Contract Analysis | `/contract-events-eda` | Fetches a contract's events and activity: Soroban contracts through Stellar RPC `getEvents`, EVM contracts through logs, Starknet through `starknet_getEvents`. Shows event mix, users, transfer volume, top callers and timelines, with CSV/JSON/image export. Not yet available for Cosmos chains. |
 | Contract reports | in Contract Analysis | The backend AI analyst writes a report from the computed statistics; if no AI is configured, a statistical summary is used and labelled as such. Download as PDF. |
 | Publish and verify | `/verify-report` | "Publish on Stellar" records the downloaded PDF's sha256 in the report registry, signed with Freighter. The verify page hashes a file in the browser (it is never uploaded) and shows whether it is an authentic, unmodified BlocRA report, who published it and when. |
 | Query editor | `/query` | SQL over blocks, transactions and contracts, with natural-language-to-SQL from the AI analyst. |
@@ -63,7 +64,7 @@ This repository is the browser app. It works with:
 - **Backend:** network dashboard stats, the AI analyst (chat, reports, SQL), Stellar wallet sign-in and
   saved queries.
 - **Directly from the browser:** contract events and the report registry are read from public RPCs.
-  Every endpoint in `src/config/chains.ts` was checked for a live head block and a browser CORS preflight
+  Every endpoint in `src/config/chains.ts` was checked for a live, current head block and a browser CORS preflight
   in [blocra-research](https://github.com/Blocra-HQ/blocra-research).
 - **Freighter:** signs the sign-in challenge and report-registry transactions. Keys never leave the wallet.
 
@@ -140,8 +141,9 @@ src/
 
 `src/config/chains.ts` is generated from `chains.json` in
 [blocra-research](https://github.com/Blocra-HQ/blocra-research). To add a chain or change an RPC, edit
-`chains.json` there, run `scripts/check_rpcs.py` to confirm every endpoint is alive and browser-callable,
-then regenerate this file. Stellar stays first so it remains the default chain.
+`chains.json` there, run `scripts/check_rpcs.py` to confirm every endpoint is alive, current and
+browser-callable, then regenerate this file with `scripts/gen_chains_ts.py` (do not edit it by hand).
+Stellar stays first so it remains the default chain.
 
 ## Notes and known limitations
 
@@ -149,8 +151,8 @@ then regenerate this file. Stellar stays first so it remains the default chain.
   configured with; small local models can misdescribe a contract. Always review generated SQL.
 - **Event data has limits.** Some figures (success rate, gas price) show `n/a` in Contract Analysis because
   they can't be measured from events alone; nothing is estimated.
-- **Network dashboard coverage.** The network dashboard has stats for Stellar and Starknet. Other chains
-  show the backend's "not supported yet" message; use Contract Analysis for them.
+- **Network dashboard coverage.** The dashboard covers every chain in the registry, but it reads only
+  the latest block each time it refreshes, so trends cover the blocks observed while the page is open.
 - **Soroban event window.** Public Stellar RPCs keep about 7 days of events, so Soroban contract analysis
   covers that window.
 - **DOCX export.** `services/DocumentService.ts` can build DOCX reports but no button uses it yet; reports
