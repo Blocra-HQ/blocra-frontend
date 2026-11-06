@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useAuth } from '@/contexts/AuthContext';
+import { api } from '@/lib/api';
 import { 
   Database, 
   Layout, 
@@ -25,21 +27,32 @@ export default function LibraryPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [savedQueries, setSavedQueries] = useState<any[]>([]);
   const [savedDashboards, setSavedDashboards] = useState<any[]>([]);
+  const [dashboardsError, setDashboardsError] = useState<string | null>(null);
+  const { user } = useAuth();
+  const signedIn = Boolean(user && localStorage.getItem('auth_token'));
 
   useEffect(() => {
     loadLibraryItems();
   }, []);
+
+  // Dashboards are stored with the account (Dashboard Builder > Save).
+  const loadDashboards = () => {
+    if (!signedIn) {
+      setSavedDashboards([]);
+      return;
+    }
+    api.get('/dashboard-builder')
+      .then((res: any) => { setSavedDashboards(res?.dashboards ?? []); setDashboardsError(null); })
+      .catch((e: Error) => setDashboardsError(e.message));
+  };
+
+  useEffect(loadDashboards, [signedIn]);
 
   const loadLibraryItems = () => {
     // Load saved queries
     const queries = JSON.parse(localStorage.getItem('saved_queries') || '[]')
       .filter((q: any) => q.name && !q.name.startsWith('Query '));
     setSavedQueries(queries);
-
-    // Load saved dashboards
-    const dashboards = JSON.parse(localStorage.getItem('saved_dashboards') || '[]')
-      .filter((d: any) => d.name && !d.name.startsWith('Dashboard ') && !d.name.match(/^Dashboard \d+$/));
-    setSavedDashboards(dashboards);
   };
 
   const deleteQuery = (id: string) => {
@@ -49,11 +62,10 @@ export default function LibraryPage() {
     loadLibraryItems();
   };
 
-  const deleteDashboard = (id: string) => {
-    const dashboards = JSON.parse(localStorage.getItem('saved_dashboards') || '[]');
-    const filtered = dashboards.filter((d: any) => d.id !== id);
-    localStorage.setItem('saved_dashboards', JSON.stringify(filtered));
-    loadLibraryItems();
+  const deleteDashboard = (id: number) => {
+    api.delete(`/dashboard-builder/${id}`)
+      .then(loadDashboards)
+      .catch((e: Error) => setDashboardsError(e.message));
   };
 
   const filteredQueries = savedQueries.filter(q => 
@@ -183,7 +195,7 @@ export default function LibraryPage() {
             <TabsContent value="dashboards" className="space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-semibold">Saved Dashboards</h2>
-                <Button onClick={() => navigate('/builder?new=true')}>
+                <Button onClick={() => navigate('/builder')}>
                   <Plus className="w-4 h-4 mr-2" />
                   New Dashboard
                 </Button>
@@ -196,11 +208,17 @@ export default function LibraryPage() {
                       <Layout className="w-8 h-8 text-muted-foreground" />
                     </div>
                     <div>
-                      <h3 className="text-lg font-semibold mb-2">No saved dashboards yet</h3>
+                      <h3 className="text-lg font-semibold mb-2">
+                        {signedIn ? 'No saved dashboards yet' : 'Sign in to see your dashboards'}
+                      </h3>
                       <p className="text-muted-foreground mb-4">
-                        Create and save your first dashboard to see it here
+                        {dashboardsError
+                          ? `Could not load dashboards: ${dashboardsError}`
+                          : signedIn
+                            ? 'Build a dashboard and save it to see it here'
+                            : 'Dashboards are saved with your account.'}
                       </p>
-                      <Button onClick={() => navigate('/builder?new=true')}>
+                      <Button onClick={() => navigate('/builder')}>
                         <Plus className="w-4 h-4 mr-2" />
                         Create Dashboard
                       </Button>
@@ -238,11 +256,11 @@ export default function LibraryPage() {
                           <div className="flex items-center justify-between text-xs text-muted-foreground">
                             <div className="flex items-center gap-1">
                               <Calendar className="w-3 h-3" />
-                              {new Date(dashboard.createdAt).toLocaleDateString()}
+                              Created {new Date(dashboard.created_at).toLocaleDateString()}
                             </div>
                             <div className="flex items-center gap-1">
-                              <Layout className="w-3 h-3" />
-                              {dashboard.widgets?.length || 0} widgets
+                              <Clock className="w-3 h-3" />
+                              Updated {new Date(dashboard.updated_at).toLocaleDateString()}
                             </div>
                           </div>
                           <Button 

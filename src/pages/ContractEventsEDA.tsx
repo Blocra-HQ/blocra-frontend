@@ -27,6 +27,7 @@ import { multiChainRPC } from '@/services/MultiChainRPCService';
 import { validateAddress, getAddressPlaceholder } from '@/services/AddressValidationService';
 import { universalEventFetcher } from '@/services/UniversalEventFetcher';
 import { STARKNET_RPCS } from "@/config/chains";
+import { contractStatsToWidgets, HANDOFF_KEY, type HandoffDashboard } from '@/lib/contractDashboard';
 
 
 const RPC_ENDPOINTS = STARKNET_RPCS;
@@ -876,91 +877,20 @@ Tip: Verify the contract address on ${currentChain.explorer.replace('https://', 
 
   const navigate = useNavigate();
 
-  const createDashboardFromContract = async () => {
-    if (!events.length || !stats || !contractInfo) return;
+  const createDashboardFromContract = () => {
+    if (!stats || !contractInfo) return;
 
     const primaryAddress = contracts[0]?.address || '';
-
-    // Create AI-generated dashboard based on contract type and data
-    const dashboardConfig = {
-      id: `contract-dashboard-${Date.now()}`,
-      name: `${contractInfo.contractName} Analytics Dashboard`,
-      description: `Auto-generated dashboard for ${contractInfo.contractType} analysis`,
+    // Snapshot widgets from the figures computed above; the builder opens
+    // them and its Save button persists them for signed-in users.
+    const handoff: HandoffDashboard = {
+      name: `${contractInfo.contractName} on ${currentChain.name}`,
+      description: `Contract Analysis of ${primaryAddress} (${contractInfo.contractType}), ${stats.totalEvents} events`,
       contractAddress: primaryAddress,
-      contractType: contractInfo.contractType,
-      widgets: generateWidgetsForContract(contractInfo.contractType, stats, events),
-      createdAt: new Date().toISOString()
+      widgets: contractStatsToWidgets(stats),
     };
-
-    // Save dashboard config to backend
-        const token = localStorage.getItem('token');
-    if (isBackendConfigured() && token) {
-      try {
-        await fetch(buildApiUrl('/dashboards'), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({
-            title: dashboardConfig.name,
-            description: dashboardConfig.description,
-            widgets: dashboardConfig.widgets,
-            tags: [currentChain.name, contractInfo.contractType]
-          })
-        });
-      } catch (e) {
-        console.log('Backend save failed:', e);
-      }
-    }
-    localStorage.setItem('ai_generated_dashboard', JSON.stringify(dashboardConfig));
-
-    // Navigate to dashboard builder with pre-configured widgets
-    navigate(`/builder?contract=${primaryAddress}&type=${contractInfo.contractType}`);
-  };
-
-  const generateWidgetsForContract = (contractType: string, stats: any, events: any[]) => {
-    const baseWidgets = [
-      {
-        id: 'total-events-kpi',
-        type: 'kpi',
-        title: 'Total Events',
-        data: [{ value: stats.totalEvents }],
-        position: { x: 0, y: 0, w: 3, h: 3 }
-      },
-      {
-        id: 'unique-users-kpi',
-        type: 'kpi',
-        title: 'Unique Users',
-        data: [{ value: stats.uniqueUsers }],
-        position: { x: 3, y: 0, w: 3, h: 3 }
-      },
-      {
-        id: 'events-timeline',
-        type: 'line',
-        title: 'Events Over Time',
-        data: events.slice(0, 20).map(e => ({ name: e.block_number, value: 1 })),
-        position: { x: 6, y: 0, w: 6, h: 4 }
-      }
-    ];
-
-    // Add contract-specific widgets based on type
-    if (contractType === 'ERC20 Token') {
-      baseWidgets.push({
-        id: 'transfer-volume',
-        type: 'gauge',
-        title: 'Transfer Activity',
-        data: [{ value: stats.transferCount || 0 }],
-        position: { x: 0, y: 4, w: 4, h: 4 }
-      });
-    } else if (contractType === 'DEX/AMM') {
-      baseWidgets.push({
-        id: 'swap-activity',
-        type: 'bar',
-        title: 'Swap Activity',
-        data: events.filter(e => e.event_name === 'Swap').slice(0, 10),
-        position: { x: 4, y: 4, w: 8, h: 4 }
-      });
-    }
-
-    return baseWidgets;
+    localStorage.setItem(HANDOFF_KEY, JSON.stringify(handoff));
+    navigate(`/builder?contract=${encodeURIComponent(primaryAddress)}`);
   };
 
   return (
@@ -1077,10 +1007,16 @@ Tip: Verify the contract address on ${currentChain.explorer.replace('https://', 
                 <BarChart3 className="h-5 w-5" />
                 <span>{contracts.map(c => c.name || 'Contract').join(', ') || 'Analytics Dashboard'}</span>
               </CardTitle>
-              <Button onClick={exportDashboardAsImage} disabled={exportingImage} variant="outline" size="sm">
-                <Camera className="h-4 w-4 mr-2" />
-                {exportingImage ? 'Exporting...' : 'Export as Image'}
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button onClick={createDashboardFromContract} disabled={!contractInfo} variant="outline" size="sm">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Open in Dashboard Builder
+                </Button>
+                <Button onClick={exportDashboardAsImage} disabled={exportingImage} variant="outline" size="sm">
+                  <Camera className="h-4 w-4 mr-2" />
+                  {exportingImage ? 'Exporting...' : 'Export as Image'}
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               {/* Key Metrics KPI Cards */}

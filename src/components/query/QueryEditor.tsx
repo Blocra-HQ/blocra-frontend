@@ -15,33 +15,15 @@ import { validateAddress, getAddressFormatDescription } from '@/services/Address
 import { buildApiUrl } from '@/config/api';
 import { logger } from '@/utils/logger';
 import { STARKNET_RPCS } from "@/config/chains";
+import { runQuery } from "@/lib/queryEngine";
 
 interface QueryEditorProps {
   onQueryComplete?: (results: QueryResult[], query: string) => void;
 }
 
 interface QueryResult {
-  [key: string]: string | number | boolean;
+  [key: string]: string | number | boolean | null;
 }
-
-interface BlockData extends QueryResult {
-  block_number: number;
-  timestamp: number;
-  transaction_count: number;
-  gas_used: number;
-  hash: string;
-}
-
-interface TransactionData extends QueryResult {
-  transaction_hash: string;
-  sender_address: string;
-  max_fee: string;
-  version: string;
-  nonce: string;
-  type: string;
-}
-
-
 
 const examplePrompts = [
   {
@@ -185,14 +167,8 @@ export function QueryEditor({ onQueryComplete }: QueryEditorProps) {
     setError(null);
 
     try {
-      // REAL SQL VALIDATION
-      const validationError = validateSQL(query);
-      if (validationError) {
-        throw new Error(validationError);
-      }
-
-      // REAL RPC QUERY EXECUTION
-      const results = await executeRPCQuery(query);
+      // Validates, reads the table from Starknet RPC and applies SELECT/ORDER BY/LIMIT.
+      const results: QueryResult[] = await runQuery(query, STARKNET_RPCS);
 
       setTotalResults(results.length);
       setResults(results);
@@ -243,307 +219,11 @@ export function QueryEditor({ onQueryComplete }: QueryEditorProps) {
     }
   };
 
-  // REAL SQL VALIDATION FUNCTION
-  const validateSQL = (sql: string): string | null => {
-    const trimmedSQL = sql.trim();
-    if (!trimmedSQL) return 'Query cannot be empty';
-
-    const lowerSQL = trimmedSQL.toLowerCase();
-
-    // Check for dangerous operations (word boundaries)
-    const dangerousKeywords = ['drop', 'delete', 'update', 'insert', 'alter', 'create', 'truncate'];
-    for (const keyword of dangerousKeywords) {
-      const regex = new RegExp(`\\b${keyword}\\b`, 'i');
-      if (regex.test(lowerSQL)) {
-        return `Dangerous operation '${keyword.toUpperCase()}' is not allowed. Only SELECT queries are permitted.`;
-      }
-    }
-
-    // Check if it starts with SELECT (allow comments and whitespace)
-    const sqlWithoutComments = lowerSQL.replace(/--.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '').trim();
-    if (!sqlWithoutComments.startsWith('select')) {
-      return 'Only SELECT queries are allowed. Query must start with SELECT.';
-    }
-
-    // Basic syntax validation
-    if (!sqlWithoutComments.includes('from')) {
-      return 'Invalid SQL: Missing FROM clause.';
-    }
-
-    // Check for balanced parentheses and quotes
-    let openParens = 0;
-    let inSingleQuote = false;
-    let inDoubleQuote = false;
-
-    for (let i = 0; i < sql.length; i++) {
-      const char = sql[i];
-      const prevChar = i > 0 ? sql[i - 1] : '';
-
-      if (char === "'" && prevChar !== '\\' && !inDoubleQuote) {
-        inSingleQuote = !inSingleQuote;
-      } else if (char === '"' && prevChar !== '\\' && !inSingleQuote) {
-        inDoubleQuote = !inDoubleQuote;
-      } else if (!inSingleQuote && !inDoubleQuote) {
-        if (char === '(') openParens++;
-        if (char === ')') openParens--;
-        if (openParens < 0) return 'Invalid SQL: Unmatched closing parenthesis.';
-      }
-    }
-
-    if (openParens > 0) return 'Invalid SQL: Unmatched opening parenthesis.';
-    if (inSingleQuote) return 'Invalid SQL: Unclosed single quote.';
-    if (inDoubleQuote) return 'Invalid SQL: Unclosed double quote.';
-
-    return null; // Valid
-  };
-
-  // REAL RPC QUERY EXECUTION
-  const executeRPCQuery = async (sql: string): Promise<QueryResult[]> => {
-    const endpoints = STARKNET_RPCS;
-
-    // Parse SQL to determine what blockchain data to fetch
-    const sqlLower = sql.toLowerCase();
-
-    let lastError: Error | null = null;
-
-    if (sqlLower.includes('blocks')) {
-      for (const endpoint of endpoints) {
-        try {
-          return await fetchBlockData(sql, [endpoint]);
-        } catch (error: any) {
-          lastError = error;
-          continue;
-        }
-      }
-      throw lastError || new Error('All RPC endpoints failed');
-    } else if (sqlLower.includes('transactions')) {
-      for (const endpoint of endpoints) {
-        try {
-          return await fetchTransactionData(sql, [endpoint]);
-        } catch (error: any) {
-          lastError = error;
-          continue;
-        }
-      }
-      throw lastError || new Error('All RPC endpoints failed');
-    } else {
-      throw new Error('Unsupported table. Available tables: blocks, transactions');
-    }
-  };
-
-  // FETCH REAL BLOCK DATA
-  const fetchBlockData = async (sql: string, endpoints: string[]): Promise<BlockData[]> => {
-    try {
-      // Get current block number with timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-      const blockResponse = await fetch(endpoints[0], {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          method: 'starknet_blockNumber',
-          params: [],
-          id: 1
-        }),
-        signal: controller.signal
-      });
-      clearTimeout(timeoutId);
-
-      if (!blockResponse.ok) {
-        throw new Error(`RPC request failed: ${blockResponse.status}`);
-      }
-
-      const blockData = await blockResponse.json();
-      if (!blockData.result) {
-        throw new Error('Invalid block number response');
-      }
-
-      const currentBlock = parseInt(blockData.result);
-      if (isNaN(currentBlock)) {
-        throw new Error('Invalid block number format');
-      }
-
-      // Parse LIMIT from SQL or use default (max 50 for performance)
-      const limitMatch = sql.match(/limit\s+(\d+)/i);
-      const limit = Math.min(limitMatch ? parseInt(limitMatch[1]) : 10, 50);
-
-      // Fetch blocks with rate limiting (batch of 5)
-      const blocks = [];
-      for (let i = 0; i < limit; i += 5) {
-        const batchPromises = [];
-        const batchSize = Math.min(5, limit - i);
-
-        for (let j = 0; j < batchSize; j++) {
-          const blockNum = currentBlock - (i + j);
-          batchPromises.push(
-            fetch(endpoints[0], {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                jsonrpc: '2.0',
-                method: 'starknet_getBlockWithTxs',
-                params: [{ block_number: blockNum }],
-                id: i + j + 2
-              })
-            }).then(r => r.json())
-          );
-        }
-
-        const batchResults = await Promise.all(batchPromises);
-        blocks.push(...batchResults);
-
-        // Rate limiting delay
-        if (i + 5 < limit) {
-          await new Promise(resolve => setTimeout(resolve, 100));
-        }
-      }
-
-      return blocks.map((block, index) => ({
-        block_number: currentBlock - index,
-        timestamp: block.result?.timestamp || Date.now() / 1000,
-        transaction_count: block.result?.transactions?.length || 0,
-        gas_used: block.result?.gas_consumed || block.result?.gas_used || 0,
-        hash: block.result?.block_hash || `0x${Math.random().toString(16).slice(2, 66)}`
-      })).filter(Boolean);
-    } catch (error: any) {
-      if (error.name === 'AbortError') {
-        throw new Error('Request timeout - please try again with a smaller limit');
-      }
-      throw new Error(`Failed to fetch block data: ${error.message}`);
-    }
-  };
-
-  // FETCH REAL TRANSACTION DATA  
-  const fetchTransactionData = async (sql: string, endpoints: string[]): Promise<TransactionData[]> => {
-    try {
-      // Get latest block with transactions
-      const response = await fetch(endpoints[0], {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          method: 'starknet_getBlockWithTxs',
-          params: ['latest'],
-          id: 1
-        })
-      });
-      const data = await response.json();
-      const transactions = data.result?.transactions || [];
-
-      // Parse LIMIT from SQL
-      const limitMatch = sql.match(/limit\s+(\d+)/i);
-      const limit = limitMatch ? parseInt(limitMatch[1]) : 100;
-
-      return transactions.slice(0, limit).map((tx: any, index: number) => ({
-        transaction_hash: tx.transaction_hash || `0x${Math.random().toString(16).slice(2, 66)}`,
-        sender_address: tx.sender_address || `0x${Math.random().toString(16).slice(2, 42)}`,
-        max_fee: tx.max_fee || '0x0',
-        version: tx.version || '0x1',
-        nonce: tx.nonce || `0x${index}`,
-        type: tx.type || 'INVOKE'
-      }));
-    } catch (error) {
-      throw new Error('Failed to fetch transaction data from Starknet RPC');
-    }
-  };
-
-
-
   const visualizeResults = () => {
     if (results.length > 0) {
       // There is no /charts page; open the Visualization tab under the results.
       setResultsTab('chart');
     }
-  };
-
-  const createDashboardFromQuery = () => {
-    if (!results.length) return;
-
-    const queryName = window.prompt(`Enter dashboard name:`, `Dashboard from Query`);
-    if (!queryName) {
-      navigate('/library');
-      return;
-    }
-
-    const dashboardConfig = {
-      id: `dashboard-${Date.now()}`,
-      name: queryName,
-      description: `Auto-generated dashboard from query results`,
-      source: 'query',
-      query: query,
-      widgets: generateDashboardWidgets(results),
-      createdAt: new Date().toISOString(),
-      isPublic: false
-    };
-
-    const existingDashboards = JSON.parse(localStorage.getItem('saved_dashboards') || '[]');
-    existingDashboards.unshift(dashboardConfig);
-    localStorage.setItem('saved_dashboards', JSON.stringify(existingDashboards));
-
-    toast({
-      title: "✅ Dashboard Created",
-      description: `"${queryName}" saved to Dashboard Library`,
-    });
-
-    navigate(`/builder?id=${dashboardConfig.id}`);
-  };
-
-  const generateDashboardWidgets = (data: any[]) => {
-    if (!data.length) return [];
-
-    const widgets = [];
-    const columns = Object.keys(data[0]);
-    const numericColumns = columns.filter(col =>
-      data.every(row => !isNaN(Number(row[col])) && row[col] !== '')
-    );
-    const textColumns = columns.filter(col => !numericColumns.includes(col));
-
-    // KPI widgets for numeric values
-    numericColumns.slice(0, 3).forEach((col, index) => {
-      const total = data.reduce((sum, row) => sum + Number(row[col]), 0);
-      widgets.push({
-        id: `kpi-${col}`,
-        type: 'kpi',
-        title: col.replace(/_/g, ' ').toUpperCase(),
-        data: [{ value: total }],
-        position: { x: index * 3, y: 0, w: 3, h: 3 }
-      });
-    });
-
-    // Chart widgets
-    if (numericColumns.length > 0 && textColumns.length > 0) {
-      widgets.push({
-        id: 'main-chart',
-        type: 'bar',
-        title: `${textColumns[0]} Analysis`,
-        data: data.slice(0, 10),
-        position: { x: 0, y: 4, w: 8, h: 5 }
-      });
-
-      widgets.push({
-        id: 'pie-chart',
-        type: 'pie',
-        title: 'Distribution',
-        data: data.slice(0, 5).map(row => ({
-          name: row[textColumns[0]],
-          value: Number(row[numericColumns[0]])
-        })),
-        position: { x: 8, y: 4, w: 4, h: 5 }
-      });
-    }
-
-    // Data table
-    widgets.push({
-      id: 'data-table',
-      type: 'table',
-      title: 'Query Results',
-      data: data,
-      position: { x: 0, y: 9, w: 12, h: 6 }
-    });
-
-    return widgets;
   };
 
   // Auto-save query when enabled
@@ -817,7 +497,7 @@ LIMIT 1;`;
       ...results.map(row =>
         headers.map(header => {
           const value = row[header];
-          const stringValue = typeof value === 'string' ? value : String(value);
+          const stringValue = value == null ? '' : typeof value === 'string' ? value : String(value);
           return stringValue.includes(',') ? `"${stringValue}"` : stringValue;
         }).join(',')
       )
@@ -840,9 +520,10 @@ LIMIT 1;`;
     });
   };
 
+  // Opens the Dashboard Builder with this query in its Add Widget dialog.
   const addToDashboard = () => {
-    if (!results.length) return;
-    createDashboardFromQuery();
+    if (!query.trim()) return;
+    navigate(`/builder?sql=${encodeURIComponent(query.trim())}`);
   };
 
 
@@ -1516,7 +1197,9 @@ LIMIT 30;`;
                                 {Object.entries(row).map(([key, value], j) => (
                                   <td key={j} className="p-4 text-sm">
                                     <div className="flex items-center gap-2">
-                                      {typeof value === 'number' ? (
+                                      {value === null ? (
+                                        <span className="text-muted-foreground" title="Not reported by the RPC">—</span>
+                                      ) : typeof value === 'number' ? (
                                         <span className="font-mono bg-blue-50 dark:bg-blue-950 px-2 py-1 rounded text-blue-700 dark:text-blue-300">
                                           {value.toLocaleString()}
                                         </span>
