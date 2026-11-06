@@ -258,8 +258,9 @@ export default function ContractEventsEDA() {
   const [contractInfo, setContractInfo] = useState<any>(null);
   const [comprehensiveData, setComprehensiveData] = useState<any>(null);
   const [aiReport, setAiReport] = useState<any>(null);
-  // The exact PDF last downloaded; publishing hashes these bytes.
-  const [reportBlob, setReportBlob] = useState<Blob | null>(null);
+  // The exact report file (PDF or DOCX) last downloaded; publishing hashes
+  // these same bytes, so the downloaded file is what /verify-report accepts.
+  const [reportFile, setReportFile] = useState<{ blob: Blob; format: 'PDF' | 'DOCX' } | null>(null);
   const [publishing, setPublishing] = useState(false);
   const [published, setPublished] = useState<{ id: number; hash: string; txHash: string } | null>(null);
   const { address: walletAddress, connectWallet } = useStellarWallet();
@@ -749,53 +750,55 @@ Tip: Verify the contract address on ${currentChain.explorer.replace('https://', 
     URL.revokeObjectURL(url);
   };
 
-  const downloadPDFReport = async () => {
+  const downloadReport = async (format: 'PDF' | 'DOCX') => {
     if (!aiReport) return;
 
     try {
-      setError('🔄 Generating professional intelligence report...');
+      setError(`🔄 Generating ${format} intelligence report...`);
 
-      const blob = await PDFReportService.generatePDFReport(
-        contracts.map(c => c.address).join(', '),
-        contracts.map(c => c.name || 'Contract').join(', ') || 'Multi-Contract Analysis',
-        contractInfo,
-        stats,
-        aiReport,
-        currentChain.name
-      );
+      const contractAddress = contracts.map(c => c.address).join(', ');
+      const contractName = contracts.map(c => c.name || 'Contract').join(', ') || 'Multi-Contract Analysis';
+      const blob = format === 'PDF'
+        ? await PDFReportService.generatePDFReport(
+            contractAddress, contractName, contractInfo, stats, aiReport, currentChain.name
+          )
+        : await DocumentService.generateDocxReport({
+            contractAddress, contractName, contractInfo, stats, aiReport, chainName: currentChain.name
+          });
 
-      setReportBlob(blob);
+      // Keep this exact Blob: the download and the published hash use the same bytes.
+      setReportFile({ blob, format });
       setPublished(null);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${currentChain.name}_Contract_Intelligence_Report_${Date.now()}.pdf`;
+      a.download = `${currentChain.name}_Contract_Intelligence_Report_${Date.now()}.${format.toLowerCase()}`;
       a.click();
-      URL.revokeObjectURL(url);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
 
-      setError('✅ Intelligence report downloaded successfully!');
+      setError(`✅ ${format} report downloaded successfully!`);
     } catch (error) {
       console.error('Failed to generate report:', error);
-      setError('❌ Failed to generate report: ' + error.message);
+      setError('❌ Failed to generate report: ' + (error instanceof Error ? error.message : String(error)));
     }
   };
 
-  // Records the downloaded PDF's sha256 on Stellar so anyone holding the
-  // file can verify it at /verify-report.
+  // Records the sha256 of the last downloaded report file (PDF or DOCX) on
+  // Stellar so anyone holding that file can verify it at /verify-report.
   const publishReportOnStellar = async () => {
-    if (!reportBlob) return;
+    if (!reportFile) return;
     setPublishing(true);
     try {
       const author = walletAddress || (await connectWallet());
       const result = await publishReport({
         author,
-        file: reportBlob,
+        file: reportFile.blob,
         title: `${contracts.map(c => c.name || 'Contract').join(', ')} analysis`,
         chain: currentChain.id,
         subject: contracts.map(c => c.address).join(','),
       });
       setPublished(result);
-      setError('✅ Report published on Stellar.');
+      setError(`✅ ${reportFile.format} report published on Stellar.`);
     } catch (err) {
       setError('❌ Could not publish the report: ' + (err instanceof Error ? err.message : String(err)));
     } finally {
@@ -1757,7 +1760,7 @@ Tip: Verify the contract address on ${currentChain.explorer.replace('https://', 
                     className="bg-gradient-to-r from-purple-600 to-blue-600"
                   >
                     <FileText className="h-4 w-4 mr-2" />
-                    {generatingReport ? 'Creating Report...' : 'Generate PDF Report'}
+                    {generatingReport ? 'Creating Report...' : 'Generate Report'}
                   </Button>
                 </div>
 
@@ -1765,20 +1768,31 @@ Tip: Verify the contract address on ${currentChain.explorer.replace('https://', 
                   <div className="border-t pt-4">
                     <p className="text-sm text-green-600 mb-4">✅ Report generated successfully!</p>
                     <div className="flex justify-center space-x-4">
-                      <Button onClick={downloadPDFReport} className="bg-gradient-to-r from-red-600 to-pink-600">
+                      <Button onClick={() => downloadReport('PDF')} className="bg-gradient-to-r from-red-600 to-pink-600">
                         <Download className="h-4 w-4 mr-2" />
                         Download PDF
+                      </Button>
+                      <Button onClick={() => downloadReport('DOCX')} className="bg-gradient-to-r from-blue-600 to-indigo-600">
+                        <Download className="h-4 w-4 mr-2" />
+                        Download DOCX
                       </Button>
                       <Button
                         variant="outline"
                         onClick={publishReportOnStellar}
-                        disabled={!reportBlob || publishing}
-                        title={reportBlob ? 'Record this PDF on Stellar so it can be verified' : 'Download the PDF first'}
+                        disabled={!reportFile || publishing}
+                        title={reportFile
+                          ? `Record the ${reportFile.format} you just downloaded on Stellar so it can be verified`
+                          : 'Download the PDF or DOCX first'}
                       >
                         <ShieldCheck className="h-4 w-4 mr-2" />
-                        {publishing ? 'Publishing…' : 'Publish on Stellar'}
+                        {publishing ? 'Publishing…' : reportFile ? `Publish ${reportFile.format} on Stellar` : 'Publish on Stellar'}
                       </Button>
                     </div>
+                    <p className="text-xs text-muted-foreground mt-3">
+                      {reportFile
+                        ? `Publishing records the hash of the ${reportFile.format} you last downloaded; only that exact file will verify.`
+                        : 'Download a PDF or DOCX, then publish it to make that exact file verifiable.'}
+                    </p>
                     {published && (
                       <p className="text-xs text-muted-foreground mt-3 break-all">
                         Report #{published.id} · sha256 {published.hash} ·{' '}

@@ -49,7 +49,7 @@ export default function VerifyReport() {
             <span className="text-sm">Click to choose a file</span>
             <input
               type="file"
-              accept=".pdf,.docx,application/pdf"
+              accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
               className="hidden"
               data-testid="verify-file"
               onChange={(e) => check(e.target.files?.[0])}

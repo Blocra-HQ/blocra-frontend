@@ -1,278 +1,181 @@
-import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, BorderStyle } from 'docx';
+import { AlignmentType, Document, HeadingLevel, Packer, Paragraph, TextRun } from 'docx';
 
-interface AnalysisReport {
-  executiveSummary: string;
-  contractOverview: string;
-  performanceMetrics: string;
-  businessInsights: string;
-  riskAssessment: string;
-  recommendations: string;
-  technicalAnalysis: string;
-  marketPosition: string;
+// Word (.docx) version of the contract-analysis report. It carries the same
+// content as PDFReportService: title, contract, chain, key metrics and the
+// AI report text. Charts are not included (neither report embeds them).
+
+export interface DocxReportInput {
+  contractAddress: string;
+  contractName: string;
+  contractInfo: any;
+  stats: any;
+  aiReport: string;
+  chainName: string;
 }
 
+const FONT = 'Calibri';
+
+/** Splits `**bold**` spans into runs. */
+function inlineRuns(text: string, base: { size?: number; bold?: boolean } = {}): TextRun[] {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g).filter(Boolean);
+  return parts.map((part) => {
+    const bold = part.startsWith('**') && part.endsWith('**') && part.length > 4;
+    return new TextRun({
+      text: bold ? part.slice(2, -2) : part,
+      bold: base.bold || bold,
+      size: base.size ?? 22,
+      font: FONT,
+    });
+  });
+}
+
+/** Turns the report text (markdown or the "**Title**" / "•" plain style) into paragraphs. */
+function reportParagraphs(report: string): Paragraph[] {
+  const out: Paragraph[] = [];
+  for (const raw of report.split('\n')) {
+    const line = raw.trim();
+    if (!line || /^[-*_]{3,}$/.test(line)) continue;
+
+    const heading = line.match(/^(#{1,6})\s+(.*)$/);
+    if (heading) {
+      const level = heading[1].length;
+      out.push(
+        new Paragraph({
+          heading: level <= 2 ? HeadingLevel.HEADING_1 : level === 3 ? HeadingLevel.HEADING_2 : HeadingLevel.HEADING_3,
+          spacing: { before: 300, after: 120 },
+          children: [new TextRun({ text: heading[2].replace(/\*\*/g, ''), font: FONT })],
+        }),
+      );
+      continue;
+    }
+
+    if (/^\*\*[^*]+\*\*:?$/.test(line)) {
+      out.push(
+        new Paragraph({
+          heading: HeadingLevel.HEADING_1,
+          spacing: { before: 300, after: 120 },
+          children: [new TextRun({ text: line.replace(/\*\*/g, '').replace(/:$/, ''), font: FONT })],
+        }),
+      );
+      continue;
+    }
+
+    const bullet = line.match(/^(?:[-*•])\s+(.*)$/);
+    if (bullet) {
+      out.push(new Paragraph({ bullet: { level: 0 }, spacing: { after: 60 }, children: inlineRuns(bullet[1]) }));
+      continue;
+    }
+
+    const numbered = line.match(/^(\d+)[.)]\s+(.*)$/);
+    if (numbered) {
+      out.push(
+        new Paragraph({
+          indent: { left: 360 },
+          spacing: { after: 60 },
+          children: [new TextRun({ text: `${numbered[1]}. `, size: 22, font: FONT }), ...inlineRuns(numbered[2])],
+        }),
+      );
+      continue;
+    }
+
+    out.push(new Paragraph({ spacing: { after: 120 }, children: inlineRuns(line) }));
+  }
+  return out;
+}
+
+const centered = (text: string, opts: { size?: number; bold?: boolean; italics?: boolean; mono?: boolean } = {}) =>
+  new Paragraph({
+    alignment: AlignmentType.CENTER,
+    spacing: { after: 120 },
+    children: [
+      new TextRun({
+        text,
+        size: opts.size ?? 22,
+        bold: opts.bold,
+        italics: opts.italics,
+        font: opts.mono ? 'Courier New' : FONT,
+      }),
+    ],
+  });
+
 export class DocumentService {
-  static async generateDocxReport(
-    report: AnalysisReport,
-    contractAddress: string,
-    contractInfo: any,
-    stats: any
-  ): Promise<Blob> {
-    const doc = new Document({
-      sections: [{
-        properties: {},
-        children: [
-          // Title Page
-          new Paragraph({
-            children: [
-              new TextRun({
-                text: "STARKNET CONTRACT ANALYSIS REPORT",
-                bold: true,
-                size: 32,
-                color: "2563eb"
-              })
-            ],
-            heading: HeadingLevel.TITLE,
-            alignment: AlignmentType.CENTER,
-            spacing: { after: 400 }
-          }),
+  static buildDocxReport(input: DocxReportInput): Document {
+    const { contractAddress, contractName, contractInfo, stats, aiReport, chainName } = input;
+    const metrics: [string, string | number][] = [
+      ['Total Events', stats?.totalEvents ?? 0],
+      ['Unique Users', stats?.uniqueUsers ?? 0],
+      ['Total Transactions', stats?.totalTransactions ?? 0],
+      ['Block Range', `${stats?.dateRange?.span ?? 0} blocks`],
+      ['Activity Status', stats?.isActive ? 'Active' : 'Low Activity'],
+    ];
 
-          new Paragraph({
-            children: [
-              new TextRun({
-                text: `Contract: ${contractInfo.contractName || 'Smart Contract'}`,
-                bold: true,
-                size: 24
-              })
-            ],
-            alignment: AlignmentType.CENTER,
-            spacing: { after: 200 }
-          }),
+    const body =
+      aiReport && typeof aiReport === 'string'
+        ? reportParagraphs(aiReport)
+        : [new Paragraph({ children: [new TextRun({ text: 'Report content not available', bold: true, font: FONT })] })];
 
-          new Paragraph({
-            children: [
-              new TextRun({
-                text: `Address: ${contractAddress}`,
-                size: 20,
-                font: "Courier New"
-              })
-            ],
-            alignment: AlignmentType.CENTER,
-            spacing: { after: 200 }
-          }),
+    return new Document({
+      creator: 'BlocRA',
+      title: `${contractName || 'Contract'} analysis`,
+      description: `${chainName} contract analysis report`,
+      sections: [
+        {
+          children: [
+            new Paragraph({
+              heading: HeadingLevel.TITLE,
+              alignment: AlignmentType.CENTER,
+              spacing: { after: 300 },
+              children: [new TextRun({ text: `${chainName.toUpperCase()} CONTRACT ANALYSIS REPORT`, font: FONT })],
+            }),
+            centered(`Contract: ${contractName || 'Unknown'}`, { size: 28, bold: true }),
+            centered(`Address: ${contractAddress}`, { size: 20, mono: true }),
+            centered(`Chain: ${chainName}`),
+            centered(`Type: ${contractInfo?.contractType || 'Unknown Contract'}`),
+            centered(`Generated: ${new Date().toLocaleDateString()}`, { italics: true }),
 
-          new Paragraph({
-            children: [
-              new TextRun({
-                text: `Type: ${contractInfo.contractType}`,
-                size: 18
-              })
-            ],
-            alignment: AlignmentType.CENTER,
-            spacing: { after: 200 }
-          }),
+            new Paragraph({
+              heading: HeadingLevel.HEADING_1,
+              spacing: { before: 400, after: 120 },
+              children: [new TextRun({ text: 'Key Metrics Overview', font: FONT })],
+            }),
+            ...metrics.map(
+              ([label, value]) =>
+                new Paragraph({
+                  bullet: { level: 0 },
+                  spacing: { after: 60 },
+                  children: [
+                    new TextRun({ text: `${label}: `, bold: true, size: 22, font: FONT }),
+                    new TextRun({ text: String(value), size: 22, font: FONT }),
+                  ],
+                }),
+            ),
 
-          new Paragraph({
-            children: [
-              new TextRun({
-                text: `Generated: ${new Date().toLocaleDateString()}`,
-                size: 16,
-                italics: true
-              })
-            ],
-            alignment: AlignmentType.CENTER,
-            spacing: { after: 800 }
-          }),
+            ...body,
 
-          // Key Metrics Summary
-          new Paragraph({
-            children: [
-              new TextRun({
-                text: "KEY METRICS OVERVIEW",
-                bold: true,
-                size: 20,
-                color: "1f2937"
-              })
-            ],
-            heading: HeadingLevel.HEADING_1,
-            spacing: { before: 400, after: 200 }
-          }),
-
-          new Paragraph({
-            children: [
-              new TextRun({
-                text: `• Total Events: ${stats.totalEvents}\n• Unique Users: ${stats.uniqueUsers}\n• Total Transactions: ${stats.totalTransactions}\n• Block Range: ${stats.dateRange.span} blocks\n• Activity Status: ${stats.isActive ? 'Active' : 'Low Activity'}`,
-                size: 22
-              })
-            ],
-            spacing: { after: 400 }
-          }),
-
-          // Executive Summary
-          ...this.createSection("EXECUTIVE SUMMARY", report.executiveSummary),
-
-          // Contract Overview
-          ...this.createSection("CONTRACT OVERVIEW", report.contractOverview),
-
-          // Performance Metrics
-          ...this.createSection("PERFORMANCE METRICS", report.performanceMetrics),
-
-          // Business Insights
-          ...this.createSection("BUSINESS INSIGHTS", report.businessInsights),
-
-          // Risk Assessment
-          ...this.createSection("RISK ASSESSMENT", report.riskAssessment),
-
-          // Technical Analysis
-          ...this.createSection("TECHNICAL ANALYSIS", report.technicalAnalysis),
-
-          // Market Position
-          ...this.createSection("MARKET POSITION", report.marketPosition),
-
-          // Recommendations
-          ...this.createSection("STRATEGIC RECOMMENDATIONS", report.recommendations),
-
-          // Footer
-          new Paragraph({
-            children: [
-              new TextRun({
-                text: "Generated by BloDI Suite - Advanced Blockchain Data Intelligence Platform",
-                size: 18,
-                italics: true,
-                color: "6b7280"
-              })
-            ],
-            alignment: AlignmentType.CENTER,
-            spacing: { before: 800, after: 200 }
-          }),
-
-          new Paragraph({
-            children: [
-              new TextRun({
-                text: "This report is generated using on-chain data analysis and AI-powered insights.",
-                size: 16,
-                italics: true,
-                color: "9ca3af"
-              })
-            ],
-            alignment: AlignmentType.CENTER
-          })
-        ]
-      }]
-    });
-
-    return await Packer.toBlob(doc);
-  }
-
-  private static createSection(title: string, content: string): Paragraph[] {
-    const paragraphs: Paragraph[] = [];
-
-    // Section title
-    paragraphs.push(new Paragraph({
-      children: [
-        new TextRun({
-          text: title,
-          bold: true,
-          size: 24,
-          color: "1f2937"
-        })
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              spacing: { before: 600 },
+              children: [
+                new TextRun({
+                  text: 'Generated by BlocRA from on-chain data and AI-assisted analysis.',
+                  size: 18,
+                  italics: true,
+                  color: '6b7280',
+                  font: FONT,
+                }),
+              ],
+            }),
+          ],
+        },
       ],
-      heading: HeadingLevel.HEADING_1,
-      spacing: { before: 600, after: 300 }
-    }));
-
-    // Process content - split by paragraphs and format
-    const sections = content.split('\n\n').filter(section => section.trim());
-
-    sections.forEach(section => {
-      const lines = section.split('\n').filter(line => line.trim());
-
-      lines.forEach(line => {
-        const trimmedLine = line.trim();
-        if (!trimmedLine) return;
-
-        let textRun: TextRun;
-        let isHeading = false;
-
-        // Format different types of content
-        if (trimmedLine.startsWith('**') && trimmedLine.endsWith('**')) {
-          // Bold headings
-          textRun = new TextRun({
-            text: trimmedLine.replace(/\*\*/g, ''),
-            bold: true,
-            size: 22,
-            color: "374151"
-          });
-          isHeading = true;
-        } else if (trimmedLine.startsWith('•')) {
-          // Bullet points
-          textRun = new TextRun({
-            text: trimmedLine,
-            size: 20
-          });
-        } else if (trimmedLine.includes(':') && trimmedLine.length < 100) {
-          // Key-value pairs
-          textRun = new TextRun({
-            text: trimmedLine,
-            size: 20,
-            bold: trimmedLine.split(':')[0].length < 30
-          });
-        } else {
-          // Regular text
-          textRun = new TextRun({
-            text: trimmedLine,
-            size: 20
-          });
-        }
-
-        paragraphs.push(new Paragraph({
-          children: [textRun],
-          spacing: {
-            before: isHeading ? 300 : 100,
-            after: isHeading ? 200 : 100
-          }
-        }));
-      });
     });
-
-    return paragraphs;
   }
 
-  static generateGoogleDocsLink(contractAddress: string, contractInfo: any, report?: any): string {
-    // Create the report content
-    const content = `STARKNET CONTRACT ANALYSIS REPORT
-
-Contract: ${contractInfo.contractName || 'Smart Contract'}
-Address: ${contractAddress}
-Type: ${contractInfo.contractType}
-Generated: ${new Date().toLocaleDateString()}
-
-${report?.executiveSummary || ''}
-
-${report?.contractOverview || ''}
-
-${report?.performanceMetrics || ''}
-
-${report?.businessInsights || ''}
-
-${report?.riskAssessment || ''}
-
-${report?.technicalAnalysis || ''}
-
-${report?.marketPosition || ''}
-
-${report?.recommendations || ''}
-
-Generated by BlocRA Suite`;
-
-    // Encode content for URL (truncate if too long to avoid URL limits)
-    const maxLength = 8000; // Safe URL length limit
-    const truncatedContent = content.length > maxLength ? content.substring(0, maxLength) + '\n\n[Content truncated due to length limits]' : content;
-    const encodedContent = encodeURIComponent(truncatedContent);
-
-    // Create Google Docs URL with pre-filled content
-    const googleDocsUrl = `https://docs.google.com/document/create?title=${encodeURIComponent(contractInfo.contractName + ' Analysis Report')}&body=${encodedContent}`;
-
-    return googleDocsUrl;
+  static async generateDocxReport(input: DocxReportInput): Promise<Blob> {
+    const blob = await Packer.toBlob(DocumentService.buildDocxReport(input));
+    // Packer.toBlob sets no MIME type; give the file the Word one.
+    return new Blob([blob], {
+      type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    });
   }
 }
