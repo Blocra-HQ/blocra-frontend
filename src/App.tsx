@@ -17,7 +17,7 @@ import "@/utils/debug"; // Load debug utilities
 
 // Core pages (immediately loaded)
 import Index from "./pages/Index";
-// import Auth from "./pages/Auth";
+import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
 // Lazily loaded pages - Core features only
@@ -57,12 +57,12 @@ const App = () => (
                     }>
                       <Routes>
                         {/* Public routes */}
-                        {/* <Route path="/auth" element={
+                        <Route path="/auth" element={
                           <ProtectedRoute requireAuth={false}>
                             <Auth />
                           </ProtectedRoute>
                         } />
-                        <Route path="/auth/google/callback" element={<GoogleCallback />} /> */}
+                        <Route path="/auth/google/callback" element={<GoogleCallback />} />
 
                         <Route path="/docs" element={
                           <Docs />

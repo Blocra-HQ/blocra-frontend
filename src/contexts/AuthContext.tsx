@@ -108,8 +108,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     password: string,
     userData?: { firstName?: string; lastName?: string; role?: 'analyst' | 'creator' }
   ) => {
+    // No global loading flag here: it is for the initial session check, and
+    // toggling it unmounts the sign-in page (and its error message).
     try {
-      setLoading(true);
       if (isDemoAuth) {
         const demoUser: User = {
           _id: `demo_${Date.now()}`,
@@ -146,14 +147,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       }
     } catch (error: any) {
       return { error };
-    } finally {
-      setLoading(false);
     }
   };
 
   const signIn = async (email: string, password: string) => {
+    // No global loading flag here: it is for the initial session check, and
+    // toggling it unmounts the sign-in page (and its error message).
     try {
-      setLoading(true);
       if (isDemoAuth) {
         const demoUser: User = {
           _id: 'demo_user_123',
@@ -186,14 +186,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       }
     } catch (error: any) {
       return { error };
-    } finally {
-      setLoading(false);
     }
   };
 
   const signInWithGoogle = async (token: string, role?: 'analyst' | 'creator') => {
+    // No global loading flag here: it is for the initial session check, and
+    // toggling it unmounts the sign-in page (and its error message).
     try {
-      setLoading(true);
       if (isDemoAuth) {
         const demoUser: User = {
           _id: 'demo_google_user',
@@ -226,8 +225,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       }
     } catch (error: any) {
       return { error };
-    } finally {
-      setLoading(false);
     }
   };
 

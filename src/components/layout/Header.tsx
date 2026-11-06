@@ -10,7 +10,6 @@ import { cn } from "@/lib/utils";
 import { useRpcEndpoint } from "@/hooks/useRpcEndpoint";
 
 import {
-  Bell,
   Wallet,
   User,
   Moon,
@@ -76,12 +75,6 @@ export function Header({ title, subtitle }: HeaderProps) {
             </Button>
           </Link>
 
-          {/* Notifications */}
-          <Button variant="ghost" size="icon" className="relative hidden md:flex">
-            <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
-            <div className="absolute -top-1 -right-1 w-2 h-2 sm:w-3 sm:h-3 bg-destructive rounded-full animate-pulse" />
-          </Button>
-
           {/* Theme Toggle */}
           <Button
             variant="ghost"
@@ -131,8 +124,13 @@ export function Header({ title, subtitle }: HeaderProps) {
             )}
           </Button>
 
-          {/* User Menu */}
-          <Link to="/profile">
+          {/* Account: profile when signed in (email or wallet), otherwise sign in */}
+          {!user && !isAuthenticated ? (
+            <Link to="/auth">
+              <Button variant="outline" size="sm" className="text-xs">Sign in</Button>
+            </Link>
+          ) : (
+          <Link to="/profile" title={user?.email || "Profile"}>
             <Button variant="ghost" size="icon" className="p-1 sm:p-2">
               {profile?.fullName ? (
                 <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center text-xs font-semibold text-primary-foreground">
@@ -143,6 +141,7 @@ export function Header({ title, subtitle }: HeaderProps) {
               )}
             </Button>
           </Link>
+          )}
         </div>
       </div>
     </header>

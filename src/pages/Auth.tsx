@@ -1,32 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { BarChart3, UserPlus, LogIn, AlertCircle, Eye, EyeOff, CheckCircle, XCircle } from 'lucide-react';
-
-interface User {
-  id: string;
-  email: string;
-  name: string;
-  password: string;
-  role: string;
-}
-
-const hashPassword = (password: string): string => {
-  // Simple hash for demo - use proper bcrypt in production
-  let hash = 0;
-  for (let i = 0; i < password.length; i++) {
-    const char = password.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash;
-  }
-  return hash.toString();
-};
+import { UserPlus, LogIn, AlertCircle, Eye, EyeOff, CheckCircle, XCircle } from 'lucide-react';
 
 const validateEmail = (email: string): boolean => {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -47,6 +28,7 @@ const validatePassword = (password: string): { isValid: boolean; message?: strin
 
 export default function Auth() {
   const navigate = useNavigate();
+  const { signIn, signUp } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
@@ -62,7 +44,6 @@ export default function Auth() {
   const [signUpName, setSignUpName] = useState('');
   const [signUpPassword, setSignUpPassword] = useState('');
   const [showSignUpPassword, setShowSignUpPassword] = useState(false);
-  const [role, setRole] = useState('analyst');
   const [emailValid, setEmailValid] = useState<boolean | null>(null);
   const [passwordStrength, setPasswordStrength] = useState<'weak' | 'medium' | 'strong' | null>(null);
 
@@ -93,114 +74,55 @@ export default function Auth() {
 
 
 
-  const handleSignIn = (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
+  const errorText = (err: unknown) =>
+    (err instanceof Error ? err.message : String(err ?? 'Request failed'))
+      .replace(/^(Bad request|Unauthorized): /, '');
 
-    if (!signInIdentifier.trim() || !signInPassword) {
+  const handleSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    const email = signInIdentifier.trim();
+    if (!email || !signInPassword) {
       setError('Please fill in all fields');
-      setLoading(false);
       return;
     }
-
-    try {
-      const users: User[] = JSON.parse(localStorage.getItem('blocra_users') || '[]');
-
-
-
-      const hashedPassword = hashPassword(signInPassword);
-      const user = users.find(u =>
-        (u.email === signInIdentifier.trim() || u.name === signInIdentifier.trim()) &&
-        u.password === hashedPassword
-      );
-
-      if (user) {
-        // Store user in the format AuthContext expects
-        const authUser = {
-          _id: user.id,
-          email: user.email,
-          firstName: user.name,
-          lastName: '',
-          role: user.role,
-          isActive: true,
-          lastLogin: new Date()
-        };
-        localStorage.setItem('demo_user', JSON.stringify(authUser));
-        localStorage.setItem('auth_token', `demo_token_${Date.now()}`);
-        setMessage('Signed in successfully!');
-        window.location.href = '/';
-      } else {
-        setError('Invalid email/name or password');
-      }
-    } catch (err) {
-      setError('Error accessing user data');
-    }
+    setLoading(true);
+    const { error } = await signIn(email, signInPassword);
     setLoading(false);
+    if (error) {
+      setError(errorText(error));
+      return;
+    }
+    navigate('/');
   };
 
-  const handleSignUp = (e: React.FormEvent) => {
+  const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError('');
-
     const trimmedEmail = signUpEmail.trim();
     const trimmedName = signUpName.trim();
-
     if (!trimmedEmail || !trimmedName || !signUpPassword) {
       setError('Please fill in all fields');
-      setLoading(false);
       return;
     }
-
     if (!validateEmail(trimmedEmail)) {
       setError('Please enter a valid email address');
-      setLoading(false);
       return;
     }
-
     const passwordValidation = validatePassword(signUpPassword);
     if (!passwordValidation.isValid) {
       setError(passwordValidation.message!);
-      setLoading(false);
       return;
     }
-
-    try {
-      const users: User[] = JSON.parse(localStorage.getItem('blocra_users') || '[]');
-
-      if (users.find(u => u.email === trimmedEmail || u.name === trimmedName)) {
-        setError('User with this email or name already exists');
-        setLoading(false);
-        return;
-      }
-
-      const newUser: User = {
-        id: Date.now().toString(),
-        email: trimmedEmail,
-        name: trimmedName,
-        password: hashPassword(signUpPassword),
-        role
-      };
-
-      users.push(newUser);
-      localStorage.setItem('blocra_users', JSON.stringify(users));
-
-      setMessage('Account created successfully! You can now sign in.');
-      setActiveTab('signin');
-
-      // Clear form
-      setSignUpEmail('');
-      setSignUpName('');
-      setSignUpPassword('');
-    } catch {
-      setError('Error creating account');
-    }
+    setLoading(true);
+    const { error } = await signUp(trimmedEmail, signUpPassword, { firstName: trimmedName });
     setLoading(false);
+    if (error) {
+      setError(errorText(error));
+      return;
+    }
+    navigate('/');
   };
-
-
-
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -248,9 +170,11 @@ export default function Auth() {
               <TabsContent value="signin">
                 <form onSubmit={handleSignIn} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="signin-identifier">Email or Name</Label>
+                    <Label htmlFor="signin-identifier">Email</Label>
                     <Input
                       id="signin-identifier"
+                      type="email"
+                      autoComplete="email"
                       placeholder="name@example.com"
                       value={signInIdentifier}
                       onChange={(e) => setSignInIdentifier(e.target.value)}
@@ -284,22 +208,7 @@ export default function Auth() {
                   <Button type="submit" className="w-full" disabled={loading}>
                     {loading ? 'Signing in...' : 'Sign In'}
                   </Button>
-                  <div className="text-center mt-4">
-                    <button
-                      type="button"
-                      className="text-sm text-muted-foreground hover:text-primary transition-colors"
-                      onClick={() => {
-                        const users = JSON.parse(localStorage.getItem('blocra_users') || '[]');
-                        if (users.length > 0) {
-                          alert(`Registered users: ${users.map((u: any) => u.name || u.email).join(', ')}`);
-                        } else {
-                          alert('No registered users found. Please create an account.');
-                        }
-                      }}
-                    >
-                      View registered accounts
-                    </button>
-                  </div>
+                  
                 </form>
               </TabsContent>
 
@@ -341,28 +250,7 @@ export default function Auth() {
                       <p className="text-sm text-red-500">Please enter a valid email address</p>
                     )}
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="role">Role</Label>
-                    <Select value={role} onValueChange={setRole}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="analyst">
-                          <div className="flex flex-col items-start">
-                            <span className="font-medium">Analyst</span>
-                            <span className="text-xs text-muted-foreground">Analyze blockchain data and create insights</span>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="creator">
-                          <div className="flex flex-col items-start">
-                            <span className="font-medium">Creator</span>
-                            <span className="text-xs text-muted-foreground">Create and manage analytics projects</span>
-                          </div>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  
                   <div className="space-y-2">
                     <Label htmlFor="signup-password">Password</Label>
                     <div className="relative">
@@ -409,19 +297,9 @@ export default function Auth() {
           </CardContent>
         </Card>
 
-        <div className="text-center mt-6 space-y-2">
-          <p className="text-sm text-muted-foreground">
-            By creating an account, you agree to our{' '}
-            <Link to="/terms" className="text-primary hover:underline">
-              Terms of Service
-            </Link>{' '}
-            and{' '}
-            <Link to="/privacy" className="text-primary hover:underline">
-              Privacy Policy
-            </Link>
-          </p>
-
-        </div>
+        <p className="text-center text-sm text-muted-foreground">
+          Have a Stellar wallet? Use the wallet button in the header to sign in with Freighter.
+        </p>
       </div>
     </div>
   );
