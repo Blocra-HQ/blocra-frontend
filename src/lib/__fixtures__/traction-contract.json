@@ -1,0 +1,139 @@
+{
+  "asset_snapshot": null,
+  "coverage": {
+    "collection_started": "2026-11-06",
+    "completeness_pct": 533.3,
+    "days_covered": 0.0,
+    "expected_ledgers": 109964.0,
+    "full_period": false,
+    "ledger_from": 65333611,
+    "ledger_to": 65333616,
+    "ledgers_collected": 32
+  },
+  "daily": [
+    {
+      "active_accounts": 1880,
+      "calls": 1880,
+      "day": "2026-11-06",
+      "failed": 0,
+      "volume": 0.0
+    }
+  ],
+  "ecosystem": {
+    "median_failed_pct": 0.0,
+    "metric": "active_accounts",
+    "of": 21,
+    "percentile": 100.0,
+    "rank": 1
+  },
+  "findings": [
+    "0.0% of calls failed, in line with the 0.0% median of comparable contracts.",
+    "Ranked #1 of 21 contracts by active accounts in this period (top 5%).",
+    "Partial data: BlocRA holds 0.0 of the 7 days (533.3% of ledgers in that span). Figures cover only the collected time."
+  ],
+  "functions": [
+    {
+      "calls": 1686,
+      "failed": 0,
+      "failed_pct": 0.0,
+      "function": "work"
+    },
+    {
+      "calls": 194,
+      "failed": 0,
+      "failed_pct": 0.0,
+      "function": "plant"
+    }
+  ],
+  "generated_at": "2026-11-06T08:36:20.111469916+00:00",
+  "kpis": {
+    "active_accounts": {
+      "change_pct": null,
+      "previous": null,
+      "value": 1880.0
+    },
+    "calls": {
+      "change_pct": null,
+      "previous": null,
+      "value": 1880.0
+    },
+    "calls_per_account": 1.0,
+    "failed_pct": {
+      "change_pct": null,
+      "previous": null,
+      "value": 0.0
+    },
+    "new_accounts": {
+      "reliable": false,
+      "value": 1880
+    },
+    "volume": null
+  },
+  "methodology": [
+    "Source: every Stellar ledger read from Horizon by BlocRA's collector and stored with its transactions and operations.",
+    "Days are UTC calendar days; the latest day may be partial.",
+    "A call is one invoke_host_function operation targeting the contract; the account is the operation's source. Failed calls (from failed transactions) are included in calls and counted in failed.",
+    "Automated (bot-like) accounts made at least 1000 calls on a single day.",
+    "New accounts were first seen during the period in all data BlocRA has collected; with less history than the period, they are marked unreliable.",
+    "Ecosystem rank compares active accounts with every contract (or asset) active in the same period; the failure-rate median uses peers with at least 10 active accounts."
+  ],
+  "network": "mainnet",
+  "period": {
+    "days": 7,
+    "from": "2026-10-31",
+    "has_previous": false,
+    "previous_from": "2026-10-24",
+    "previous_to": "2026-10-30",
+    "to": "2026-11-06"
+  },
+  "quality": {
+    "bot_like_accounts": 0,
+    "bot_like_share_pct": 0.0,
+    "bot_threshold_calls_per_day": 1000,
+    "top10_share_pct": 0.5,
+    "top_accounts": [
+      {
+        "account": "GDZZPWF6ZI6EFWLCKTDPJ2ISND5RYEQ4ZYC6MJECLTCY63MC3KD2RPCY",
+        "bot_like": false,
+        "calls": 1,
+        "share_pct": 0.1
+      },
+      {
+        "account": "GDZUVKR4XSAXRVWMELZ2FCO5KVVR5QM5A2SUBZ7XDO2FFCIDOBEY2KF6",
+        "bot_like": false,
+        "calls": 1,
+        "share_pct": 0.1
+      },
+      {
+        "account": "GDZURGMBLTT64M4KP7FZXHG4TZXCFKTW6LGIKO6WNQ56BJ5H4MMCK3G3",
+        "bot_like": false,
+        "calls": 1,
+        "share_pct": 0.1
+      },
+      {
+        "account": "GDZPD745P3AQ7KTV5BMCNQRRSLBOUBCEZK4TC7YNF42V6RQUWFBLMMFX",
+        "bot_like": false,
+        "calls": 1,
+        "share_pct": 0.1
+      },
+      {
+        "account": "GDZKQRLF3WILGT6HFEFLPBOTAL2NAX2YALXGTJW6U7NFG7WW5DDITUYW",
+        "bot_like": false,
+        "calls": 1,
+        "share_pct": 0.1
+      }
+    ]
+  },
+  "retention": {
+    "previous_active": null,
+    "returning_accounts": 0,
+    "returning_pct": null
+  },
+  "subject": {
+    "id": "CDL74RF5BLYR2YBLCCI7F5FB6TPSCLKEJUBSD2RSVWZ4YHF3VMFAIGWA",
+    "kind": "contract",
+    "label": "Contract CDL74R\u2026IGWA"
+  },
+  "type": "traction",
+  "version": 1
+}

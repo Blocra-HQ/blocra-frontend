@@ -44,7 +44,7 @@ export function Header({ title, subtitle }: HeaderProps) {
   };
 
   return (
-    <header className="sticky top-0 z-30 w-full h-16 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="print:hidden sticky top-0 z-30 w-full h-16 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="flex h-full items-center justify-between px-3 sm:px-4 lg:px-6">
         <div className="flex items-center space-x-2 sm:space-x-4">
           <Button

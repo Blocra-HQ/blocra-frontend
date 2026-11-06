@@ -13,6 +13,7 @@ import {
   LogOut,
   Activity,
   ShieldCheck,
+  FileBarChart,
   Book,
   X
 } from "lucide-react";
@@ -23,6 +24,7 @@ const navigation = [
   { name: "Dashboard Builder", href: "/builder", icon: Layout },
   { name: "Library", href: "/library", icon: Book },
   { name: "Contract Analysis", href: "/contract-events-eda", icon: Activity },
+  { name: "Reports", href: "/reports", icon: FileBarChart },
   { name: "Verify Report", href: "/verify-report", icon: ShieldCheck },
   { name: "Settings", href: "/settings", icon: Settings },
 ];
@@ -51,7 +53,7 @@ export function AuthenticatedSidebar({ className }: AuthenticatedSidebarProps) {
       {/* Backdrop overlay for mobile */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-background/80 backdrop-blur-sm z-30 lg:hidden"
+          className="fixed inset-0 bg-background/80 backdrop-blur-sm z-30 lg:hidden print:hidden"
           onClick={closeSidebar}
         />
       )}
@@ -59,7 +61,7 @@ export function AuthenticatedSidebar({ className }: AuthenticatedSidebarProps) {
       {/* Sidebar */}
       <div
         className={cn(
-          "fixed left-0 top-0 h-screen bg-card border-r border-border text-card-foreground w-64 transition-transform duration-300 ease-in-out z-40",
+          "fixed left-0 top-0 h-screen bg-card border-r border-border text-card-foreground w-64 transition-transform duration-300 ease-in-out z-40 print:hidden",
           "lg:translate-x-0", // Always visible on desktop
           isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0", // Toggle on mobile
           className

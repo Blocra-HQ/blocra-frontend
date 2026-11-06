@@ -41,7 +41,7 @@ export default function VerifyReport() {
       <Card>
         <CardHeader>
           <CardTitle>Choose a report file</CardTitle>
-          <CardDescription>PDF or DOCX, exactly as it was downloaded from BlocRA.</CardDescription>
+          <CardDescription>PDF, DOCX, Markdown or JSON, exactly as it was downloaded from BlocRA.</CardDescription>
         </CardHeader>
         <CardContent>
           <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-xl p-8 cursor-pointer hover:bg-muted/50">
@@ -49,7 +49,7 @@ export default function VerifyReport() {
             <span className="text-sm">Click to choose a file</span>
             <input
               type="file"
-              accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              accept=".pdf,.docx,.md,.json,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/markdown,application/json"
               className="hidden"
               data-testid="verify-file"
               onChange={(e) => check(e.target.files?.[0])}

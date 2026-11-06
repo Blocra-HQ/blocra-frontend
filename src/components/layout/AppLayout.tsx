@@ -20,7 +20,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <AuthenticatedSidebar />
-      <main className="ml-0 lg:ml-64 min-h-screen transition-all duration-300">
+      <main className="ml-0 lg:ml-64 print:ml-0 min-h-screen transition-all duration-300">
         {children}
       </main>
     </div>

@@ -33,6 +33,7 @@ const GoogleCallback = lazy(() => import("./pages/auth/GoogleCallback"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const DashboardBuilder = lazy(() => import("./pages/DashboardBuilder"));
 const VerifyReport = lazy(() => import("./pages/VerifyReport"));
+const Reports = lazy(() => import("./pages/Reports"));
 
 const queryClient = new QueryClient();
 
@@ -99,6 +100,7 @@ const App = () => (
                           <Settings />
                         } />
                         <Route path="/verify-report" element={<VerifyReport />} />
+                        <Route path="/reports" element={<Reports />} />
                         <Route path="/builder" element={
                           <DashboardBuilder />
                         } />

@@ -134,3 +134,13 @@
     text-wrap: balance;
   }
 }
+/* Printing (Reports → Print / Save as PDF): plain white pages, no app chrome. */
+@media print {
+  html,
+  body {
+    background: #fff !important;
+  }
+  @page {
+    margin: 14mm;
+  }
+}
