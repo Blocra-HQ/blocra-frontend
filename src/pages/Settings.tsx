@@ -11,7 +11,9 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useStellarWallet } from '@/contexts/StellarWalletContext';
+import { EXPLORER_URL } from '@/integrations/stellar-network';
 import {
   Dialog,
   DialogContent,
@@ -38,11 +40,7 @@ import {
   Send
 } from 'lucide-react';
 import { buildApiUrl } from '@/config/api';
-import { api } from '@/lib/api';interface WalletData {
-  name: string;
-  address: string;
-  isConnected: boolean;
-}
+import { api } from '@/lib/api';
 
 interface AccountData {
   platform: string;
@@ -194,11 +192,22 @@ const Settings = (): JSX.Element => {
     }
   };
 
-  const [connectedWallets] = useState<WalletData[]>([
-    { name: 'Argent', address: '0x123...789', isConnected: true },
-    { name: 'Braavos', address: '0x456...012', isConnected: true },
-    { name: 'MetaMask', address: '', isConnected: false }
-  ]);
+  const wallet = useStellarWallet();
+  // ?tab=wallets etc. opens a tab directly (e.g. Profile's "Wallet Settings").
+  const [searchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab') || 'profile';
+
+  const handleConnectWallet = async (): Promise<void> => {
+    try {
+      await wallet.connectWallet();
+    } catch (error) {
+      toast({
+        title: "Could not connect wallet",
+        description: error instanceof Error ? error.message : 'Freighter connection failed',
+        variant: "destructive"
+      });
+    }
+  };
 
   const [connectedAccounts] = useState<AccountData[]>([
     { platform: 'GitHub', username: 'user123', isConnected: true },
@@ -252,7 +261,7 @@ const Settings = (): JSX.Element => {
       <Header title="Settings" subtitle="Manage your account and preferences" />
       <main className="p-6 space-y-8">
 
-      <Tabs defaultValue="profile" className="w-full">
+      <Tabs defaultValue={initialTab} className="w-full">
         <TabsList className="grid grid-cols-5 w-full max-w-4xl">
           <TabsTrigger value="profile" className="flex items-center gap-2">
             <User className="w-4 h-4" />
@@ -392,27 +401,40 @@ const Settings = (): JSX.Element => {
         <TabsContent value="wallets" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Connected Wallets</CardTitle>
+              <CardTitle>Stellar Wallet</CardTitle>
               <CardDescription>
-                Manage your connected blockchain wallets
+                BlocRA uses Freighter to sign in and to publish reports on Stellar
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {connectedWallets.map((wallet, index) => (
-                  <div key={index} className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                      <Wallet className="w-5 h-5" />
-                      <div>
-                        <p className="font-medium">{wallet.name}</p>
-                        <p className="text-sm text-muted-foreground">{wallet.address || 'Not connected'}</p>
-                      </div>
-                    </div>
-                    <Button variant={wallet.isConnected ? "destructive" : "outline"}>
-                      {wallet.isConnected ? 'Disconnect' : 'Connect'}
-                    </Button>
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center space-x-4 min-w-0">
+                  <Wallet className="w-5 h-5 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="font-medium">Freighter</p>
+                    {wallet.address ? (
+                      <a
+                        className="text-sm text-muted-foreground underline break-all"
+                        href={`${EXPLORER_URL}/account/${wallet.address}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {wallet.address}
+                      </a>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">{wallet.error || 'Not connected'}</p>
+                    )}
                   </div>
-                ))}
+                </div>
+                {wallet.address ? (
+                  <Button variant="destructive" onClick={wallet.disconnectWallet}>
+                    Disconnect
+                  </Button>
+                ) : (
+                  <Button variant="outline" onClick={handleConnectWallet} disabled={wallet.isConnecting}>
+                    {wallet.isConnecting ? 'Connecting…' : 'Connect'}
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>

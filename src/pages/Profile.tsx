@@ -111,7 +111,7 @@ export default function Profile() {
   };
 
   const handleWalletSettings = () => {
-    navigate('/wallet');
+    navigate('/settings?tab=wallets');
   };
 
   const handleCancel = () => {

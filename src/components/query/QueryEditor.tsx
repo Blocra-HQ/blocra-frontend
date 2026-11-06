@@ -108,6 +108,7 @@ export function QueryEditor({ onQueryComplete }: QueryEditorProps) {
   } = useQuerySaver();
 
   const [activeTab, setActiveTab] = useState<string>('editor');
+  const [resultsTab, setResultsTab] = useState<string>('table');
   const [sqlJustGenerated, setSqlJustGenerated] = useState(false);
   
   const generateSQLFromPrompt = async () => {
@@ -452,9 +453,8 @@ export function QueryEditor({ onQueryComplete }: QueryEditorProps) {
 
   const visualizeResults = () => {
     if (results.length > 0) {
-      localStorage.setItem('queryResults', JSON.stringify(results));
-      localStorage.setItem('lastQuery', query);
-      navigate('/charts');
+      // There is no /charts page; open the Visualization tab under the results.
+      setResultsTab('chart');
     }
   };
 
@@ -1466,7 +1466,7 @@ LIMIT 30;`;
           </Tabs>
 
           {results.length > 0 && (
-            <Tabs defaultValue="table" className="w-full">
+            <Tabs value={resultsTab} onValueChange={setResultsTab} className="w-full">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="table">Data Table</TabsTrigger>
                 <TabsTrigger value="chart">Visualization</TabsTrigger>
