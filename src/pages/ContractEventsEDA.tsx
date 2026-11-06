@@ -1655,18 +1655,44 @@ Tip: Verify the contract address on ${currentChain.explorer.replace('https://', 
               <AlertPanel contractAddresses={contracts.map(c => c.address)} />
             </div>
 
-            {/* AI REPORT GENERATION */}
+            {/* REPORTS: Stellar contracts get the verifiable traction report;
+                other chains keep the summary of the loaded events. */}
+            {currentChain.type === 'stellar' ? (
+            <Card className="glass max-w-6xl mx-auto">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <FileText className="h-5 w-5 text-primary" />
+                  <span>Traction Report</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="text-center space-y-4">
+                <p className="text-muted-foreground">
+                  A verifiable report of this contract's usage on Stellar — active and returning accounts, failure rate,
+                  concentration and bot share, function breakdown and ecosystem rank — exportable as PDF or Markdown and
+                  publishable on Stellar.
+                </p>
+                <Button
+                  onClick={() => navigate(`/reports?subject=${encodeURIComponent(contracts[0]?.address?.trim() || '')}&days=7`)}
+                  disabled={!contracts[0]?.address?.trim()}
+                  data-testid="open-traction-report"
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  Open traction report
+                </Button>
+              </CardContent>
+            </Card>
+            ) : (
             <Card className="glass max-w-6xl mx-auto">
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
                   <Bot className="h-5 w-5 text-purple-600" />
-                  <span>Business Analysis Report</span>
+                  <span>Event Summary</span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="text-center space-y-4">
                 <p className="text-muted-foreground mb-4">
-                  Generate comprehensive business intelligence report with insights,
-                  performance metrics, risk assessment, and strategic recommendations.
+                  A written summary of the events loaded above (up to the fetched sample), by the AI analyst when it is
+                  available, otherwise from BlocRA's statistics.
                 </p>
                 <div className="flex justify-center space-x-4 mb-4">
                   <Button
@@ -1675,13 +1701,13 @@ Tip: Verify the contract address on ${currentChain.explorer.replace('https://', 
                     className="bg-gradient-to-r from-purple-600 to-blue-600"
                   >
                     <FileText className="h-4 w-4 mr-2" />
-                    {generatingReport ? 'Creating Report...' : 'Generate Report'}
+                    {generatingReport ? 'Writing summary...' : 'Generate event summary'}
                   </Button>
                 </div>
 
                 {aiReport && (
                   <div className="border-t pt-4">
-                    <p className="text-sm text-green-600 mb-4">✅ Report generated successfully!</p>
+                    <p className="text-sm text-green-600 mb-4">✅ Summary ready.</p>
                     <div className="flex justify-center space-x-4">
                       <Button onClick={() => downloadReport('PDF')} className="bg-gradient-to-r from-red-600 to-pink-600">
                         <Download className="h-4 w-4 mr-2" />
@@ -1721,6 +1747,7 @@ Tip: Verify the contract address on ${currentChain.explorer.replace('https://', 
                 )}
               </CardContent>
             </Card>
+            )}
           </div>
         )}
       </main>
