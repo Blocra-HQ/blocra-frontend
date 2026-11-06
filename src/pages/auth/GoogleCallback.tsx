@@ -22,9 +22,9 @@ export default function GoogleCallback() {
           
           const data = await response.json();
           
-          if (data.success) {
-            localStorage.setItem('auth_token', data.data.accessToken);
-            localStorage.setItem('demo_user', JSON.stringify(data.data.user));
+          // POST /api/auth/google -> { success, token, user }
+          if (data.success && data.token) {
+            localStorage.setItem('auth_token', data.token);
             logger.info('Google authentication successful');
             navigate('/');
           } else {

@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { apiClient } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -28,7 +29,9 @@ const validatePassword = (password: string): { isValid: boolean; message?: strin
 
 export default function Auth() {
   const navigate = useNavigate();
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, signInWithGoogle } = useAuth();
+  const googleButtonRef = useRef<HTMLDivElement>(null);
+  const [googleClientId, setGoogleClientId] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
@@ -65,6 +68,47 @@ export default function Auth() {
       setPasswordStrength(null);
     }
   }, [signUpPassword]);
+
+  // Google sign-in (Google Identity Services), shown only when the backend
+  // has GOOGLE_CLIENT_ID; the ID token is verified server-side.
+  useEffect(() => {
+    apiClient
+      .request<{ data?: { google?: { clientId?: string } } }>('/auth/oauth/config')
+      .then((r) => setGoogleClientId(r?.data?.google?.clientId || ''))
+      .catch(() => setGoogleClientId(''));
+  }, []);
+
+  useEffect(() => {
+    if (!googleClientId || !googleButtonRef.current) return;
+    const render = () => {
+      const google = (window as any).google;
+      if (!google?.accounts?.id || !googleButtonRef.current) return;
+      google.accounts.id.initialize({
+        client_id: googleClientId,
+        callback: async ({ credential }: { credential: string }) => {
+          setError('');
+          setLoading(true);
+          const { error } = await signInWithGoogle(credential);
+          setLoading(false);
+          if (error) setError(errorText(error));
+          else navigate('/');
+        },
+      });
+      google.accounts.id.renderButton(googleButtonRef.current, { theme: 'outline', size: 'large', width: 320 });
+    };
+    const existing = document.getElementById('google-gsi');
+    if (existing) {
+      render();
+      return;
+    }
+    const script = document.createElement('script');
+    script.id = 'google-gsi';
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.onload = render;
+    document.head.appendChild(script);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [googleClientId, activeTab]);
 
   // Clear messages when switching tabs
   useEffect(() => {
@@ -294,6 +338,14 @@ export default function Auth() {
                 </form>
               </TabsContent>
             </Tabs>
+            {googleClientId && (
+              <div className="mt-6 space-y-3">
+                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                  <div className="h-px flex-1 bg-border" />or<div className="h-px flex-1 bg-border" />
+                </div>
+                <div ref={googleButtonRef} className="flex justify-center" />
+              </div>
+            )}
           </CardContent>
         </Card>
 
