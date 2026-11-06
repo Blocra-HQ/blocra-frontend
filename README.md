@@ -14,11 +14,12 @@ React · TypeScript · Vite · Tailwind CSS · Stellar SDK · Freighter
 
 ## Overview
 
-BlocRA lets analysts explore on-chain activity, analyze smart contracts, write queries, build
-dashboards and produce reports that can be verified on Stellar. Stellar is the default chain. The app
-supports 37 chains in total: Stellar, Starknet, Solana, 31 EVM networks (Ethereum, Base,
-Arbitrum, Optimism, Polygon, BNB Smart Chain, Avalanche and others) and three Cosmos SDK chains
-(Axelar, Celer, Saga).
+BlocRA is Stellar analytics: explore network activity, analyze Soroban contracts, query collected
+ledger data with SQL, build dashboards, and produce traction reports that can be verified on Stellar.
+The backend collects every Stellar ledger, so dashboards, SQL and reports run on complete Stellar
+data. For comparison, the network dashboard and contract analysis also cover 36 other chains:
+Starknet, Solana, 31 EVM networks (Ethereum, Base, Arbitrum, Optimism, Polygon, BNB Smart Chain,
+Avalanche and others) and three Cosmos SDK chains (Axelar, Celer, Saga).
 
 This repository is the browser app. It works with:
 
@@ -33,7 +34,7 @@ This repository is the browser app. It works with:
 | Page | Route | What it does |
 |------|-------|--------------|
 | Dashboard | `/` | Live stats for the selected chain's latest ledger or block, from the backend: transactions, active users, gas (compute units on Solana, operations on Stellar), fees in the chain's fee token, success rate, and transaction, message or operation types. EVM chains also show transfers vs contract calls and block utilization. Figures the backend cannot read exactly show as "—" with a note. Charts start from the blocks the backend has stored (the last 60) and add new ones as they arrive; a line above them says what they cover. |
-| Contract Analysis | `/contract-events-eda` | Fetches a contract's events and activity: Soroban contracts through Stellar RPC `getEvents`, EVM contracts through logs, Starknet through `starknet_getEvents`. Shows event mix, users, transfer volume, top callers and timelines, with CSV/JSON/image export. Not yet available for Cosmos chains. |
+| Contract Analysis | `/contract-events-eda` | Fetches a contract's events and activity: Soroban contracts through Stellar RPC `getEvents` (and, for comparison, EVM contracts through logs, Starknet through `starknet_getEvents`). Shows event mix, users, transfer volume, top callers and timelines, with CSV/JSON/image export. Not yet available for Cosmos chains. |
 | Reports | `/reports` | Verifiable Stellar traction report for a Soroban contract or an asset (see [Reports](#reports)). Stellar contracts in Contract Analysis link here. |
 | Event summary | in Contract Analysis (non-Stellar chains) | A written summary of the loaded events by the backend AI analyst, or a statistical summary labelled as such when no AI is configured. Download as PDF or DOCX. |
 | Publish and verify | `/verify-report` | "Publish on Stellar" records an exported report file's sha256 in the report registry, signed with Freighter. The verify page hashes a file (PDF, DOCX, Markdown or JSON) in the browser (it is never uploaded) and shows whether it is an authentic, unmodified BlocRA report, who published it and when. |
@@ -54,16 +55,20 @@ This repository is the browser app. It works with:
                            ▼              │     Freighter
                   ┌─────────────────┐     │    (Stellar wallet)
                   │ blocra-backend  │     │
-                  │ stats, AI, auth │     │ JSON-RPC from the browser
-                  └───┬─────────┬───┘     │
-                      │         │         ▼
-                Horizon /   AI provider   Soroban RPC (contract events,
-                Starknet RPC              report registry), EVM, Starknet
-                                          and Solana RPCs
+                  │ Stellar ledger  │     │ JSON-RPC from the browser
+                  │ collector, SQL, │     │
+                  │ reports, AI,    │     ▼
+                  │ auth            │   Soroban RPC (contract events,
+                  └───┬─────────┬───┘   report registry); EVM, Starknet
+                      │         │       and Solana RPCs for comparison
+                Horizon (every  AI provider
+                ledger); other  (gpt-oss)
+                chains' RPCs
 ```
 
-- **Backend:** network dashboard stats and their stored history, the SQL query service, the AI analyst
-  (chat, reports, SQL), Stellar wallet sign-in, saved queries and dashboards.
+- **Backend:** collects every Stellar ledger into its analytics store and serves the network dashboard
+  and its history, SQL, traction reports, the AI analyst, Stellar wallet sign-in, saved queries and
+  dashboards.
 - **Directly from the browser:** contract events and the report registry are read from public RPCs.
   Every endpoint in `src/config/chains.ts` was checked for a live, current head block and a browser CORS preflight
   in [blocra-research](https://github.com/Blocra-HQ/blocra-research).
