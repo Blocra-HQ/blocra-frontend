@@ -79,10 +79,12 @@ RPCs from the browser.
 |-------|-------------|--------------|
 | `blocks` | stored block or ledger | `chain`, `block_number`, `timestamp` (unix s), `transaction_count`, `successful_txs`, `failed_txs`, `unique_senders`, `operation_count`, `total_fees`, `fee_unit`, `gas_used` |
 | `transactions` | transaction (Stellar) | `chain`, `block_number`, `timestamp`, `hash`, `sender`, `fee`, `operation_count`, `successful` (0/1) |
-| `operations` | operation (Stellar) | `chain`, `block_number`, `timestamp`, `tx_hash`, `type`, `source` |
+| `operations` | operation (Stellar) | `chain`, `block_number`, `timestamp`, `id`, `tx_hash`, `type`, `source` |
 
 - **SQL:** SQLite, read-only (`SELECT` or `WITH`), up to 1000 rows per query; results say when they
-  were truncated. Group by time with `strftime('%H:%M', timestamp, 'unixepoch')`.
+  were truncated. Group by time with `strftime('%H:%M', timestamp, 'unixepoch')` (UTC).
+  `blocks.operation_count` counts operations of successful transactions only; the `operations` table
+  holds every operation, including those of failed transactions.
 - **Editor:** the sidebar lists tables, columns and how much data is stored per chain, plus sample
   queries. Results export to CSV (RFC 4180 quoting, UTF-8). "Generate SQL" asks the backend AI
   analyst (`POST /api/ai/sql`) and places the query in the editor for review.
