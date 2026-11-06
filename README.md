@@ -34,8 +34,9 @@ This repository is the browser app. It works with:
 |------|-------|--------------|
 | Dashboard | `/` | Live stats for the selected chain's latest ledger or block, from the backend: transactions, active users, gas (compute units on Solana, operations on Stellar), fees in the chain's fee token, success rate, and transaction, message or operation types. EVM chains also show transfers vs contract calls and block utilization. Figures the backend cannot read exactly show as "—" with a note. Charts start from the blocks the backend has stored (the last 60) and add new ones as they arrive; a line above them says what they cover. |
 | Contract Analysis | `/contract-events-eda` | Fetches a contract's events and activity: Soroban contracts through Stellar RPC `getEvents`, EVM contracts through logs, Starknet through `starknet_getEvents`. Shows event mix, users, transfer volume, top callers and timelines, with CSV/JSON/image export. Not yet available for Cosmos chains. |
-| Contract reports | in Contract Analysis | The backend AI analyst writes a report from the computed statistics; if no AI is configured, a statistical summary is used and labelled as such. Download as PDF. |
-| Publish and verify | `/verify-report` | "Publish on Stellar" records the downloaded PDF's sha256 in the report registry, signed with Freighter. The verify page hashes a file in the browser (it is never uploaded) and shows whether it is an authentic, unmodified BlocRA report, who published it and when. |
+| Reports | `/reports` | Verifiable Stellar traction report for a Soroban contract or an asset (see [Reports](#reports)). Stellar contracts in Contract Analysis link here. |
+| Event summary | in Contract Analysis (non-Stellar chains) | A written summary of the loaded events by the backend AI analyst, or a statistical summary labelled as such when no AI is configured. Download as PDF or DOCX. |
+| Publish and verify | `/verify-report` | "Publish on Stellar" records an exported report file's sha256 in the report registry, signed with Freighter. The verify page hashes a file (PDF, DOCX, Markdown or JSON) in the browser (it is never uploaded) and shows whether it is an authentic, unmodified BlocRA report, who published it and when. |
 | Query editor | `/query` | SQL over the backend's analytics store (stored Stellar ledgers, transactions and operations; sampled blocks of other chains), with schema and data coverage, sample queries, CSV export and natural-language-to-SQL from the AI analyst. |
 | Dashboard builder | `/builder` | Charts, tables and numbers from SQL queries, arranged on a canvas; saved to your account, exported as PNG or JSON, imported from JSON. |
 | Library | `/library` | Saved queries and dashboards. |
@@ -67,6 +68,34 @@ This repository is the browser app. It works with:
   Every endpoint in `src/config/chains.ts` was checked for a live, current head block and a browser CORS preflight
   in [blocra-research](https://github.com/Blocra-HQ/blocra-research).
 - **Freighter:** signs the sign-in challenge and report-registry transactions. Keys never leave the wallet.
+
+## Reports
+
+`/reports` produces a **Stellar traction report**: independent usage figures for a Soroban contract
+or a Stellar asset, for teams proving traction to grant reviewers and investors, issuers tracking
+holders and flows, and investors comparing projects. The backend computes every figure from the
+mainnet ledgers it has collected (`GET /api/reports/traction?subject=<C… | XLM | CODE:ISSUER>&days=7|30`);
+the page only formats them, and anything missing shows as "—".
+
+- **Pick a subject:** contract or asset, from the most active ones (`GET /api/reports/subjects`) or by
+  pasting an id; 7 or 30 days. Links of the form `/reports?subject=<id>&days=7` open a report directly.
+- **Document:** header (subject, network, UTC period), a partial-data notice when BlocRA's coverage
+  is shorter than the period, scorecard with change vs the previous period, key findings, daily
+  activity, retention and user quality (top-10 share, bot-like accounts, top accounts), contract
+  functions or asset snapshot (holders, supply, stellar.toml, SAC), ecosystem rank, coverage and
+  methodology, and a verification footer with the exported file's sha256 and registry status.
+- **Export:** Markdown, PDF (jsPDF) or the raw JSON, or **Print / Save as PDF** from the browser (app
+  chrome is hidden in print). Each file is built once and the same bytes are downloaded, hashed and
+  published.
+- **Publish:** records the last exported file's sha256 in the report registry with Freighter
+  (title `Traction report: <subject> <from>–<to>`, chain `stellar`); anyone with that exact file can
+  check it at `/verify-report`.
+- **AI summary (optional):** "Add AI summary" asks the backend AI analyst to summarise the figures; the
+  text is shown in a labelled box and included in exports only when added. If AI is unavailable the
+  report is unaffected.
+
+The Markdown export is a pure function (`reportToMarkdown` in `src/lib/tractionReport.ts`), tested
+against real backend responses: `npx tsx src/lib/tractionReport.test.ts`.
 
 ## Query editor and dashboards
 
@@ -153,9 +182,10 @@ variables. Any static host works: serve `dist/` with a fallback to `index.html` 
 ```
 src/
 ├── App.tsx                 routes
-├── pages/                  Index (dashboard), ContractEventsEDA, VerifyReport, QueryEditor,
+├── pages/                  Index (dashboard), ContractEventsEDA, Reports, VerifyReport, QueryEditor,
 │                           DashboardBuilder, LibraryPage, Settings, Profile, ...
-├── components/             layout, ai (chat), query, dashboard, data-explorer, ui (shadcn/ui)
+├── components/             layout, ai (chat), reports, query, dashboard, data-explorer, ui (shadcn/ui)
+├── lib/tractionReport*.ts  traction report formatting, Markdown and PDF export
 ├── config/
 │   ├── chains.ts           supported chains and verified RPCs (generated from blocra-research)
 │   └── api.ts              backend URL handling
@@ -187,8 +217,9 @@ Stellar stays first so it remains the default chain.
   the latest block each time it refreshes, so trends cover the blocks observed while the page is open.
 - **Soroban event window.** Public Stellar RPCs keep about 7 days of events, so Soroban contract analysis
   covers that window.
-- **DOCX export.** `services/DocumentService.ts` can build DOCX reports but no button uses it yet; reports
-  download as PDF.
+- **Traction report history.** Reports cover only the time since BlocRA's ledger collector started;
+  until a full period (and the one before it) is collected, reports say so and changes vs the previous
+  period show as "—".
 
 ## History
 
