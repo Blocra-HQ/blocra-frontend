@@ -107,3 +107,26 @@ export function mapRowsToWidget(rows: Row[], type: WidgetType): WidgetView {
   }
   return { ...view, labelColumn, valueColumn, points };
 }
+
+interface Box { position: { x: number; y: number }; size: { width: number; height: number } }
+
+/**
+ * Top-left position for a new widget of `size` that doesn't overlap the
+ * existing ones: left to right, then top to bottom, in 20px steps.
+ */
+export function findFreeSpot(existing: Box[], size: Box['size'], canvasWidth: number, gap = 20): { x: number; y: number } {
+  const overlaps = (x: number, y: number) =>
+    existing.some((w) =>
+      x < w.position.x + w.size.width + gap &&
+      x + size.width + gap > w.position.x &&
+      y < w.position.y + w.size.height + gap &&
+      y + size.height + gap > w.position.y,
+    );
+  const maxX = Math.max(gap, canvasWidth - size.width - gap);
+  for (let y = gap; y < 20_000; y += gap) {
+    for (let x = gap; x <= maxX; x += gap) {
+      if (!overlaps(x, y)) return { x, y };
+    }
+  }
+  return { x: gap, y: gap };
+}

@@ -15,11 +15,11 @@ import { runQuery, SAMPLE_QUERIES } from '@/lib/queryEngine';
 import { parseDashboardFile, serializeDashboard } from '@/lib/dashboardFile';
 import { downloadText } from '@/lib/csv';
 import { exportElementAsPng, exportFileName } from '@/lib/exportImage';
-import { mapRowsToWidget, humanize, type Row, type WidgetType, WIDGET_TYPES } from '@/lib/widgetData';
+import { mapRowsToWidget, humanize, findFreeSpot, type Row, type WidgetType, WIDGET_TYPES } from '@/lib/widgetData';
 import { HANDOFF_KEY, parseHandoff } from '@/lib/contractDashboard';
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
 import {
   Plus,
@@ -301,7 +301,8 @@ const DashboardBuilder = (): JSX.Element => {
       title: newWidget.title.trim(),
       query: newWidget.query.trim(),
       status: 'idle',
-      position: { x: 20, y: 20 + dashboard.widgets.length * 40 },
+      // Next free spot on the canvas, so widgets don't stack on each other.
+      position: findFreeSpot(dashboard.widgets, { width: 420, height: 300 }, gridRef.current?.clientWidth ?? 1200),
       size: { width: 420, height: 300 },
       expanded: false,
     };
@@ -523,30 +524,44 @@ const DashboardBuilder = (): JSX.Element => {
             </LineChart>
           </ResponsiveContainer>
         );
-      case 'pie':
+      case 'pie': {
+        // Ten largest slices; the rest are summed as "Other" so totals stay right.
+        const sorted = [...view.points].sort((a, b) => b.value - a.value);
+        const slices = sorted.length > 10
+          ? [...sorted.slice(0, 9), { label: 'Other', value: sorted.slice(9).reduce((t, p) => t + p.value, 0) }]
+          : sorted;
         return (
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
-                data={view.points.slice(0, 10)}
+                data={slices}
                 dataKey="value"
                 nameKey="label"
-                cx="50%"
+                cx="35%"
                 cy="50%"
-                outerRadius="70%"
-                label={({ name, percent }) => `${String(name).slice(0, 14)} ${(percent * 100).toFixed(0)}%`}
-                labelLine={false}
+                outerRadius="75%"
                 stroke="hsl(var(--background))"
                 strokeWidth={2}
               >
-                {view.points.slice(0, 10).map((_, i) => (
+                {slices.map((_, i) => (
                   <Cell key={i} fill={`hsl(${(i * 36) % 360}, 70%, 50%)`} />
                 ))}
               </Pie>
               <Tooltip contentStyle={tooltipStyle} />
+              <Legend
+                layout="vertical"
+                align="right"
+                verticalAlign="middle"
+                wrapperStyle={{ fontSize: 11, maxWidth: '45%' }}
+                formatter={(value: string, entry: any) => {
+                  const total = slices.reduce((t, p) => t + p.value, 0) || 1;
+                  return `${String(value).slice(0, 22)} ${((entry?.payload?.value ?? 0) / total * 100).toFixed(0)}%`;
+                }}
+              />
             </PieChart>
           </ResponsiveContainer>
         );
+      }
       case 'table':
         return (
           <div className="overflow-auto h-full p-2">
@@ -747,9 +762,9 @@ const DashboardBuilder = (): JSX.Element => {
           >
             <CardHeader className="p-3 border-b flex flex-row items-center justify-between space-y-0 gap-2">
               <div className="flex items-center gap-2 flex-1 min-w-0">
-                {!previewMode && <GripVertical className="w-4 h-4 text-muted-foreground cursor-grab shrink-0" />}
+                {!previewMode && <GripVertical data-html2canvas-ignore className="w-4 h-4 text-muted-foreground cursor-grab shrink-0" />}
                 {getVisualizationIcon(widget.type)}
-                <CardTitle className="text-sm font-medium truncate" title={widget.query}>{widget.title}</CardTitle>
+                <CardTitle className="text-sm font-medium truncate leading-normal py-0.5" title={widget.query}>{widget.title}</CardTitle>
                 {widget.snapshot && (
                   <Badge variant="secondary" className="text-[10px] shrink-0" title="Fixed figures from Contract Analysis; they do not refresh">
                     Snapshot
@@ -757,7 +772,8 @@ const DashboardBuilder = (): JSX.Element => {
                 )}
               </div>
               {!previewMode && (
-                <div className="flex items-center gap-1">
+                // Editing controls are left out of PNG exports.
+                <div className="flex items-center gap-1" data-html2canvas-ignore>
                   <Select value={widget.type} onValueChange={(v) => updateWidget(widget.id, { type: v as WidgetType })}>
                     <SelectTrigger className="h-7 w-[92px] text-xs" onMouseDown={(e) => e.stopPropagation()}>
                       <SelectValue />
@@ -802,6 +818,7 @@ const DashboardBuilder = (): JSX.Element => {
             </CardContent>
             {!previewMode && (
               <div
+                data-html2canvas-ignore
                 className="resize-handle absolute bottom-0 right-0 w-4 h-4 cursor-se-resize"
                 style={{ background: 'linear-gradient(135deg, transparent 50%, currentColor 50%)' }}
               />
