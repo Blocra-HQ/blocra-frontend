@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Download, BarChart3, PieChart, TrendingUp, FileText, ExternalLink, Bot, Activity, Users, Zap, Camera, Plus, X, Bell, Network, ShieldCheck } from 'lucide-react';
 import { useStellarWallet } from '@/contexts/StellarWalletContext';
 import { publishReport } from '@/integrations/report-registry';
+import { buildApiUrl, isBackendConfigured } from '@/config/api';
 import { EXPLORER_URL } from '@/integrations/stellar-network';
 import { useNavigate } from 'react-router-dom';
 import { AIAnalysisService } from '@/services/AIAnalysisService';
@@ -576,11 +577,10 @@ export default function ContractEventsEDA() {
         });
 
         // Save to backend if user is logged in
-        const backendUrl = import.meta.env.VITE_BACKEND_URL;
-        const token = localStorage.getItem('token');
-        if (backendUrl && token) {
+                const token = localStorage.getItem('token');
+        if (isBackendConfigured() && token) {
           try {
-            await fetch(`${backendUrl}/api/contracts/save-query`, {
+            await fetch(buildApiUrl('/contracts/save-query'), {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
               body: JSON.stringify({
@@ -893,11 +893,10 @@ Tip: Verify the contract address on ${currentChain.explorer.replace('https://', 
     };
 
     // Save dashboard config to backend
-    const backendUrl = import.meta.env.VITE_BACKEND_URL;
-    const token = localStorage.getItem('token');
-    if (backendUrl && token) {
+        const token = localStorage.getItem('token');
+    if (isBackendConfigured() && token) {
       try {
-        await fetch(`${backendUrl}/api/dashboards`, {
+        await fetch(buildApiUrl('/dashboards'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify({

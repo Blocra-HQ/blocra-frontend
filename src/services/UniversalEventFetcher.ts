@@ -4,6 +4,7 @@
  */
 
 import { ChainConfig } from '@/config/chains';
+import { buildApiUrl } from '@/config/api';
 import { alchemyTransactionFetcher } from './AlchemyTransactionFetcher';
 
 export interface UniversalEvent {
@@ -340,7 +341,7 @@ export class UniversalEventFetcher {
           
           try {
             // Fetch transactions via backend API (INSTANT - like Dune!)
-            const response = await fetch('/api/contract/transactions', {
+            const response = await fetch(buildApiUrl('/contract/transactions'), {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({

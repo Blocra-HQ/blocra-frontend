@@ -1,5 +1,6 @@
 import { AlertService } from './AlertService';
 import { DatabaseService } from './DatabaseService';
+import { buildApiUrl } from '@/config/api';
 
 export class RealtimeService {
   private static eventSource: EventSource | null = null;
@@ -10,7 +11,7 @@ export class RealtimeService {
     if (this.isConnected) return;
 
     // Simulate WebSocket connection with EventSource
-    this.eventSource = new EventSource('/api/realtime');
+    this.eventSource = new EventSource(buildApiUrl('/realtime'));
     
     this.eventSource.onopen = () => {
       this.isConnected = true;

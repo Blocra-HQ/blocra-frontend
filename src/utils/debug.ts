@@ -1,4 +1,5 @@
 import { STARKNET_RPCS } from "@/config/chains";
+import { buildApiUrl } from "@/config/api";
 
 /**
  * Debug utilities for troubleshooting mobile and auth issues
@@ -76,7 +77,7 @@ export const debugBackendConnection = async () => {
   
   try {
     const startTime = Date.now();
-    const response = await fetch(`${backendUrl}/api/health`, {
+    const response = await fetch(buildApiUrl("/health"), {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
     });
