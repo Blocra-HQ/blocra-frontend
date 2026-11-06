@@ -71,6 +71,7 @@ export interface TractionReport {
     ledger_to: number | null;
     completeness_pct: number | null;
     days_covered: number | null;
+    hours_covered?: number | null;
     expected_ledgers: number | null;
     full_period: boolean;
   };
@@ -205,12 +206,19 @@ export const reportTitle = (r: TractionReport) =>
 export const reportFileBase = (r: TractionReport) =>
   `blocra-traction-${r.subject.id.replace(/[^A-Za-z0-9]+/g, "-").slice(0, 40)}-${r.period.from}_${r.period.to}`;
 
+/** "5.2 hours" under a day, otherwise "3.4 days". */
+export function heldTime(c: TractionReport["coverage"]): string {
+  const days = c.days_covered ?? 0;
+  if (days < 1) return `${fmtNum(c.hours_covered ?? days * 24, 1)} hours`;
+  return `${fmtNum(days, 1)} days`;
+}
+
 export function partialDataNote(r: TractionReport): string | null {
   if (r.coverage.full_period) return null;
   const c = r.coverage;
   return (
-    `Partial data: BlocRA holds ${fmtNum(c.days_covered, 1)} of the ${r.period.days} days in this period ` +
-    `(${fmtPct(c.completeness_pct)} of the expected ledgers), collected since ${c.collection_started ?? DASH}. ` +
+    `Partial data: BlocRA holds ${heldTime(c)} of the ${r.period.days}-day period ` +
+    `(${fmtPct(c.completeness_pct)} of ledgers in that span), collected since ${c.collection_started ?? DASH}. ` +
     `All figures cover only the collected time` +
     (r.period.has_previous ? "." : ", and there is no previous period to compare with.")
   );
@@ -386,7 +394,7 @@ export function reportToMarkdown(r: TractionReport, extras: ReportExtras = {}): 
         ["Ledgers collected", fmtInt(c.ledgers_collected)],
         ["Expected ledgers in period", fmtInt(c.expected_ledgers)],
         ["Completeness", fmtPct(c.completeness_pct)],
-        ["Days covered", `${fmtNum(c.days_covered, 1)} of ${r.period.days}`],
+        ["Time covered", `${heldTime(c)} of ${r.period.days} days`],
         ["Collection started", c.collection_started ?? DASH],
       ],
     ),

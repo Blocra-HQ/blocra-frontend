@@ -13,6 +13,7 @@ import {
   fmtNum,
   fmtPct,
   fmtUtc,
+  heldTime,
   partialDataNote,
   qualityRows,
   scorecard,
@@ -352,7 +353,7 @@ export function TractionReportDocument({
             ["Ledgers collected", fmtInt(c.ledgers_collected)],
             ["Expected ledgers in period", fmtInt(c.expected_ledgers)],
             ["Completeness", fmtPct(c.completeness_pct)],
-            ["Days covered", `${fmtNum(c.days_covered, 1)} of ${r.period.days}`],
+            ["Time covered", `${heldTime(c)} of ${r.period.days} days`],
             ["Collection started", c.collection_started ?? DASH],
           ]}
         />
