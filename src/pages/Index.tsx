@@ -1,4 +1,4 @@
-import { useState, useEffect, type ReactNode } from "react";
+import { useState, useEffect, useMemo, type ReactNode } from "react";
 import { Header } from "@/components/layout/Header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AIChatBox } from "@/components/ai/AIChatBox";
@@ -13,6 +13,7 @@ import {
   type BlockchainStatsResponse,
   type HistoryPoint,
   DASH,
+  HISTORY_LIMIT,
   chainLabels,
   feeDistribution,
   feeUnit as statsFeeUnit,
@@ -21,7 +22,10 @@ import {
   formatPercent,
   formatSeconds,
   formatWorkChartValue,
-  historyPoint,
+  historyCoverage,
+  historyPoints,
+  mergeHistory,
+  parseHistory,
   statusSlices,
   summarize,
   txKindRows,
@@ -51,7 +55,10 @@ const Index = () => {
   const [response, setResponse] = useState<BlockchainStatsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [historicalData, setHistoricalData] = useState<HistoryPoint[]>([]);
+  /** Stats responses behind the charts, ascending by block number. */
+  const [history, setHistory] = useState<BlockchainStatsResponse[]>([]);
+  /** Whether the history came from the backend store (false: only blocks seen on this page). */
+  const [historyStored, setHistoryStored] = useState(false);
   const [previousChain, setPreviousChain] = useState(currentChain.name);
   const [showChainSwitch, setShowChainSwitch] = useState(false);
 
@@ -68,8 +75,32 @@ const Index = () => {
   useEffect(() => {
     let cancelled = false;
     const chain = currentChain;
+    // Stellar ledgers close every ~6 s; other chains' stats are slower to read.
+    const pollMs = chain.type === 'stellar' ? 10_000 : 30_000;
+    let interval: ReturnType<typeof setInterval> | undefined;
     setResponse(null);
-    setHistoricalData([]);
+    setHistory([]);
+    setHistoryStored(false);
+
+    // Seed the charts from the backend's stored blocks; without them the
+    // charts build up from live polls, as before.
+    const fetchHistory = async () => {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 15000);
+      try {
+        const res = await fetch(buildApiUrl(`dashboards/history?chain=${chain.id}&limit=${HISTORY_LIMIT}`), { signal: controller.signal });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const points = parseHistory(await res.json());
+        if (!points) throw new Error('Invalid history response');
+        if (cancelled) return;
+        setHistoryStored(true);
+        setHistory(prev => mergeHistory(prev, points));
+      } catch (err) {
+        if (!cancelled) logger.warn(`No stored history for ${chain.id}; charts start from live blocks`, err);
+      } finally {
+        clearTimeout(timer);
+      }
+    };
 
     const fetchStats = async () => {
       // The backend falls back through several RPCs; don't wait forever on a stalled one.
@@ -89,17 +120,13 @@ const Index = () => {
         if (cancelled) return;
 
         setResponse(data);
-        setHistoricalData(prev => {
-          if (prev.some(p => p.block_number === data.block_number)) return prev;
-          const point = historyPoint(data, chain.type, prev[prev.length - 1]);
-          return [...prev, point].slice(-20);
-        });
+        setHistory(prev => mergeHistory(prev, [data]));
       } catch (err) {
         if (cancelled) return;
         logger.error('Failed to fetch blockchain stats', err);
         const timedOut = err instanceof DOMException && err.name === 'AbortError';
         setError(timedOut
-          ? `${chain.name} stats took longer than 60 seconds; its RPC endpoints may be slow. Retrying in 30 seconds.`
+          ? `${chain.name} stats took longer than 60 seconds; its RPC endpoints may be slow. Retrying in ${pollMs / 1000} seconds.`
           : err instanceof Error ? err.message : 'Failed to fetch stats');
       } finally {
         clearTimeout(timer);
@@ -107,13 +134,19 @@ const Index = () => {
       }
     };
 
-    fetchStats();
-    const interval = setInterval(fetchStats, 30000);
+    fetchHistory().finally(() => {
+      if (cancelled) return;
+      void fetchStats();
+      interval = setInterval(fetchStats, pollMs);
+    });
     return () => {
       cancelled = true;
-      clearInterval(interval);
+      if (interval) clearInterval(interval);
     };
   }, [currentChain]);
+
+  const historicalData: HistoryPoint[] = useMemo(() => historyPoints(history, currentChain.type), [history, currentChain.type]);
+  const coverage = historyCoverage(history, currentChain.type, historyStored);
 
   const stats: BlockchainStats | null = response?.stats ?? null;
   const type = currentChain.type;
@@ -258,6 +291,13 @@ const Index = () => {
                   {summary.notes.map(note => <p key={note}>{note}</p>)}
                 </div>
               </div>
+            )}
+
+            {coverage && (
+              <p className="text-xs text-muted-foreground px-1" title="Blocks the charts below are drawn from">
+                <BarChart3 className="inline h-3.5 w-3.5 mr-1 -mt-0.5" />
+                {coverage}
+              </p>
             )}
 
             {/* Primary Charts */}

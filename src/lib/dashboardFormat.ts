@@ -407,3 +407,64 @@ export function summarize(data: BlockchainStatsResponse, chain: Pick<ChainConfig
     unit,
   };
 }
+
+/** Points the landing dashboard keeps for its charts. */
+export const HISTORY_LIMIT = 60;
+
+/** The stats responses in GET /api/dashboards/history, or null if the body is not one. */
+export function parseHistory(body: unknown): BlockchainStatsResponse[] | null {
+  const b = body as { success?: boolean; points?: unknown } | null;
+  if (!b || b.success === false || !Array.isArray(b.points)) return null;
+  return b.points.filter(
+    (p): p is BlockchainStatsResponse =>
+      !!p && typeof p === 'object' &&
+      typeof (p as BlockchainStatsResponse).block_number === 'number' &&
+      typeof (p as BlockchainStatsResponse).timestamp === 'number' &&
+      !!(p as BlockchainStatsResponse).stats,
+  );
+}
+
+/**
+ * Adds responses to the stored ones: one per block number (the newer response
+ * wins), ascending by block number, the last `limit` kept.
+ */
+export function mergeHistory(
+  prev: BlockchainStatsResponse[],
+  incoming: BlockchainStatsResponse[],
+  limit = HISTORY_LIMIT,
+): BlockchainStatsResponse[] {
+  const byBlock = new Map<number, BlockchainStatsResponse>();
+  for (const r of prev) byBlock.set(r.block_number, r);
+  for (const r of incoming) byBlock.set(r.block_number, r);
+  return [...byBlock.values()].sort((a, b) => a.block_number - b.block_number).slice(-limit);
+}
+
+/** Chart points for ascending responses; each point's block time uses the one before it. */
+export function historyPoints(responses: BlockchainStatsResponse[], type: ChainKind): HistoryPoint[] {
+  const points: HistoryPoint[] = [];
+  for (const r of responses) points.push(historyPoint(r, type, points[points.length - 1]));
+  return points;
+}
+
+function shortTime(unix: number): string {
+  return new Date(unix * 1000).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+}
+
+/**
+ * What the history charts cover, e.g. "60 ledgers stored · 05:51–05:57" or
+ * "History: 12 blocks sampled since 05:12". `stored` is false when the
+ * history endpoint was unavailable and only blocks seen on this page are shown.
+ */
+export function historyCoverage(responses: BlockchainStatsResponse[], type: ChainKind, stored: boolean): string {
+  const n = responses.length;
+  if (n === 0) return '';
+  const { blockWord } = chainLabels(type);
+  const noun = `${blockWord}${n === 1 ? '' : 's'}`;
+  const first = responses[0].timestamp;
+  const last = responses[n - 1].timestamp;
+  const sameDay = new Date(first * 1000).toDateString() === new Date(last * 1000).toDateString();
+  const since = sameDay ? shortTime(first) : `${new Date(first * 1000).toLocaleDateString()} ${shortTime(first)}`;
+  if (!stored) return `History unavailable: showing ${n} ${noun} observed since ${since}`;
+  if (type === 'stellar') return `${n} ${noun} stored · ${since}–${shortTime(last)}`;
+  return `History: ${n} ${noun} sampled since ${since}`;
+}
