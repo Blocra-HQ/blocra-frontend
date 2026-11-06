@@ -14,6 +14,7 @@ import {
   fmtPct,
   fmtUtc,
   partialDataNote,
+  qualityRows,
   scorecard,
   shortId,
 } from "@/lib/tractionReport";
@@ -225,17 +226,7 @@ export function TractionReportDocument({
       <Section n={4} title="Retention & user quality">
         <div className="grid sm:grid-cols-2 gap-6">
           <KV
-            rows={[
-              [
-                "Returning accounts",
-                r.retention.returning_pct == null
-                  ? `${DASH} (needs a previous period)`
-                  : `${fmtPct(r.retention.returning_pct)} (${fmtInt(r.retention.returning_accounts)} of ${fmtInt(r.retention.previous_active)})`,
-              ],
-              ["Top-10 accounts' share", fmtPct(q.top10_share_pct)],
-              [`Bot-like accounts (≥ ${fmtInt(q.bot_threshold_calls_per_day)}/day)`, fmtInt(q.bot_like_accounts)],
-              ["Bot-like share of activity", fmtPct(q.bot_like_share_pct)],
-            ]}
+            rows={qualityRows(r)}
           />
           {q.top_accounts.length > 0 && (
             <table className="w-full text-sm">

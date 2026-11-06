@@ -40,6 +40,9 @@ export interface TractionReport {
     bot_like_share_pct: number | null;
     bot_threshold_calls_per_day: number;
     top_accounts: { account: string; calls: number; share_pct: number; bot_like: boolean }[];
+    /** Assets only: payments an account sent to itself (arbitrage loops), excluded from volume. */
+    self_payments?: number | null;
+    self_payment_share_pct?: number | null;
   };
   functions: { function: string; calls: number; failed: number; failed_pct: number }[];
   ecosystem: {
@@ -133,6 +136,30 @@ export const contractUrl = (network: string, id: string) => `${explorerBase(netw
 
 /** Label of the activity measure: contract calls or asset payments. */
 export const activityLabel = (r: TractionReport) => (r.subject.kind === "contract" ? "Contract calls" : "Payments");
+/** Lower-case noun for one unit of activity: "calls" or "payments". */
+export const activityNoun = (r: TractionReport) => (r.subject.kind === "contract" ? "calls" : "payments");
+
+/** Rows of the retention & quality table, shared by the page, Markdown and PDF. */
+export function qualityRows(r: TractionReport, opts: { dash?: string; ge?: string } = {}): [string, string][] {
+  const dash = opts.dash ?? DASH;
+  const ge = opts.ge ?? "≥";
+  const q = r.quality;
+  const rows: [string, string][] = [
+    [
+      "Returning accounts (active in previous period too)",
+      r.retention.returning_pct == null
+        ? `${dash} (needs a previous period)`
+        : `${fmtPct(r.retention.returning_pct)} (${fmtInt(r.retention.returning_accounts)} of ${fmtInt(r.retention.previous_active)})`,
+    ],
+    ["Top-10 accounts' share of activity", fmtPct(q.top10_share_pct)],
+    [`Bot-like accounts (${ge} ${fmtInt(q.bot_threshold_calls_per_day)} ${activityNoun(r)} on one day)`, fmtInt(q.bot_like_accounts)],
+    ["Bot-like share of activity", fmtPct(q.bot_like_share_pct)],
+  ];
+  if (r.subject.kind === "asset" && q.self_payment_share_pct != null) {
+    rows.push(["Self-payments (to own account, excluded from volume)", `${fmtPct(q.self_payment_share_pct)} (${fmtInt(q.self_payments ?? 0)})`]);
+  }
+  return rows;
+}
 
 export interface ScorecardRow {
   label: string;
@@ -273,14 +300,7 @@ export function reportToMarkdown(r: TractionReport, extras: ReportExtras = {}): 
   push(
     table(
       ["Measure", "Value"],
-      [
-        ["Returning accounts (active in previous period too)", r.retention.returning_pct == null
-          ? `${DASH} (needs a previous period)`
-          : `${fmtPct(r.retention.returning_pct)} (${fmtInt(r.retention.returning_accounts)} of ${fmtInt(r.retention.previous_active)})`],
-        ["Top-10 accounts' share of activity", fmtPct(q.top10_share_pct)],
-        [`Bot-like accounts (≥ ${fmtInt(q.bot_threshold_calls_per_day)} calls on one day)`, fmtInt(q.bot_like_accounts)],
-        ["Bot-like share of activity", fmtPct(q.bot_like_share_pct)],
-      ],
+      qualityRows(r),
     ),
     "",
   );

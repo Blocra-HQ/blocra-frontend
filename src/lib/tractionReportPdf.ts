@@ -11,6 +11,7 @@ import {
   fmtPct,
   fmtUtc,
   partialDataNote,
+  qualityRows,
   scorecard,
   shortId,
 } from "@/lib/tractionReport";
@@ -204,17 +205,7 @@ export function reportToPdf(r: TractionReport, extras: ReportExtras = {}, logo: 
   heading("Retention & user quality");
   table(
     ["Measure", "Value"],
-    [
-      [
-        "Returning accounts",
-        r.retention.returning_pct == null
-          ? "- (needs a previous period)"
-          : `${fmtPct(r.retention.returning_pct)} (${fmtInt(r.retention.returning_accounts)} of ${fmtInt(r.retention.previous_active)})`,
-      ],
-      ["Top-10 accounts' share of activity", fmtPct(q.top10_share_pct)],
-      [`Bot-like accounts (>= ${fmtInt(q.bot_threshold_calls_per_day)} calls on one day)`, fmtInt(q.bot_like_accounts)],
-      ["Bot-like share of activity", fmtPct(q.bot_like_share_pct)],
-    ],
+    qualityRows(r, { dash: "-", ge: ">=" }),
     [0.6, 0.4],
   );
   if (q.top_accounts.length) {
