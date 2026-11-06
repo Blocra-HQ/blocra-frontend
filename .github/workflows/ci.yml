@@ -24,6 +24,8 @@ jobs:
           node-version: "22"
           cache: "npm"
       - run: npm ci
+      - name: Type-check
+        run: npx tsc -p tsconfig.app.json --noEmit
       # The production build requires VITE_BACKEND_URL (src/config/api.ts).
       - run: npm run build
         env:
