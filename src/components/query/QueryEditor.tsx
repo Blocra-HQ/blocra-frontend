@@ -9,6 +9,9 @@ import {
   Plus, Clock, Eye, Sparkles, Database, AlertCircle, ChevronDown,
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useNavigate } from 'react-router-dom';
 import { ChartBuilder } from './ChartBuilder';
 import { API_CONFIG } from '@/config/api';
@@ -224,6 +227,8 @@ export function QueryEditor({ onQueryComplete }: QueryEditorProps) {
   const [sqlJustGenerated, setSqlJustGenerated] = useState(false);
   const [schema, setSchema] = useState<QuerySchema | null>(null);
   const [schemaError, setSchemaError] = useState<string | null>(null);
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [saveName, setSaveName] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Load a query handed over from the library, and the run history.
@@ -376,16 +381,21 @@ export function QueryEditor({ onQueryComplete }: QueryEditorProps) {
   }, [queryHistory, historyIndex]);
 
   const saveQuery = () => {
-    const name = window.prompt('Enter a name for this query:', `Query ${new Date().toLocaleDateString()}`);
-    if (!name || !name.trim()) return;
-    const isPublic = window.confirm('Make this query public? (Cancel for private)');
+    setSaveName(`Query ${new Date().toLocaleDateString()}`);
+    setSaveOpen(true);
+  };
+
+  const confirmSave = () => {
+    const name = saveName;
+    if (!name.trim()) return;
+    setSaveOpen(false);
 
     const entry: SavedQueryEntry & Record<string, unknown> = {
       id: `query-${Date.now()}`,
       name: name.trim(),
       query,
       results: results.slice(0, 100),
-      isPublic,
+      isPublic: false,
       createdAt: new Date().toISOString(),
       lastRun: runInfo ? runInfo.at.toISOString() : undefined,
       tags: ['sql'],
@@ -760,6 +770,31 @@ export function QueryEditor({ onQueryComplete }: QueryEditorProps) {
           </Card>
         </div>
       </div>
+
+      <Dialog open={saveOpen} onOpenChange={setSaveOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Save query</DialogTitle>
+            <DialogDescription>Saved in this browser; saved queries appear in the Library and in the Dashboard Builder.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="save-query-name">Name</Label>
+              <Input
+                id="save-query-name"
+                value={saveName}
+                onChange={(e) => setSaveName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') confirmSave(); }}
+                autoFocus
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSaveOpen(false)}>Cancel</Button>
+            <Button onClick={confirmSave} disabled={!saveName.trim()}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
