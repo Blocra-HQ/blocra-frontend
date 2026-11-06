@@ -10,8 +10,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
 import { api } from '@/lib/api';
-import { STARKNET_RPCS } from '@/config/chains';
-import { runQuery } from '@/lib/queryEngine';
+import { API_CONFIG } from '@/config/api';
+import { runQuery, SAMPLE_QUERIES } from '@/lib/queryEngine';
+import { parseDashboardFile, serializeDashboard } from '@/lib/dashboardFile';
+import { downloadText } from '@/lib/csv';
+import { exportElementAsPng, exportFileName } from '@/lib/exportImage';
 import { mapRowsToWidget, humanize, type Row, type WidgetType, WIDGET_TYPES } from '@/lib/widgetData';
 import { HANDOFF_KEY, parseHandoff } from '@/lib/contractDashboard';
 import {
@@ -35,7 +38,18 @@ import {
   Loader2,
   AlertCircle,
   FolderOpen,
+  Download,
+  Upload,
+  Image as ImageIcon,
+  FileJson,
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
   Select,
   SelectContent,
@@ -172,6 +186,8 @@ const DashboardBuilder = (): JSX.Element => {
   const [newWidget, setNewWidget] = useState({ type: 'bar' as WidgetType, title: '', query: '' });
 
   const gridRef = useRef<HTMLDivElement>(null);
+  const importRef = useRef<HTMLInputElement>(null);
+  const [exporting, setExporting] = useState(false);
   /** The ?query the hand-off/load effect last handled (StrictMode runs effects twice). */
   const handledSearch = useRef<string | null>(null);
   const dashboardIdRef = useRef<number | null>(null);
@@ -186,7 +202,7 @@ const DashboardBuilder = (): JSX.Element => {
     if (!widget.query) return;
     updateWidget(widget.id, { status: 'running', error: undefined });
     try {
-      const rows = await runQuery(widget.query, STARKNET_RPCS);
+      const rows = await runQuery(widget.query, { apiUrl: API_CONFIG.apiUrl });
       updateWidget(widget.id, { status: 'done', rows });
     } catch (e: any) {
       updateWidget(widget.id, { status: 'error', rows: undefined, error: e?.message || 'Query failed' });
@@ -384,6 +400,63 @@ const DashboardBuilder = (): JSX.Element => {
     }
   };
 
+  /** Height that holds every widget, so the canvas (and its PNG) shows them all. */
+  const canvasHeight = dashboard.widgets.reduce(
+    (h, w) => Math.max(h, w.position.y + w.size.height + 32),
+    0,
+  );
+  const canvasWidth = dashboard.widgets.reduce(
+    (wd, w) => Math.max(wd, w.position.x + w.size.width + 32),
+    0,
+  );
+
+  const exportPng = async () => {
+    const el = gridRef.current;
+    if (!el || dashboard.widgets.length === 0) return;
+    setExporting(true);
+    setSelectedWidget(null);
+    try {
+      await exportElementAsPng(el, exportFileName(dashboard.name, 'png'), {
+        width: Math.max(el.clientWidth, canvasWidth),
+        height: Math.max(el.clientHeight, canvasHeight),
+      });
+    } catch (e: any) {
+      toast({ title: 'Image export failed', description: e?.message || 'Could not render the dashboard', variant: 'destructive' });
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const exportJson = () => {
+    const file = serializeDashboard(dashboard);
+    downloadText(JSON.stringify(file, null, 2), exportFileName(dashboard.name, 'json'), 'application/json');
+  };
+
+  const importJson = async (file: File) => {
+    try {
+      const parsed = parseDashboardFile(await file.text());
+      const widgets: BuilderWidget[] = parsed.widgets.map((w, i) => ({
+        id: `${newId()}-${i}`,
+        type: w.type,
+        title: w.title,
+        query: w.query,
+        snapshot: !w.query,
+        rows: w.query ? undefined : w.rows,
+        status: w.query ? 'idle' : 'done',
+        position: w.position,
+        size: w.size,
+        expanded: false,
+      }));
+      setDashboard({ id: null, name: parsed.name, description: parsed.description, widgets });
+      setPreviewMode(false);
+      setNotice(`Imported "${parsed.name}" from ${file.name}. It is not saved to your account until you save it.`);
+      if (searchParams.toString()) navigate('/builder', { replace: true });
+      widgets.filter((w) => w.query).forEach((w) => { void runWidget(w); });
+    } catch (e: any) {
+      toast({ title: 'Import failed', description: e?.message || 'Could not read the dashboard file', variant: 'destructive' });
+    }
+  };
+
   const renderVisualization = (widget: BuilderWidget) => {
     if (widget.status === 'running') {
       return (
@@ -576,6 +649,37 @@ const DashboardBuilder = (): JSX.Element => {
             )}
           </div>
           <div className="flex items-center gap-2">
+            <input
+              ref={importRef}
+              type="file"
+              accept="application/json,.json"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                e.target.value = '';
+                if (f) void importJson(f);
+              }}
+            />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" disabled={exporting}>
+                  {exporting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+                  Export
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem disabled={dashboard.widgets.length === 0} onSelect={() => { void exportPng(); }}>
+                  <ImageIcon className="w-4 h-4 mr-2" /> PNG image
+                </DropdownMenuItem>
+                <DropdownMenuItem disabled={dashboard.widgets.length === 0} onSelect={exportJson}>
+                  <FileJson className="w-4 h-4 mr-2" /> Dashboard JSON
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={() => importRef.current?.click()}>
+                  <Upload className="w-4 h-4 mr-2" /> Import JSON…
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button variant="outline" size="sm" onClick={() => setPreviewMode(!previewMode)}>
               {previewMode ? <Code className="w-4 h-4 mr-2" /> : <Eye className="w-4 h-4 mr-2" />}
               {previewMode ? 'Edit' : 'Preview'}
@@ -601,6 +705,7 @@ const DashboardBuilder = (): JSX.Element => {
       <div
         ref={gridRef}
         className="relative min-h-[calc(100vh-200px)] bg-muted/20 p-4"
+        style={{ minHeight: canvasHeight ? `max(calc(100vh - 200px), ${canvasHeight}px)` : undefined }}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
@@ -711,12 +816,32 @@ const DashboardBuilder = (): JSX.Element => {
           <DialogHeader>
             <DialogTitle>Add Visualization Widget</DialogTitle>
             <DialogDescription>
-              Pick a query saved in the Query Editor (or write one) and choose how to show it.
-              It runs with the same engine as the Query Editor: live Starknet blocks and transactions.
+              Pick a sample or a query saved in the Query Editor (or write one) and choose how to show it.
+              It runs on the backend's analytics store, like the Query Editor: stored Stellar ledgers,
+              transactions and operations, and blocks sampled from other chains.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Sample query</Label>
+              <Select
+                onValueChange={(title) => {
+                  const q = SAMPLE_QUERIES.find((s) => s.title === title);
+                  if (q) setNewWidget((w) => ({ ...w, query: q.sql, title: w.title || q.title, type: q.chart }));
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a sample query…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SAMPLE_QUERIES.map((q) => (
+                    <SelectItem key={q.title} value={q.title}>{q.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="space-y-2">
               <Label>Saved query</Label>
               {savedQueries.length === 0 ? (
@@ -747,14 +872,14 @@ const DashboardBuilder = (): JSX.Element => {
               <Textarea
                 id="widget-sql"
                 className="font-mono text-xs min-h-[90px]"
-                placeholder="SELECT block_number, transaction_count FROM blocks ORDER BY block_number DESC LIMIT 10"
+                placeholder="SELECT block_number, transaction_count FROM blocks WHERE chain = 'stellar' ORDER BY block_number DESC LIMIT 10"
                 value={newWidget.query}
                 onChange={(e) => setNewWidget({ ...newWidget, query: e.target.value })}
               />
               <p className="text-xs text-muted-foreground">
-                Tables: blocks (block_number, timestamp, transaction_count, gas_used, hash) and
-                transactions (transaction_hash, sender_address, max_fee, version, nonce, type).
-                The first text column labels the chart and the first numeric column is plotted.
+                SQLite over the tables blocks, transactions and operations (see the Query Editor for
+                columns); up to 1000 rows. The first text column labels the chart and the first
+                numeric column is plotted, in the order the query returns them.
               </p>
             </div>
 

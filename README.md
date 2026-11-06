@@ -32,12 +32,12 @@ This repository is the browser app. It works with:
 
 | Page | Route | What it does |
 |------|-------|--------------|
-| Dashboard | `/` | Live stats for the selected chain's latest ledger or block, from the backend: transactions, active users, gas (compute units on Solana, operations on Stellar), fees in the chain's fee token, success rate, and transaction, message or operation types. EVM chains also show transfers vs contract calls and block utilization. Figures the backend cannot read exactly show as "—" with a note. Charts build up as new blocks arrive. |
+| Dashboard | `/` | Live stats for the selected chain's latest ledger or block, from the backend: transactions, active users, gas (compute units on Solana, operations on Stellar), fees in the chain's fee token, success rate, and transaction, message or operation types. EVM chains also show transfers vs contract calls and block utilization. Figures the backend cannot read exactly show as "—" with a note. Charts start from the blocks the backend has stored (the last 60) and add new ones as they arrive; a line above them says what they cover. |
 | Contract Analysis | `/contract-events-eda` | Fetches a contract's events and activity: Soroban contracts through Stellar RPC `getEvents`, EVM contracts through logs, Starknet through `starknet_getEvents`. Shows event mix, users, transfer volume, top callers and timelines, with CSV/JSON/image export. Not yet available for Cosmos chains. |
 | Contract reports | in Contract Analysis | The backend AI analyst writes a report from the computed statistics; if no AI is configured, a statistical summary is used and labelled as such. Download as PDF. |
 | Publish and verify | `/verify-report` | "Publish on Stellar" records the downloaded PDF's sha256 in the report registry, signed with Freighter. The verify page hashes a file in the browser (it is never uploaded) and shows whether it is an authentic, unmodified BlocRA report, who published it and when. |
-| Query editor | `/query` | SQL over blocks, transactions and contracts, with natural-language-to-SQL from the AI analyst. |
-| Dashboard builder | `/builder` | Compose charts and widgets into dashboards. |
+| Query editor | `/query` | SQL over the backend's analytics store (stored Stellar ledgers, transactions and operations; sampled blocks of other chains), with schema and data coverage, sample queries, CSV export and natural-language-to-SQL from the AI analyst. |
+| Dashboard builder | `/builder` | Charts, tables and numbers from SQL queries, arranged on a canvas; saved to your account, exported as PNG or JSON, imported from JSON. |
 | Library | `/library` | Saved queries and dashboards. |
 | AI analyst chat | floating button | Conversation with the backend AI, aware of the selected chain. |
 | Wallet sign-in | header | Connect Freighter and sign a one-time challenge (SEP-53) to get a session from the backend. |
@@ -61,12 +61,42 @@ This repository is the browser app. It works with:
                                           and Solana RPCs
 ```
 
-- **Backend:** network dashboard stats, the AI analyst (chat, reports, SQL), Stellar wallet sign-in and
-  saved queries.
+- **Backend:** network dashboard stats and their stored history, the SQL query service, the AI analyst
+  (chat, reports, SQL), Stellar wallet sign-in, saved queries and dashboards.
 - **Directly from the browser:** contract events and the report registry are read from public RPCs.
   Every endpoint in `src/config/chains.ts` was checked for a live, current head block and a browser CORS preflight
   in [blocra-research](https://github.com/Blocra-HQ/blocra-research).
 - **Freighter:** signs the sign-in challenge and report-registry transactions. Keys never leave the wallet.
+
+## Query editor and dashboards
+
+The backend keeps an analytics database: every Stellar ledger with its transactions and operations,
+and a block of any other chain each time its dashboard stats are fetched. The Query Editor and the
+Dashboard Builder query it through the backend (`POST /api/query/run`); nothing runs against chain
+RPCs from the browser.
+
+| Table | One row per | Main columns |
+|-------|-------------|--------------|
+| `blocks` | stored block or ledger | `chain`, `block_number`, `timestamp` (unix s), `transaction_count`, `successful_txs`, `failed_txs`, `unique_senders`, `operation_count`, `total_fees`, `fee_unit`, `gas_used` |
+| `transactions` | transaction (Stellar) | `chain`, `block_number`, `timestamp`, `hash`, `sender`, `fee`, `operation_count`, `successful` (0/1) |
+| `operations` | operation (Stellar) | `chain`, `block_number`, `timestamp`, `tx_hash`, `type`, `source` |
+
+- **SQL:** SQLite, read-only (`SELECT` or `WITH`), up to 1000 rows per query; results say when they
+  were truncated. Group by time with `strftime('%H:%M', timestamp, 'unixepoch')`.
+- **Editor:** the sidebar lists tables, columns and how much data is stored per chain, plus sample
+  queries. Results export to CSV (RFC 4180 quoting, UTF-8). "Generate SQL" asks the backend AI
+  analyst (`POST /api/ai/sql`) and places the query in the editor for review.
+- **Dashboard Builder:** each widget is a query and a chart type (bar, line, pie, table, number).
+  The first text column labels the chart and the first numeric column is plotted, in the order the
+  query returns rows. Saved dashboards re-run their queries when opened. **Export** downloads the
+  canvas as a PNG or the definition (name, widgets with SQL, type, position and size) as JSON;
+  **Import JSON** loads such a file.
+
+```sql
+SELECT strftime('%H:%M', timestamp, 'unixepoch') AS minute, SUM(transaction_count) AS txs
+FROM blocks WHERE chain = 'stellar'
+GROUP BY minute ORDER BY minute;
+```
 
 ## Getting started
 

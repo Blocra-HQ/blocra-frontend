@@ -13,6 +13,8 @@ import { useNavigate } from 'react-router-dom';
 import { AIAnalysisService } from '@/services/AIAnalysisService';
 import { DocumentService } from '@/services/DocumentService';
 import { PDFReportService } from '@/services/PDFReportService';
+import { toCSV, downloadText } from '@/lib/csv';
+import { exportElementAsPng, exportFileName } from '@/lib/exportImage';
 import { AIService } from '@/services/AIService';
 import { DatabaseService } from '@/services/DatabaseService';
 import { StateAnalysisService } from '@/services/StateAnalysisService';
@@ -717,26 +719,15 @@ Tip: Verify the contract address on ${currentChain.explorer.replace('https://', 
   const exportToCSV = () => {
     if (events.length === 0) return;
 
-    const headers = ['Block', 'Event Type', 'From/User', 'To/Target', 'Amount', 'Tx Hash'];
-    const csvContent = [
-      headers.join(','),
-      ...events.map(ev => [
-        ev.block_number,
-        ev.event_name || 'Unknown Event',
-        ev.decoded_data?.from || ev.decoded_data?.user || ev.decoded_data?.owner || 'N/A',
-        ev.decoded_data?.to || ev.decoded_data?.spender || ev.decoded_data?.token_out || 'N/A',
-        ev.decoded_data?.amount ? (parseInt(ev.decoded_data.amount) / 1e18).toFixed(6) : 'N/A',
-        ev.transaction_hash || 'N/A'
-      ].join(','))
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `multi_contract_events_${Date.now()}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const csvContent = toCSV(events.map(ev => ({
+      Block: ev.block_number,
+      'Event Type': ev.event_name || 'Unknown Event',
+      'From/User': ev.decoded_data?.from || ev.decoded_data?.user || ev.decoded_data?.owner || 'N/A',
+      'To/Target': ev.decoded_data?.to || ev.decoded_data?.spender || ev.decoded_data?.token_out || 'N/A',
+      Amount: ev.decoded_data?.amount ? (parseInt(ev.decoded_data.amount) / 1e18).toFixed(6) : 'N/A',
+      'Tx Hash': ev.transaction_hash || 'N/A',
+    })), ['Block', 'Event Type', 'From/User', 'To/Target', 'Amount', 'Tx Hash']);
+    downloadText(`\uFEFF${csvContent}`, `multi_contract_events_${Date.now()}.csv`, 'text/csv;charset=utf-8');
   };
 
   const exportToJSON = () => {
@@ -852,25 +843,14 @@ Tip: Verify the contract address on ${currentChain.explorer.replace('https://', 
   };
 
   const exportDashboardAsImage = async () => {
+    const dashboardElement = document.getElementById('contract-dashboard');
+    if (!dashboardElement) return;
     setExportingImage(true);
     try {
-      const html2canvas = (await import('html2canvas')).default;
-      const dashboardElement = document.getElementById('contract-dashboard');
-      if (dashboardElement) {
-        const canvas = await html2canvas(dashboardElement, {
-          backgroundColor: '#ffffff',
-          scale: 2,
-          useCORS: true,
-          allowTaint: true
-        });
-
-        const link = document.createElement('a');
-        link.download = `${contractInfo?.contractName || 'Contract'}_Dashboard_${new Date().toISOString().split('T')[0]}.png`;
-        link.href = canvas.toDataURL();
-        link.click();
-      }
+      await exportElementAsPng(dashboardElement, exportFileName(`${contractInfo?.contractName || 'Contract'}_Dashboard`, 'png'));
     } catch (error) {
       console.error('Failed to export dashboard:', error);
+      setError(`Image export failed: ${error instanceof Error ? error.message : String(error)}`);
     }
     setExportingImage(false);
   };

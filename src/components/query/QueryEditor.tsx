@@ -1,523 +1,434 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Play, Save, Download, Wand2, BarChart3, Lightbulb, RefreshCw, Zap, Trophy, Activity, Users, Search, TrendingUp, ChevronLeft, ChevronRight, Plus, Clock, Eye, Sparkles } from 'lucide-react';
+import {
+  Play, Save, Download, Wand2, BarChart3, Lightbulb, RefreshCw, Search, ChevronLeft, ChevronRight,
+  Plus, Clock, Eye, Sparkles, Database, AlertCircle, ChevronDown,
+} from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
-import { useQuerySaver } from '@/hooks/useQuerySaver';
 import { useNavigate } from 'react-router-dom';
 import { ChartBuilder } from './ChartBuilder';
-import { useChain } from '@/contexts/ChainContext';
-import { validateAddress, getAddressFormatDescription } from '@/services/AddressValidationService';
-import { buildApiUrl } from '@/config/api';
+import { API_CONFIG } from '@/config/api';
 import { logger } from '@/utils/logger';
-import { STARKNET_RPCS } from "@/config/chains";
-import { runQuery } from "@/lib/queryEngine";
+import { AIService } from '@/services/AIService';
+import {
+  runQueryDetailed,
+  fetchQuerySchema,
+  formatCoverage,
+  extractSQL,
+  SAMPLE_QUERIES,
+  type QueryRow,
+  type QuerySchema,
+} from '@/lib/queryEngine';
+import { toCSV, downloadText } from '@/lib/csv';
 
 interface QueryEditorProps {
-  onQueryComplete?: (results: QueryResult[], query: string) => void;
+  onQueryComplete?: (results: QueryRow[], query: string) => void;
 }
 
-interface QueryResult {
-  [key: string]: string | number | boolean | null;
+interface RunInfo {
+  columns: string[];
+  at: Date;
+  truncated: boolean;
+  elapsedMs: number | null;
+}
+
+interface SavedQueryEntry {
+  id: string;
+  name: string;
+  query: string;
+  results?: QueryRow[];
+  isPublic?: boolean;
+  createdAt: string;
+  description?: string;
 }
 
 const examplePrompts = [
-  {
-    title: "Starknet Block Analysis",
-    prompt: "Analyze recent Starknet blocks with transaction counts and gas usage",
-    sql: "SELECT block_number, timestamp, transaction_count, gas_used, hash FROM blocks ORDER BY block_number DESC;"
-  },
-  {
-    title: "Cairo Contract Activity",
-    prompt: "Show all transactions with their Cairo contract interactions",
-    sql: "SELECT transaction_hash, sender_address, max_fee, type, nonce FROM transactions ORDER BY max_fee DESC;"
-  },
-  {
-    title: "Starknet Gas Efficiency",
-    prompt: "Find the most gas-efficient transactions on Starknet",
-    sql: "SELECT transaction_hash, sender_address, max_fee, type FROM transactions WHERE max_fee > '0x0' ORDER BY CAST(max_fee as DECIMAL) ASC;"
-  }
+  'Transactions per minute on Stellar over the stored ledgers',
+  'The 10 Stellar accounts that sent the most transactions, with their total fees',
+  'Share of failed Stellar transactions per minute',
+  'Most common Stellar operation types',
 ];
 
+const DEFAULT_QUERY = SAMPLE_QUERIES[0].sql;
+
+function readSavedQueries(): SavedQueryEntry[] {
+  try {
+    const list = JSON.parse(localStorage.getItem('saved_queries') || '[]');
+    return Array.isArray(list) ? list.filter((q) => q && typeof q.query === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+function SchemaPanel({ schema, error, onInsert }: { schema: QuerySchema | null; error: string | null; onInsert: (text: string) => void }) {
+  const [open, setOpen] = useState<string | null>('blocks');
+  if (error) {
+    return <p className="text-xs text-destructive">Schema unavailable: {error}</p>;
+  }
+  if (!schema) {
+    return <div className="h-16 animate-pulse bg-muted rounded" />;
+  }
+  return (
+    <div className="space-y-3">
+      <div className="space-y-1">
+        <p className="text-xs font-medium">Data stored</p>
+        {schema.coverage.length === 0 ? (
+          <p className="text-xs text-muted-foreground">No blocks stored yet.</p>
+        ) : (
+          schema.coverage.map((c) => (
+            <p key={c.chain} className="text-xs text-muted-foreground font-mono">{formatCoverage(c)}</p>
+          ))
+        )}
+      </div>
+      <div className="space-y-1">
+        {schema.tables.map((t) => (
+          <div key={t.name} className="border border-border rounded-md">
+            <button
+              type="button"
+              className="w-full flex items-center justify-between px-2 py-1.5 text-left"
+              onClick={() => setOpen(open === t.name ? null : t.name)}
+            >
+              <span className="font-mono text-sm font-medium">{t.name}</span>
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${open === t.name ? 'rotate-180' : ''}`} />
+            </button>
+            {open === t.name && (
+              <div className="px-2 pb-2 space-y-1">
+                {t.description && <p className="text-xs text-muted-foreground">{t.description}</p>}
+                {t.columns.map((c) => (
+                  <div key={c.name} className="text-xs">
+                    <button
+                      type="button"
+                      className="font-mono text-primary hover:underline"
+                      title="Insert into the editor"
+                      onClick={() => onInsert(c.name)}
+                    >
+                      {c.name}
+                    </button>
+                    <span className="text-muted-foreground"> {c.type}</span>
+                    {c.description && <p className="text-muted-foreground pl-2">{c.description}</p>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SavedQueriesList({ onLoad, onViewAll }: { onLoad: (q: SavedQueryEntry) => void; onViewAll: () => void }) {
+  const [saved, setSaved] = useState<SavedQueryEntry[]>([]);
+
+  useEffect(() => {
+    const load = () => setSaved(readSavedQueries().slice(0, 5));
+    load();
+    window.addEventListener('storage', load);
+    return () => window.removeEventListener('storage', load);
+  }, []);
+
+  if (saved.length === 0) {
+    return (
+      <div className="text-center py-4">
+        <Save className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
+        <p className="text-xs text-muted-foreground">No saved queries yet</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {saved.map((q, index) => (
+        <div
+          key={q.id || index}
+          className="p-3 border border-border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer group"
+          onClick={() => onLoad(q)}
+        >
+          <div className="flex items-start justify-between mb-2">
+            <h4 className="text-sm font-medium truncate flex-1 pr-2">{q.name}</h4>
+            <Badge variant={q.isPublic ? 'default' : 'secondary'} className="text-xs">
+              {q.isPublic ? 'Public' : 'Private'}
+            </Badge>
+          </div>
+          <p className="text-xs text-muted-foreground mb-2 line-clamp-2 font-mono">{q.query.slice(0, 80)}</p>
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <div className="flex items-center gap-1">
+              <Clock className="w-3 h-3" />
+              {new Date(q.createdAt).toLocaleDateString()}
+            </div>
+            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <Eye className="w-3 h-3" />
+              Load
+            </div>
+          </div>
+        </div>
+      ))}
+      {saved.length >= 5 && (
+        <Button variant="outline" size="sm" className="w-full mt-2" onClick={onViewAll}>
+          View All Saved Queries
+        </Button>
+      )}
+    </div>
+  );
+}
+
+function CellValue({ column, value }: { column: string; value: QueryRow[string] }) {
+  if (value === null) return <span className="text-muted-foreground" title="NULL">—</span>;
+  const key = column.toLowerCase();
+  if (typeof value === 'number') {
+    if (key === 'timestamp' || key.endsWith('_time')) {
+      return (
+        <span className="bg-green-50 dark:bg-green-950 px-2 py-1 rounded text-green-700 dark:text-green-300 text-xs" title={String(value)}>
+          {new Date(value * 1000).toLocaleString()}
+        </span>
+      );
+    }
+    return (
+      <span className="font-mono bg-blue-50 dark:bg-blue-950 px-2 py-1 rounded text-blue-700 dark:text-blue-300">
+        {value.toLocaleString(undefined, { maximumFractionDigits: 7 })}
+      </span>
+    );
+  }
+  const text = String(value);
+  if (text.length > 24 && /(hash|address|sender|source|account)/.test(key)) {
+    return (
+      <span className="font-mono bg-purple-50 dark:bg-purple-950 px-2 py-1 rounded text-purple-700 dark:text-purple-300 text-xs" title={text}>
+        {text.slice(0, 10)}…{text.slice(-6)}
+      </span>
+    );
+  }
+  return <span className="bg-gray-50 dark:bg-gray-900 px-2 py-1 rounded whitespace-pre-wrap">{text}</span>;
+}
+
 export function QueryEditor({ onQueryComplete }: QueryEditorProps) {
-  const { currentChain } = useChain();
-  const [query, setQuery] = useState('SELECT block_number, timestamp, transaction_count, gas_used, hash FROM blocks ORDER BY block_number DESC;');
+  const { toast } = useToast();
+  const navigate = useNavigate();
+  const [query, setQuery] = useState(DEFAULT_QUERY);
   const [prompt, setPrompt] = useState('');
-  const [results, setResults] = useState<QueryResult[]>([]);
+  const [results, setResults] = useState<QueryRow[]>([]);
+  const [runInfo, setRunInfo] = useState<RunInfo | null>(null);
   const [loading, setLoading] = useState(false);
-  const [abortController, setAbortController] = useState<AbortController | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
-  const [contractAddress, setContractAddress] = useState('');
-  const [predictionModel, setPredictionModel] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize] = useState(50);
-  const [totalResults, setTotalResults] = useState(0);
+  const pageSize = 50;
   const [error, setError] = useState<string | null>(null);
   const [queryHistory, setQueryHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
+  const [activeTab, setActiveTab] = useState<string>('editor');
+  const [resultsTab, setResultsTab] = useState<string>('table');
+  const [sqlJustGenerated, setSqlJustGenerated] = useState(false);
+  const [schema, setSchema] = useState<QuerySchema | null>(null);
+  const [schemaError, setSchemaError] = useState<string | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Auto-load query from localStorage if coming from library
+  // Load a query handed over from the library, and the run history.
   useEffect(() => {
     const loadQuery = localStorage.getItem('loadQuery');
     if (loadQuery) {
       setQuery(loadQuery);
       localStorage.removeItem('loadQuery');
     }
-
-    // Load query history
-    const savedHistory = localStorage.getItem('queryHistory');
-    if (savedHistory) {
-      try {
-        setQueryHistory(JSON.parse(savedHistory));
-      } catch (e) {
-        logger.warn('Failed to load query history');
-      }
+    try {
+      const saved = JSON.parse(localStorage.getItem('queryHistory') || '[]');
+      if (Array.isArray(saved)) setQueryHistory(saved.filter((q) => typeof q === 'string'));
+    } catch {
+      logger.warn('Failed to load query history');
     }
   }, []);
-  const { toast } = useToast();
-  const navigate = useNavigate();
-  const {
-    isAutosaveEnabled,
-    savedQueries,
-    saveQuery: saveQueryToCollection,
-    deleteQuery,
-    updateLastRun,
-    toggleAutosave
-  } = useQuerySaver();
 
-  const [activeTab, setActiveTab] = useState<string>('editor');
-  const [resultsTab, setResultsTab] = useState<string>('table');
-  const [sqlJustGenerated, setSqlJustGenerated] = useState(false);
-  
+  const loadSchema = useCallback(() => {
+    setSchemaError(null);
+    fetchQuerySchema({ apiUrl: API_CONFIG.apiUrl })
+      .then(setSchema)
+      .catch((e: Error) => setSchemaError(e.message));
+  }, []);
+
+  useEffect(() => { loadSchema(); }, [loadSchema]);
+
+  const insertAtCursor = (text: string) => {
+    const el = textareaRef.current;
+    setActiveTab('editor');
+    if (!el) {
+      setQuery((q) => `${q}${text}`);
+      return;
+    }
+    const start = el.selectionStart ?? query.length;
+    const end = el.selectionEnd ?? query.length;
+    setQuery(query.slice(0, start) + text + query.slice(end));
+    requestAnimationFrame(() => {
+      el.focus();
+      el.setSelectionRange(start + text.length, start + text.length);
+    });
+  };
+
+  const showGenerated = (sql: string) => {
+    setQuery(sql);
+    setError(null);
+    setActiveTab('editor');
+    setSqlJustGenerated(true);
+    setTimeout(() => setSqlJustGenerated(false), 3000);
+  };
+
   const generateSQLFromPrompt = async () => {
     if (!prompt.trim()) return;
-
     setAiLoading(true);
     try {
-      // REAL AI SQL GENERATION with better logic
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      let generatedSQL = '';
-      const promptLower = prompt.toLowerCase();
-
-      // Block-related queries
-      if (promptLower.includes('block') || promptLower.includes('latest')) {
-        if (promptLower.includes('transaction')) {
-          generatedSQL = "SELECT block_number, timestamp, transaction_count, gas_used FROM blocks ORDER BY block_number DESC LIMIT 10;";
-        } else {
-          generatedSQL = "SELECT block_number, timestamp, transaction_count, gas_used, hash FROM blocks ORDER BY block_number DESC LIMIT 5;";
-        }
-      }
-      // Transaction-related queries
-      else if (promptLower.includes('transaction') || promptLower.includes('tx')) {
-        if (promptLower.includes('recent') || promptLower.includes('latest')) {
-          generatedSQL = "SELECT transaction_hash, sender_address, max_fee, type FROM transactions LIMIT 20;";
-        } else if (promptLower.includes('fee')) {
-          generatedSQL = "SELECT transaction_hash, sender_address, max_fee FROM transactions ORDER BY max_fee DESC LIMIT 10;";
-        } else {
-          generatedSQL = "SELECT transaction_hash, sender_address, type, nonce FROM transactions LIMIT 15;";
-        }
-      }
-      // Contract-related queries
-      else if (promptLower.includes('contract') || promptLower.includes('call')) {
-        generatedSQL = "SELECT transaction_hash, sender_address, max_fee, type FROM transactions WHERE type = 'INVOKE' LIMIT 15;";
-      }
-      // Default fallback
-      else {
-        generatedSQL = "SELECT block_number, timestamp, transaction_count FROM blocks ORDER BY block_number DESC LIMIT 10;";
-      }
-
-      setQuery(generatedSQL);
-      
-      // Automatically switch to SQL Editor tab to show the generated query
-      setActiveTab('editor');
-      
-      // Add visual indicator
-      setSqlJustGenerated(true);
-      setTimeout(() => setSqlJustGenerated(false), 3000); // Remove after 3 seconds
-      
+      const sql = extractSQL(await AIService.sql(prompt.trim()));
+      if (!sql) throw new Error('The AI analyst returned no SQL');
+      showGenerated(sql);
+      toast({ title: 'SQL generated', description: 'The query is in the editor. Review it, then run it.' });
+    } catch (e: any) {
       toast({
-        title: "SQL Generated",
-        description: "Query is now in the editor. Review and execute it!",
-      });
-    } catch (error) {
-      toast({
-        title: "AI Generation Failed",
-        description: "Please try again or write SQL manually",
-        variant: "destructive",
+        title: 'AI generation failed',
+        description: e?.message || 'Please try again or write SQL manually',
+        variant: 'destructive',
       });
     } finally {
       setAiLoading(false);
     }
   };
 
-  const executeQuery = async () => {
-    // Cancel previous query if running
-    if (abortController) {
-      abortController.abort();
+  const fixQueryError = async (errorMessage: string) => {
+    setAiLoading(true);
+    try {
+      const sql = extractSQL(await AIService.sql(
+        `Fix this SQLite query so it runs on the BlocRA analytics tables. It failed with: ${errorMessage}\n\nQuery:\n${query}`,
+      ));
+      if (!sql) throw new Error('The AI analyst returned no SQL');
+      showGenerated(sql);
+      toast({ title: 'Suggested fix', description: 'The AI analyst rewrote the query. Review it, then run it.' });
+    } catch (e: any) {
+      toast({ title: 'Fix failed', description: e?.message || 'Unable to fix the query', variant: 'destructive' });
+    } finally {
+      setAiLoading(false);
     }
+  };
 
+  const executeQuery = async () => {
+    abortRef.current?.abort();
     const controller = new AbortController();
-    setAbortController(controller);
+    abortRef.current = controller;
     setLoading(true);
     setError(null);
 
     try {
-      // Validates, reads the table from Starknet RPC and applies SELECT/ORDER BY/LIMIT.
-      const results: QueryResult[] = await runQuery(query, STARKNET_RPCS);
-
-      setTotalResults(results.length);
-      setResults(results);
+      const result = await runQueryDetailed(query, { apiUrl: API_CONFIG.apiUrl, signal: controller.signal });
+      setResults(result.rows);
+      setRunInfo({ columns: result.columns, at: new Date(), truncated: result.truncated, elapsedMs: result.elapsed_ms });
       setCurrentPage(1);
 
-      // Store results in localStorage for visualization (with size limit)
-      const resultsString = JSON.stringify(results);
-      if (resultsString.length > 1024 * 1024) { // 1MB limit
-        // Store only first 100 rows for large datasets
-        const limitedResults = results.slice(0, 100);
-        localStorage.setItem('queryResults', JSON.stringify(limitedResults));
-        toast({
-          title: "Large dataset detected",
-          description: "Only first 100 rows stored for visualization",
-        });
-      } else {
-        localStorage.setItem('queryResults', resultsString);
-      }
+      // For the visualization page; large results are trimmed.
+      const resultsString = JSON.stringify(result.rows);
+      localStorage.setItem('queryResults', resultsString.length > 1024 * 1024 ? JSON.stringify(result.rows.slice(0, 100)) : resultsString);
       localStorage.setItem('lastQuery', query);
 
-      onQueryComplete?.(results, query);
+      onQueryComplete?.(result.rows, query);
 
-      // Add to query history
-      const newHistory = [query, ...queryHistory.filter(q => q !== query)].slice(0, 20);
+      const newHistory = [query, ...queryHistory.filter((q) => q !== query)].slice(0, 20);
       setQueryHistory(newHistory);
       setHistoryIndex(-1);
       localStorage.setItem('queryHistory', JSON.stringify(newHistory));
 
-      // Update last run timestamp if query is saved
-      const savedQuery = savedQueries.find(sq => sq.query === query);
-      if (savedQuery) {
-        updateLastRun(savedQuery.id);
-      }
-
       toast({
-        title: "Query executed successfully",
-        description: `Found ${results.length.toLocaleString()} results${results.length > pageSize ? ` (showing ${pageSize} per page)` : ''}`,
+        title: 'Query executed',
+        description: `${result.rows.length.toLocaleString()} rows${result.truncated ? ' (truncated at the 1000-row limit)' : ''}${result.elapsed_ms !== null ? ` in ${result.elapsed_ms} ms` : ''}`,
       });
-    } catch (error: any) {
-      if (error.name === 'AbortError') {
-        return; // Query was cancelled
-      }
-      setError(error.message || "Please check your query syntax");
+    } catch (e: any) {
+      if (e?.name === 'AbortError') return;
+      setError(e?.message || 'Please check your query syntax');
       setResults([]);
+      setRunInfo(null);
     } finally {
+      if (abortRef.current === controller) abortRef.current = null;
       setLoading(false);
-      setAbortController(null);
     }
   };
 
-  const visualizeResults = () => {
-    if (results.length > 0) {
-      // There is no /charts page; open the Visualization tab under the results.
-      setResultsTab('chart');
-    }
+  const cancelQuery = () => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setLoading(false);
   };
 
-  // Auto-save query when enabled
-  useEffect(() => {
-    if (isAutosaveEnabled && query.trim() && query !== 'SELECT * FROM blocks LIMIT 10;') {
-      const timeoutId = setTimeout(() => {
-        saveQueryToCollection(query, true);
-      }, 1000);
-      return () => clearTimeout(timeoutId);
-    }
-  }, [query, isAutosaveEnabled, saveQueryToCollection]);
-
-  // Keyboard shortcuts for query history
+  // Ctrl/Cmd + Up/Down steps through the run history.
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey || e.metaKey) {
-        if (e.key === 'ArrowUp' && queryHistory.length > 0) {
-          e.preventDefault();
-          const newIndex = Math.min(historyIndex + 1, queryHistory.length - 1);
-          setHistoryIndex(newIndex);
-          setQuery(queryHistory[newIndex]);
-        } else if (e.key === 'ArrowDown' && historyIndex > -1) {
-          e.preventDefault();
-          const newIndex = historyIndex - 1;
-          setHistoryIndex(newIndex);
-          setQuery(newIndex >= 0 ? queryHistory[newIndex] : '');
-        }
+      if (!(e.ctrlKey || e.metaKey)) return;
+      if (e.key === 'ArrowUp' && queryHistory.length > 0) {
+        e.preventDefault();
+        const i = Math.min(historyIndex + 1, queryHistory.length - 1);
+        setHistoryIndex(i);
+        setQuery(queryHistory[i]);
+      } else if (e.key === 'ArrowDown' && historyIndex > -1) {
+        e.preventDefault();
+        const i = historyIndex - 1;
+        setHistoryIndex(i);
+        setQuery(i >= 0 ? queryHistory[i] : '');
       }
     };
-
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [queryHistory, historyIndex]);
 
   const saveQuery = () => {
-    const queryName = window.prompt(`Enter a name for this query:`, `Starknet Query ${new Date().toLocaleDateString()}`);
-    if (!queryName || queryName.trim() === '') return;
-
+    const name = window.prompt('Enter a name for this query:', `Query ${new Date().toLocaleDateString()}`);
+    if (!name || !name.trim()) return;
     const isPublic = window.confirm('Make this query public? (Cancel for private)');
 
-    // Save query with results and visualization config
-    const savedQuery = {
+    const entry: SavedQueryEntry & Record<string, unknown> = {
       id: `query-${Date.now()}`,
-      name: queryName.trim(),
-      query: query,
-      results: results.length > 0 ? results.slice(0, 100) : [], // Limit stored results
-      visualizations: generateVisualizationsFromResults(results),
-      isPublic: isPublic,
+      name: name.trim(),
+      query,
+      results: results.slice(0, 100),
+      isPublic,
       createdAt: new Date().toISOString(),
-      lastRun: new Date().toISOString(),
-      tags: ['starknet', 'blockchain'],
-      description: `Query: ${query.slice(0, 100)}${query.length > 100 ? '...' : ''}`
+      lastRun: runInfo ? runInfo.at.toISOString() : undefined,
+      tags: ['sql'],
+      description: `Query: ${query.slice(0, 100)}${query.length > 100 ? '...' : ''}`,
     };
-
-    // Save to localStorage
-    const existingQueries = JSON.parse(localStorage.getItem('saved_queries') || '[]');
-    existingQueries.unshift(savedQuery); // Add to beginning
-    localStorage.setItem('saved_queries', JSON.stringify(existingQueries));
-
-    // Also save to query saver hook
-    try {
-      saveQueryToCollection(query, false);
-    } catch (e) {
-      logger.warn('Query saver hook failed', e);
-    }
-
-    // Trigger re-render of saved queries list
+    localStorage.setItem('saved_queries', JSON.stringify([entry, ...readSavedQueries()]));
     window.dispatchEvent(new Event('storage'));
 
     toast({
-      title: "✅ Query Saved Successfully",
+      title: 'Query saved',
       description: (
         <div className="space-y-2">
-          <p>“{queryName}” saved to Query Library</p>
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => navigate('/library')}
-              className="h-6 text-xs"
-            >
-              View Library
-            </Button>
-          </div>
+          <p>“{entry.name}” saved to the Query Library</p>
+          <Button size="sm" variant="outline" onClick={() => navigate('/library')} className="h-6 text-xs">
+            View Library
+          </Button>
         </div>
       ),
     });
   };
 
-  const generateVisualizationsFromResults = (data: any[]) => {
-    if (!data.length) return [];
-
-    const visualizations = [];
-    const columns = Object.keys(data[0]);
-    const numericColumns = columns.filter(col =>
-      data.every(row => !isNaN(Number(row[col])) && row[col] !== '')
-    );
-    const textColumns = columns.filter(col => !numericColumns.includes(col));
-
-    // Auto-generate different chart types
-    if (numericColumns.length > 0 && textColumns.length > 0) {
-      // Bar chart
-      visualizations.push({
-        type: 'bar',
-        title: `${textColumns[0]} vs ${numericColumns[0]}`,
-        xAxis: textColumns[0],
-        yAxis: numericColumns[0],
-        data: data.slice(0, 10)
-      });
-
-      // Pie chart if suitable
-      if (data.length <= 10) {
-        visualizations.push({
-          type: 'pie',
-          title: `Distribution of ${numericColumns[0]}`,
-          data: data.map(row => ({ name: row[textColumns[0]], value: Number(row[numericColumns[0]]) }))
-        });
-      }
-    }
-
-    // Line chart for time series
-    if (columns.some(col => col.toLowerCase().includes('date') || col.toLowerCase().includes('time'))) {
-      const timeCol = columns.find(col => col.toLowerCase().includes('date') || col.toLowerCase().includes('time'));
-      if (timeCol && numericColumns.length > 0) {
-        visualizations.push({
-          type: 'line',
-          title: `${numericColumns[0]} Over Time`,
-          xAxis: timeCol,
-          yAxis: numericColumns[0],
-          data: data
-        });
-      }
-    }
-
-    // Table view
-    visualizations.push({
-      type: 'table',
-      title: 'Data Table',
-      data: data
-    });
-
-    return visualizations;
-  };
-
-  const analyzeContract = async (address: string) => {
-    if (!address.trim()) {
-      setError('Contract address is required');
-      return;
-    }
-
-    // Use chain-aware validation
-    const validation = validateAddress(address.trim(), currentChain.type);
-    if (!validation.isValid) {
-      setError(validation.error || `Invalid ${currentChain.name} contract address format`);
-      return;
-    }
-
-    setLoading(true);
+  const loadSaved = (q: SavedQueryEntry) => {
+    setQuery(q.query);
     setError(null);
-
-    try {
-      logger.info(`Analyzing contract: ${address}`);
-
-      const response = await fetch(buildApiUrl('contracts/analyze'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-        },
-        body: JSON.stringify({ contractAddress: address })
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to analyze contract');
-      }
-
-      logger.info('Contract analysis result', data);
-
-      if (data.success && data.data) {
-        const contractData = data.data;
-
-        if (contractData.status === 'No Recent Activity') {
-          const noDataResults = [{
-            contract_address: address,
-            status: contractData.status,
-            message: contractData.message,
-            blocks_searched: contractData.blocks_searched,
-            current_block: contractData.current_block,
-            data_source: 'Starknet RPC'
-          }];
-
-          setResults(noDataResults);
-          setTotalResults(1);
-
-          toast({
-            title: "No Recent Activity",
-            description: `Contract ${address.slice(0, 10)}...${address.slice(-6)} has no recent transactions`,
-            variant: "destructive"
-          });
-        } else {
-          const analysisResults = [
-            {
-              contract_address: address,
-              status: 'Active Contract',
-              transaction_count: contractData.transaction_count,
-              avg_fee: contractData.avg_fee + ' ETH',
-              total_fees: contractData.total_fees + ' ETH',
-              unique_senders: contractData.unique_senders,
-              blocks_analyzed: contractData.blocks_analyzed,
-              current_block: contractData.current_block,
-              data_source: 'Starknet RPC'
-            },
-            ...contractData.transactions
-          ];
-
-          setResults(analysisResults);
-          setTotalResults(analysisResults.length);
-
-          toast({
-            title: "Real Contract Data Found!",
-            description: `Found ${contractData.transaction_count} transactions from Starknet RPC`
-          });
-        }
-
-        const analysisQuery = `-- Real Contract Analysis for ${address}
--- Data Source: Starknet RPC via Backend
-SELECT 
-  contract_address,
-  status,
-  transaction_count,
-  avg_fee,
-  total_fees,
-  unique_senders,
-  data_source
-FROM contract_analysis 
-WHERE contract_address = '${address}'
-LIMIT 1;`;
-
-        setQuery(analysisQuery);
-      }
-
-    } catch (error: any) {
-      logger.error('Contract analysis error', error);
-      const errorMsg = error.message || 'Failed to analyze contract';
-      setError(errorMsg);
-      toast({
-        title: "Analysis Failed",
-        description: errorMsg,
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
+    // Saved results are shown until the query is re-run.
+    if (q.results && q.results.length > 0) {
+      setResults(q.results);
+      setRunInfo(null);
+      setCurrentPage(1);
     }
+    toast({ title: 'Query loaded', description: `Loaded "${q.name}"${q.results?.length ? ' with its saved results; run it for fresh data' : ''}` });
   };
 
-  const getPaginatedResults = () => {
-    const startIndex = (currentPage - 1) * pageSize;
-    const endIndex = startIndex + pageSize;
-    return results.slice(startIndex, endIndex);
-  };
+  const columns = runInfo?.columns.length ? runInfo.columns : results.length ? Object.keys(results[0]) : [];
+  const totalResults = results.length;
+  const pageCount = Math.max(1, Math.ceil(totalResults / pageSize));
+  const pageRows = results.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
-  const exportToExcel = () => {
+  const exportCSV = () => {
     if (!results.length) return;
-
-    // Convert data to CSV format
-    const headers = Object.keys(results[0]);
-    const csvContent = [
-      headers.join(','),
-      ...results.map(row =>
-        headers.map(header => {
-          const value = row[header];
-          const stringValue = value == null ? '' : typeof value === 'string' ? value : String(value);
-          return stringValue.includes(',') ? `"${stringValue}"` : stringValue;
-        }).join(',')
-      )
-    ].join('\n');
-
-    // Create and download file
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `starknet_query_results_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    toast({
-      title: "Export Complete",
-      description: "Query results exported to CSV file",
-    });
+    // BOM so spreadsheet apps read the file as UTF-8.
+    downloadText(`﻿${toCSV(results, columns)}`, `blocra_query_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.csv`, 'text/csv;charset=utf-8');
+    toast({ title: 'Export complete', description: `${results.length.toLocaleString()} rows exported to CSV` });
   };
 
   // Opens the Dashboard Builder with this query in its Add Widget dialog.
@@ -526,430 +437,44 @@ LIMIT 1;`;
     navigate(`/builder?sql=${encodeURIComponent(query.trim())}`);
   };
 
-
-
-  const fixQueryError = async (errorMessage: string) => {
-    setAiLoading(true);
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      let fixedQuery = query;
-      const errorLower = errorMessage.toLowerCase();
-
-      if (errorLower.includes('dangerous operation')) {
-        fixedQuery = query.replace(/\b(drop|delete|update|insert|alter|create|truncate)\b/gi, 'SELECT');
-      } else if (errorLower.includes('must start with select')) {
-        fixedQuery = `SELECT * FROM (${query}) LIMIT 10;`;
-      } else if (errorLower.includes('missing from clause')) {
-        if (!query.toLowerCase().includes('from')) {
-          fixedQuery = `${query} FROM blocks`;
-        }
-      } else if (errorLower.includes('unmatched')) {
-        // Fix parentheses
-        const openCount = (query.match(/\(/g) || []).length;
-        const closeCount = (query.match(/\)/g) || []).length;
-        if (openCount > closeCount) {
-          fixedQuery = query + ')'.repeat(openCount - closeCount);
-        } else if (closeCount > openCount) {
-          fixedQuery = '('.repeat(closeCount - openCount) + query;
-        }
-      } else {
-        // Generic fix - ensure it's a valid SELECT query
-        fixedQuery = `SELECT block_number, timestamp, transaction_count, gas_used FROM blocks ORDER BY block_number DESC LIMIT 10;`;
-      }
-
-      setQuery(fixedQuery);
-      setError(null);
-
-      toast({
-        title: "Query Fixed",
-        description: "AI has corrected the SQL query",
-      });
-    } catch (error) {
-      toast({
-        title: "Fix Failed",
-        description: "Unable to fix query automatically",
-        variant: "destructive",
-      });
-    } finally {
-      setAiLoading(false);
-    }
-  };
-
-  const buildPredictionModel = async (modelType: string) => {
-    if (!modelType) return;
-
-    setLoading(true);
-    try {
-      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate model building
-
-      let modelQuery = '';
-      let modelResults: any[] = [];
-
-      switch (modelType) {
-        case 'gas_price':
-          modelQuery = `-- Gas Price Prediction Model
-SELECT 
-  DATE(block_timestamp) as date,
-  AVG(CAST(max_fee as DECIMAL)) as avg_gas_price,
-  COUNT(*) as tx_volume,
-  AVG(CAST(max_fee as DECIMAL)) * (1 + (COUNT(*) - 100) * 0.001) as predicted_gas_price
-FROM transactions 
-WHERE block_timestamp >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-GROUP BY DATE(block_timestamp)
-ORDER BY date DESC
-LIMIT 7;`;
-
-          modelResults = Array.from({ length: 7 }, (_, i) => ({
-            date: new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            avg_gas_price: (0.002 + Math.random() * 0.008).toFixed(6),
-            tx_volume: Math.floor(Math.random() * 200) + 50,
-            predicted_gas_price: (0.002 + Math.random() * 0.008 + 0.001).toFixed(6),
-            confidence: (85 + Math.random() * 10).toFixed(1) + '%'
-          }));
-          break;
-
-        case 'transaction_volume':
-          modelQuery = `-- Transaction Volume Forecast
-SELECT 
-  DATE(block_timestamp) as date,
-  COUNT(*) as actual_volume,
-  COUNT(*) * 1.05 as predicted_volume,
-  'Linear Regression' as model_type
-FROM transactions 
-WHERE block_timestamp >= DATE_SUB(NOW(), INTERVAL 14 DAY)
-GROUP BY DATE(block_timestamp)
-ORDER BY date DESC
-LIMIT 14;`;
-
-          modelResults = Array.from({ length: 14 }, (_, i) => ({
-            date: new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            actual_volume: Math.floor(Math.random() * 500) + 100,
-            predicted_volume: Math.floor((Math.random() * 500 + 100) * 1.05),
-            model_type: 'Linear Regression',
-            accuracy: (88 + Math.random() * 8).toFixed(1) + '%'
-          }));
-          break;
-
-        case 'defi_tvl':
-          modelQuery = `-- DeFi TVL Trend Analysis
-SELECT 
-  protocol_name,
-  current_tvl,
-  predicted_tvl_7d,
-  trend_direction
-FROM defi_protocols 
-ORDER BY current_tvl DESC
-LIMIT 10;`;
-
-          modelResults = [
-            { protocol_name: 'Uniswap V3', current_tvl: 1250000, predicted_tvl_7d: 1312500, trend_direction: 'UP', confidence: '92%' },
-            { protocol_name: 'Aave', current_tvl: 980000, predicted_tvl_7d: 1029000, trend_direction: 'UP', confidence: '87%' },
-            { protocol_name: 'Compound', current_tvl: 750000, predicted_tvl_7d: 735000, trend_direction: 'DOWN', confidence: '84%' }
-          ];
-          break;
-
-        case 'user_growth':
-          modelQuery = `-- User Growth Prediction
-SELECT 
-  DATE(first_seen) as date,
-  COUNT(DISTINCT user_address) as new_users,
-  COUNT(DISTINCT user_address) * 1.15 as predicted_new_users
-FROM user_activity 
-WHERE first_seen >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-GROUP BY DATE(first_seen)
-ORDER BY date DESC
-LIMIT 30;`;
-
-          modelResults = Array.from({ length: 30 }, (_, i) => ({
-            date: new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            new_users: Math.floor(Math.random() * 100) + 20,
-            predicted_new_users: Math.floor((Math.random() * 100 + 20) * 1.15),
-            growth_rate: ((Math.random() * 20) - 5).toFixed(1) + '%'
-          }));
-          break;
-      }
-
-      setQuery(modelQuery);
-      setTotalResults(modelResults.length);
-      setResults(modelResults);
-      setCurrentPage(1);
-
-      toast({
-        title: "Prediction Model Built",
-        description: `${modelType.replace('_', ' ')} model created with ${modelResults.length} data points`,
-      });
-    } catch (error) {
-      toast({
-        title: "Model Building Failed",
-        description: "Unable to build prediction model. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Saved Queries List Component
-  const SavedQueriesList = () => {
-    const [savedQueries, setSavedQueries] = useState<any[]>([]);
-
-    useEffect(() => {
-      const loadSavedQueries = () => {
-        try {
-          const queries = JSON.parse(localStorage.getItem('saved_queries') || '[]');
-          setSavedQueries(queries.slice(0, 5)); // Show only recent 5
-        } catch (e) {
-          setSavedQueries([]);
-        }
-      };
-
-      loadSavedQueries();
-
-      // Listen for storage changes
-      const handleStorageChange = () => loadSavedQueries();
-      window.addEventListener('storage', handleStorageChange);
-
-      return () => window.removeEventListener('storage', handleStorageChange);
-    }, []);
-
-    const loadQuery = (savedQuery: any) => {
-      setQuery(savedQuery.query);
-      if (savedQuery.results && savedQuery.results.length > 0) {
-        setResults(savedQuery.results);
-        setTotalResults(savedQuery.results.length);
-        setCurrentPage(1);
-      }
-      toast({
-        title: "Query Loaded",
-        description: `Loaded "${savedQuery.name}"`
-      });
-    };
-
-    if (savedQueries.length === 0) {
-      return (
-        <div className="text-center py-4">
-          <Save className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
-          <p className="text-xs text-muted-foreground mb-2">No saved queries yet</p>
-          <p className="text-xs text-muted-foreground">Save your first query to see it here</p>
-        </div>
-      );
-    }
-
-    return (
-      <div className="space-y-2">
-        {savedQueries.map((savedQuery, index) => (
-          <div
-            key={savedQuery.id || index}
-            className="p-3 border border-border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer group"
-            onClick={() => loadQuery(savedQuery)}
-          >
-            <div className="flex items-start justify-between mb-2">
-              <h4 className="text-sm font-medium truncate flex-1 pr-2">{savedQuery.name}</h4>
-              <Badge variant={savedQuery.isPublic ? 'default' : 'secondary'} className="text-xs">
-                {savedQuery.isPublic ? 'Public' : 'Private'}
-              </Badge>
-            </div>
-            <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
-              {savedQuery.description || savedQuery.query.slice(0, 60)}...
-            </p>
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <div className="flex items-center gap-1">
-                <Clock className="w-3 h-3" />
-                {new Date(savedQuery.createdAt).toLocaleDateString()}
-              </div>
-              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <Eye className="w-3 h-3" />
-                Load
-              </div>
-            </div>
-          </div>
-        ))}
-
-        {savedQueries.length >= 5 && (
+  const errorBox = error && (
+    <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex-1 min-w-0">
+          <h4 className="text-sm font-medium text-destructive mb-1 flex items-center gap-1.5">
+            <AlertCircle className="w-4 h-4" /> Query error
+          </h4>
+          <p className="text-sm text-destructive/80 mb-3 break-words font-mono">{error}</p>
           <Button
-            variant="outline"
             size="sm"
-            className="w-full mt-2"
-            onClick={() => navigate('/library')}
+            variant="outline"
+            disabled={aiLoading}
+            onClick={() => fixQueryError(error)}
+            className="border-destructive/30 text-destructive hover:bg-destructive/10"
           >
-            View All Saved Queries
+            <Wand2 className="w-4 h-4 mr-2" />
+            {aiLoading ? 'Asking the AI analyst…' : 'Fix with AI'}
           </Button>
-        )}
-      </div>
-    );
-  };
-
-  // AI Insights Component with RPC access
-  const AIInsights = () => {
-    const [insights, setInsights] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [lastUpdate, setLastUpdate] = useState(new Date());
-
-    useEffect(() => {
-      const fetchRealTimeInsights = async () => {
-        try {
-          const endpoints = STARKNET_RPCS;
-
-          // Get current block data
-          const blockResponse = await fetch(endpoints[0], {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              jsonrpc: '2.0',
-              method: 'starknet_getBlockWithTxs',
-              params: ['latest'],
-              id: 1
-            })
-          });
-
-          const blockData = await blockResponse.json();
-          const latestBlock = blockData.result;
-          const txCount = latestBlock?.transactions?.length || 0;
-          const gasUsed = latestBlock?.gas_consumed || latestBlock?.gas_used || 0;
-
-          // Generate 2 AI insights based on real data
-          const realInsights = [
-            {
-              title: txCount > 50 ? "High Network Activity Detected" : "Analyze Recent Transaction Patterns",
-              description: `Block ${latestBlock?.block_number || 'latest'}: ${txCount} transactions, ${(gasUsed / 1000000).toFixed(1)}M gas used. ${txCount > 50 ? 'Consider analyzing gas optimization opportunities.' : 'Examine transaction distribution and user behavior.'}`,
-              priority: txCount > 50 ? "high" : "medium",
-              type: "analysis",
-              action: () => {
-                setQuery(`SELECT transaction_hash, sender_address, max_fee FROM transactions ORDER BY max_fee DESC LIMIT 20;`);
-                toast({
-                  title: "Query Generated",
-                  description: "Analyzing recent transaction patterns",
-                });
-              }
-            },
-            {
-              title: gasUsed > 5000000 ? "Gas Usage Spike Analysis" : "Build Predictive Models",
-              description: gasUsed > 5000000 ? `Gas consumption is ${(gasUsed / 1000000).toFixed(1)}M - above normal. Investigate contract efficiency.` : "Use historical data to build models for gas price prediction and transaction volume forecasting.",
-              priority: gasUsed > 5000000 ? "high" : "medium",
-              type: gasUsed > 5000000 ? "optimization" : "prediction",
-              action: () => {
-                if (gasUsed > 5000000) {
-                  setQuery(`SELECT sender_address, SUM(CAST(max_fee as DECIMAL)) as total_gas FROM transactions GROUP BY sender_address ORDER BY total_gas DESC LIMIT 10;`);
-                  toast({
-                    title: "Gas Analysis Query Generated",
-                    description: "Analyzing high gas usage patterns",
-                  });
-                } else {
-                  setPredictionModel('gas_price');
-                  toast({
-                    title: "Building Prediction Model",
-                    description: "Creating gas price prediction model with historical data",
-                  });
-                  buildPredictionModel('gas_price');
-                }
-              }
-            }
-          ];
-
-          setInsights(realInsights);
-          setLastUpdate(new Date());
-        } catch (error) {
-          logger.error('Failed to fetch insights', error);
-          // Fallback insights
-          setInsights([
-            {
-              title: "Analyze Network Performance",
-              description: "Examine recent block production and transaction throughput patterns.",
-              priority: "medium",
-              type: "analysis",
-              action: () => {
-                setQuery(`SELECT block_number, transaction_count, gas_used FROM blocks ORDER BY block_number DESC LIMIT 10;`);
-                toast({
-                  title: "Network Analysis Query",
-                  description: "Analyzing block performance data",
-                });
-              }
-            },
-            {
-              title: "Build Prediction Models",
-              description: "Create forecasting models for gas prices and transaction volumes.",
-              priority: "medium",
-              type: "prediction",
-              action: () => {
-                setPredictionModel('transaction_volume');
-                toast({
-                  title: "Building Prediction Model",
-                  description: "Creating transaction volume forecast model",
-                });
-                buildPredictionModel('transaction_volume');
-              }
-            }
-          ]);
-          setLastUpdate(new Date());
-        } finally {
-          setLoading(false);
-        }
-      };
-
-      // Initial fetch
-      fetchRealTimeInsights();
-
-      // Set up 20-second refresh interval
-      const interval = setInterval(fetchRealTimeInsights, 20000);
-
-      return () => clearInterval(interval);
-    }, []);
-
-    if (loading) {
-      return (
-        <div className="space-y-3">
-          <div className="animate-pulse">
-            <div className="h-4 bg-muted rounded w-3/4 mb-2"></div>
-            <div className="h-3 bg-muted rounded w-full mb-1"></div>
-            <div className="h-3 bg-muted rounded w-2/3"></div>
-          </div>
         </div>
-      );
-    }
-
-    return (
-      <div className="space-y-3">
-        <p className="text-xs text-muted-foreground mb-3">
-          Live insights • Updated {lastUpdate.toLocaleTimeString()}
-        </p>
-
-        {insights.map((insight, index) => (
-          <div
-            key={index}
-            className="p-3 border border-border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
-            onClick={insight.action}
-          >
-            <div className="flex items-center justify-between mb-2">
-              <h4 className="text-sm font-medium">{insight.title}</h4>
-              <Badge
-                variant={insight.priority === 'high' ? 'destructive' : 'secondary'}
-                className="text-xs"
-              >
-                {insight.priority}
-              </Badge>
-            </div>
-            <p className="text-xs text-muted-foreground mb-2">
-              {insight.description}
-            </p>
-            <Badge variant="outline" className="text-xs">{insight.type}</Badge>
-          </div>
-        ))}
+        <Button variant="ghost" size="sm" onClick={() => setError(null)} className="text-destructive hover:bg-destructive/10">
+          ×
+        </Button>
       </div>
-    );
-  };
+    </div>
+  );
 
   return (
     <div className="space-y-6">
-      {/* Quick Query Header */}
       <div>
         <h1 className="text-2xl font-bold mb-2">Analytics Sandbox</h1>
-        <p className="text-muted-foreground">Query blockchain data, analyze contracts, and build prediction models</p>
+        <p className="text-muted-foreground">
+          SQL over BlocRA's analytics store: every Stellar ledger with its transactions and operations,
+          and blocks sampled from the other chains on the dashboard.
+        </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         <div className="lg:col-span-3 space-y-4">
-
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="editor">SQL Editor</TabsTrigger>
@@ -959,41 +484,52 @@ LIMIT 30;`;
             <TabsContent value="editor" className="space-y-4">
               <Card className="glass">
                 <CardHeader>
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
                     <CardTitle>SQL Query Editor</CardTitle>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <span>Available tables:</span>
-                      <Badge variant="outline">blocks</Badge>
-                      <Badge variant="outline">transactions</Badge>
+                      <span>Tables:</span>
+                      {(schema?.tables.map((t) => t.name) ?? ['blocks', 'transactions', 'operations']).map((t) => (
+                        <Badge key={t} variant="outline" className="font-mono cursor-pointer" onClick={() => insertAtCursor(t)}>{t}</Badge>
+                      ))}
                     </div>
                   </div>
+                  <p className="text-xs text-muted-foreground">
+                    SQLite, read-only (SELECT or WITH), up to 1000 rows. Timestamps are unix seconds:
+                    use <code className="font-mono">strftime('%H:%M', timestamp, 'unixepoch')</code> to group by time.
+                  </p>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {sqlJustGenerated && (
                     <div className="flex items-center gap-2 p-2 bg-primary/10 border border-primary/20 rounded-md animate-pulse">
                       <Sparkles className="w-4 h-4 text-primary" />
-                      <span className="text-sm text-primary font-medium">AI Generated SQL - Review and execute!</span>
+                      <span className="text-sm text-primary font-medium">AI-generated SQL: review it, then run it</span>
                     </div>
                   )}
                   <Textarea
+                    ref={textareaRef}
                     value={query}
                     onChange={(e) => {
                       setQuery(e.target.value);
-                      setSqlJustGenerated(false); // Remove highlight when user edits
+                      setSqlJustGenerated(false);
                     }}
-                    placeholder="Enter your SQL query here..."
-                    className={`min-h-[200px] font-mono transition-all ${
-                      sqlJustGenerated ? 'ring-2 ring-primary ring-offset-2' : ''
-                    }`}
+                    onKeyDown={(e) => {
+                      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                        e.preventDefault();
+                        if (!loading) void executeQuery();
+                      }
+                    }}
+                    placeholder="SELECT ... FROM blocks WHERE chain = 'stellar' ..."
+                    spellCheck={false}
+                    className={`min-h-[200px] font-mono transition-all ${sqlJustGenerated ? 'ring-2 ring-primary ring-offset-2' : ''}`}
                   />
                   <div className="flex gap-2 flex-wrap">
                     {loading ? (
-                      <Button onClick={() => abortController?.abort()} variant="destructive">
+                      <Button onClick={cancelQuery} variant="destructive">
                         <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
                         Cancel Query
                       </Button>
                     ) : (
-                      <Button onClick={executeQuery} className="glow-primary bg-blue-600 hover:bg-blue-700">
+                      <Button onClick={executeQuery} className="glow-primary bg-blue-600 hover:bg-blue-700" title="Ctrl+Enter">
                         <Play className="w-4 h-4 mr-2" />
                         Run Query
                       </Button>
@@ -1007,19 +543,20 @@ LIMIT 30;`;
                       <Save className="w-4 h-4 mr-2" />
                       Save Query
                     </Button>
-                    <Button onClick={visualizeResults} disabled={!results.length} variant="outline">
+                    <Button onClick={() => setResultsTab('chart')} disabled={!results.length} variant="outline">
                       <BarChart3 className="w-4 h-4 mr-2" />
                       Visualize
                     </Button>
-                    <Button onClick={addToDashboard} disabled={!results.length} variant="outline">
+                    <Button onClick={addToDashboard} disabled={!query.trim()} variant="outline">
                       <Plus className="w-4 h-4 mr-2" />
-                      Create Dashboard
+                      Add to Dashboard
                     </Button>
-                    <Button onClick={exportToExcel} variant="outline" disabled={!results.length}>
+                    <Button onClick={exportCSV} variant="outline" disabled={!results.length}>
                       <Download className="w-4 h-4 mr-2" />
                       Export CSV
                     </Button>
                   </div>
+                  {errorBox}
                 </CardContent>
               </Card>
             </TabsContent>
@@ -1029,118 +566,42 @@ LIMIT 30;`;
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Wand2 className="w-5 h-5" />
-                    AI Analytics Sandbox
+                    Ask in plain English
                   </CardTitle>
+                  <p className="text-xs text-muted-foreground">
+                    The backend AI analyst writes SQL for the analytics tables. The query is placed in the editor for you to review and run.
+                  </p>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <Tabs defaultValue="prompt" className="w-full">
-                    <TabsList className="grid w-full grid-cols-3">
-                      <TabsTrigger value="prompt">Natural Language</TabsTrigger>
-                      <TabsTrigger value="contract">Contract Analysis</TabsTrigger>
-                      <TabsTrigger value="prediction">Prediction Models</TabsTrigger>
-                    </TabsList>
-
-                    <TabsContent value="prompt" className="space-y-4">
-                      <Textarea
-                        value={prompt}
-                        onChange={(e) => setPrompt(e.target.value)}
-                        placeholder="Describe what data you want to analyze in plain English..."
-                        className="min-h-[100px]"
-                      />
-                      <Button onClick={generateSQLFromPrompt} disabled={aiLoading || !prompt.trim()}>
-                        <Wand2 className="w-4 h-4 mr-2" />
-                        {aiLoading ? 'Generating...' : 'Generate SQL'}
-                      </Button>
-                    </TabsContent>
-
-                    <TabsContent value="contract" className="space-y-4">
-                      <div className="space-y-3">
-                        <Input
-                          value={contractAddress}
-                          onChange={(e) => setContractAddress(e.target.value)}
-                          placeholder="Enter contract address (0x...)"
-                          className="font-mono"
-                        />
-                        <Button onClick={() => analyzeContract(contractAddress)} disabled={!contractAddress.trim()}>
-                          <Search className="w-4 h-4 mr-2" />
-                          Analyze Contract
-                        </Button>
-                        <div className="text-xs text-muted-foreground">
-                          Analyze transaction patterns, gas usage, and activity for any Starknet contract
-                        </div>
-                      </div>
-                    </TabsContent>
-
-                    <TabsContent value="prediction" className="space-y-4">
-                      <div className="space-y-3">
-                        <select
-                          value={predictionModel}
-                          onChange={(e) => setPredictionModel(e.target.value)}
-                          className="w-full p-2 border border-border rounded-lg bg-background"
-                        >
-                          <option value="">Select prediction model...</option>
-                          <option value="gas_price">Gas Price Prediction</option>
-                          <option value="transaction_volume">Transaction Volume Forecast</option>
-                          <option value="defi_tvl">DeFi TVL Trends</option>
-                          <option value="user_growth">User Growth Prediction</option>
-                        </select>
-                        <Button onClick={() => buildPredictionModel(predictionModel)} disabled={!predictionModel}>
-                          <TrendingUp className="w-4 h-4 mr-2" />
-                          Build Model
-                        </Button>
-                        <div className="text-xs text-muted-foreground">
-                          Build predictive models using historical blockchain data
-                        </div>
-                      </div>
-                    </TabsContent>
-                  </Tabs>
+                  <Textarea
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                    placeholder="Describe the data you want, e.g. failed Stellar transactions per minute"
+                    className="min-h-[100px]"
+                  />
+                  <Button onClick={generateSQLFromPrompt} disabled={aiLoading || !prompt.trim()}>
+                    <Wand2 className="w-4 h-4 mr-2" />
+                    {aiLoading ? 'Generating...' : 'Generate SQL'}
+                  </Button>
 
                   <div className="mt-6">
                     <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
                       <Lightbulb className="w-4 h-4" />
-                      Example Prompts
+                      Example prompts
                     </h4>
-                    <div className="grid gap-3">
-                      {examplePrompts.map((example, i) => (
+                    <div className="grid gap-2">
+                      {examplePrompts.map((p) => (
                         <div
-                          key={i}
-                          className="p-3 border border-border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
-                          onClick={() => setPrompt(example.prompt)}
+                          key={p}
+                          className="p-3 border border-border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors text-sm"
+                          onClick={() => setPrompt(p)}
                         >
-                          <h5 className="font-medium text-sm">{example.title}</h5>
-                          <p className="text-xs text-muted-foreground mt-1">{example.prompt}</p>
+                          {p}
                         </div>
                       ))}
                     </div>
                   </div>
-
-                  {error && (
-                    <div className="mt-4 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <h4 className="text-sm font-medium text-destructive mb-2">Query Error</h4>
-                          <p className="text-sm text-destructive/80 mb-3">{error}</p>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => fixQueryError(error)}
-                            className="border-destructive/30 text-destructive hover:bg-destructive/10"
-                          >
-                            <Wand2 className="w-4 h-4 mr-2" />
-                            Fix with AI
-                          </Button>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setError(null)}
-                          className="text-destructive hover:bg-destructive/10"
-                        >
-                          ×
-                        </Button>
-                      </div>
-                    </div>
-                  )}
+                  {errorBox}
                 </CardContent>
               </Card>
             </TabsContent>
@@ -1159,15 +620,23 @@ LIMIT 30;`;
                     <div>
                       <CardTitle className="text-lg font-semibold">Query Results</CardTitle>
                       <p className="text-sm text-muted-foreground mt-1">
-                        {totalResults.toLocaleString()} rows • Executed at {new Date().toLocaleTimeString()}
+                        {totalResults.toLocaleString()} rows
+                        {runInfo
+                          ? ` • ran at ${runInfo.at.toLocaleTimeString()}${runInfo.elapsedMs !== null ? ` in ${runInfo.elapsedMs} ms` : ''}`
+                          : ' • saved results; run the query for fresh data'}
                       </p>
+                      {runInfo?.truncated && (
+                        <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                          More rows matched; only the first 1000 are returned. Add a LIMIT or aggregate to narrow it down.
+                        </p>
+                      )}
                     </div>
                     <div className="flex space-x-2">
-                      <Button onClick={exportToExcel} size="sm" variant="outline">
+                      <Button onClick={exportCSV} size="sm" variant="outline">
                         <Download className="w-4 h-4 mr-2" />
                         Export CSV
                       </Button>
-                      <Button onClick={visualizeResults} size="sm" variant="outline">
+                      <Button onClick={() => setResultsTab('chart')} size="sm" variant="outline">
                         <BarChart3 className="w-4 h-4 mr-2" />
                         Charts
                       </Button>
@@ -1179,44 +648,19 @@ LIMIT 30;`;
                         <table className="w-full">
                           <thead className="bg-muted/50 sticky top-0 z-10">
                             <tr>
-                              {Object.keys(results[0]).map((key) => (
-                                <th key={key} className="text-left p-4 font-semibold text-sm border-b border-border">
-                                  <div className="flex items-center gap-2">
-                                    {key.replace(/_/g, ' ').toUpperCase()}
-                                    <Badge variant="outline" className="text-xs">
-                                      {typeof results[0][key] === 'number' ? 'NUM' : 'TEXT'}
-                                    </Badge>
-                                  </div>
+                              {columns.map((key) => (
+                                <th key={key} className="text-left p-3 font-semibold text-sm border-b border-border whitespace-nowrap font-mono">
+                                  {key}
                                 </th>
                               ))}
                             </tr>
                           </thead>
                           <tbody>
-                            {getPaginatedResults().map((row, i) => (
+                            {pageRows.map((row, i) => (
                               <tr key={i} className="hover:bg-muted/30 transition-colors border-b border-border/30">
-                                {Object.entries(row).map(([key, value], j) => (
-                                  <td key={j} className="p-4 text-sm">
-                                    <div className="flex items-center gap-2">
-                                      {value === null ? (
-                                        <span className="text-muted-foreground" title="Not reported by the RPC">—</span>
-                                      ) : typeof value === 'number' ? (
-                                        <span className="font-mono bg-blue-50 dark:bg-blue-950 px-2 py-1 rounded text-blue-700 dark:text-blue-300">
-                                          {value.toLocaleString()}
-                                        </span>
-                                      ) : key.toLowerCase().includes('hash') || key.toLowerCase().includes('address') ? (
-                                        <span className="font-mono bg-purple-50 dark:bg-purple-950 px-2 py-1 rounded text-purple-700 dark:text-purple-300 text-xs">
-                                          {String(value).slice(0, 10)}...{String(value).slice(-6)}
-                                        </span>
-                                      ) : key.toLowerCase().includes('timestamp') ? (
-                                        <span className="bg-green-50 dark:bg-green-950 px-2 py-1 rounded text-green-700 dark:text-green-300 text-xs">
-                                          {new Date(Number(value) * 1000).toLocaleString()}
-                                        </span>
-                                      ) : (
-                                        <span className="bg-gray-50 dark:bg-gray-900 px-2 py-1 rounded">
-                                          {String(value)}
-                                        </span>
-                                      )}
-                                    </div>
+                                {columns.map((key) => (
+                                  <td key={key} className="p-3 text-sm">
+                                    <CellValue column={key} value={row[key] ?? null} />
                                   </td>
                                 ))}
                               </tr>
@@ -1229,30 +673,18 @@ LIMIT 30;`;
                     {totalResults > pageSize && (
                       <div className="flex items-center justify-between mt-6 px-4 pb-4">
                         <div className="text-sm text-muted-foreground">
-                          Showing <span className="font-medium">{((currentPage - 1) * pageSize) + 1}</span> to <span className="font-medium">{Math.min(currentPage * pageSize, totalResults)}</span> of <span className="font-medium">{totalResults.toLocaleString()}</span> results
+                          Showing <span className="font-medium">{(currentPage - 1) * pageSize + 1}</span> to{' '}
+                          <span className="font-medium">{Math.min(currentPage * pageSize, totalResults)}</span> of{' '}
+                          <span className="font-medium">{totalResults.toLocaleString()}</span> results
                         </div>
                         <div className="flex items-center space-x-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                            disabled={currentPage === 1}
-                          >
+                          <Button variant="outline" size="sm" onClick={() => setCurrentPage(Math.max(1, currentPage - 1))} disabled={currentPage === 1}>
                             <ChevronLeft className="w-4 h-4" />
                             Previous
                           </Button>
-                          <div className="flex items-center space-x-1">
-                            <span className="text-sm px-3 py-1 bg-primary text-primary-foreground rounded">
-                              {currentPage}
-                            </span>
-                            <span className="text-sm text-muted-foreground">of {Math.ceil(totalResults / pageSize)}</span>
-                          </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setCurrentPage(Math.min(Math.ceil(totalResults / pageSize), currentPage + 1))}
-                            disabled={currentPage === Math.ceil(totalResults / pageSize)}
-                          >
+                          <span className="text-sm px-3 py-1 bg-primary text-primary-foreground rounded">{currentPage}</span>
+                          <span className="text-sm text-muted-foreground">of {pageCount}</span>
+                          <Button variant="outline" size="sm" onClick={() => setCurrentPage(Math.min(pageCount, currentPage + 1))} disabled={currentPage === pageCount}>
                             Next
                             <ChevronRight className="w-4 h-4" />
                           </Button>
@@ -1264,49 +696,66 @@ LIMIT 30;`;
               </TabsContent>
 
               <TabsContent value="chart">
-                <ChartBuilder data={results} onSave={(config) => console.log('Chart saved:', config)} />
+                <ChartBuilder data={results} />
               </TabsContent>
             </Tabs>
           )}
         </div>
 
-        {/* Right Sidebar */}
+        {/* Right sidebar */}
         <div className="space-y-4">
-          {/* Saved Queries */}
+          <Card className="glass">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Database className="w-4 h-4" />
+                Schema
+              </CardTitle>
+              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={loadSchema} title="Refresh schema and coverage">
+                <RefreshCw className="w-3 h-3" />
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <SchemaPanel schema={schema} error={schemaError} onInsert={insertAtCursor} />
+            </CardContent>
+          </Card>
+
+          <Card className="glass">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Lightbulb className="w-4 h-4" />
+                Sample queries
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {SAMPLE_QUERIES.map((s) => (
+                <div
+                  key={s.title}
+                  className="p-2.5 border border-border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+                  onClick={() => {
+                    setQuery(s.sql);
+                    setError(null);
+                    setActiveTab('editor');
+                  }}
+                >
+                  <h4 className="text-sm font-medium">{s.title}</h4>
+                  <p className="text-xs text-muted-foreground">{s.description}</p>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
           <Card className="glass">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
                 <Save className="w-4 h-4" />
                 Saved Queries
               </CardTitle>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6"
-                onClick={() => navigate('/library')}
-                title="View all saved queries"
-              >
+              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => navigate('/library')} title="View all saved queries">
                 <Search className="w-3 h-3" />
               </Button>
             </CardHeader>
             <CardContent className="space-y-2">
-              <SavedQueriesList />
-            </CardContent>
-          </Card>
-
-          {/* AI Suggestions */}
-          <Card className="glass">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Zap className="w-4 h-4" />
-                AI Insights
-              </CardTitle>
-              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => window.location.reload()}>
-                <RefreshCw className="w-3 h-3" />
-              </Button>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <AIInsights />
+              <SavedQueriesList onLoad={loadSaved} onViewAll={() => navigate('/library')} />
             </CardContent>
           </Card>
         </div>
