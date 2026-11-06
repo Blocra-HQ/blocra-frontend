@@ -5,7 +5,6 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -27,8 +26,6 @@ import {
   User,
   Key,
   Wallet,
-  Link as LinkIcon,
-  CreditCard,
   Home,
   LogOut,
   Trash2,
@@ -40,20 +37,7 @@ import {
   Send
 } from 'lucide-react';
 import { buildApiUrl } from '@/config/api';
-import { api } from '@/lib/api';
-
-interface AccountData {
-  platform: string;
-  username: string;
-  isConnected: boolean;
-}
-
-interface SubscriptionData {
-  plan: string;
-  billing: string;
-  nextBilling: string;
-  price: string;
-}
+import { api, apiClient } from '@/lib/api';
 
 const Settings = (): JSX.Element => {
   const { user, profile, updateProfile, signOut } = useAuth();
@@ -209,19 +193,6 @@ const Settings = (): JSX.Element => {
     }
   };
 
-  const [connectedAccounts] = useState<AccountData[]>([
-    { platform: 'GitHub', username: 'user123', isConnected: true },
-    { platform: 'Twitter', username: '@user123', isConnected: true },
-    { platform: 'Discord', username: 'user#1234', isConnected: false }
-  ]);
-
-  const [subscriptionInfo] = useState<SubscriptionData>({
-    plan: 'Pro',
-    billing: 'Monthly',
-    nextBilling: '2024-11-25',
-    price: '$19.99'
-  });
-
   const handleProfileUpdate = async (): Promise<void> => {
     setIsLoading(true);
     try {
@@ -239,6 +210,60 @@ const Settings = (): JSX.Element => {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Change password / delete account (PUT /api/auth/password, DELETE /api/auth/account)
+  const [passwordOpen, setPasswordOpen] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [accountBusy, setAccountBusy] = useState(false);
+  const signedIn = Boolean(user || wallet.isAuthenticated);
+
+  const handleChangePassword = async (): Promise<void> => {
+    setAccountBusy(true);
+    try {
+      await apiClient.request('/auth/password', {
+        method: 'PUT',
+        body: JSON.stringify({ current_password: currentPassword || undefined, new_password: newPassword }),
+      });
+      toast({ title: "Password updated" });
+      setPasswordOpen(false);
+      setCurrentPassword('');
+      setNewPassword('');
+    } catch (error) {
+      toast({
+        title: "Could not change password",
+        description: error instanceof Error ? error.message.replace(/^(Bad request|Unauthorized): /, '') : 'Request failed',
+        variant: "destructive"
+      });
+    } finally {
+      setAccountBusy(false);
+    }
+  };
+
+  const handleDeleteAccount = async (): Promise<void> => {
+    setAccountBusy(true);
+    try {
+      await apiClient.request('/auth/account', {
+        method: 'DELETE',
+        body: JSON.stringify({ password: deletePassword || undefined }),
+      });
+      setDeleteOpen(false);
+      await signOut();
+      if (wallet.address) wallet.disconnectWallet();
+      toast({ title: "Account deleted", description: "Your account and saved work have been removed." });
+      navigate('/');
+    } catch (error) {
+      toast({
+        title: "Could not delete account",
+        description: error instanceof Error ? error.message.replace(/^(Bad request|Unauthorized): /, '') : 'Request failed',
+        variant: "destructive"
+      });
+    } finally {
+      setAccountBusy(false);
     }
   };
 
@@ -262,7 +287,7 @@ const Settings = (): JSX.Element => {
       <main className="p-6 space-y-8">
 
       <Tabs defaultValue={initialTab} className="w-full">
-        <TabsList className="grid grid-cols-5 w-full max-w-4xl">
+        <TabsList className="grid grid-cols-3 w-full max-w-4xl">
           <TabsTrigger value="profile" className="flex items-center gap-2">
             <User className="w-4 h-4" />
             Profile
@@ -274,14 +299,6 @@ const Settings = (): JSX.Element => {
           <TabsTrigger value="wallets" className="flex items-center gap-2">
             <Wallet className="w-4 h-4" />
             Wallets
-          </TabsTrigger>
-          <TabsTrigger value="connected" className="flex items-center gap-2">
-            <LinkIcon className="w-4 h-4" />
-            Connections
-          </TabsTrigger>
-          <TabsTrigger value="subscription" className="flex items-center gap-2">
-            <CreditCard className="w-4 h-4" />
-            Subscription
           </TabsTrigger>
         </TabsList>
 
@@ -380,18 +397,17 @@ const Settings = (): JSX.Element => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-4">
-                <Button variant="outline" className="w-full justify-start">
-                  Change Password
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  disabled={!signedIn}
+                  onClick={() => setPasswordOpen(true)}
+                >
+                  {user ? 'Change Password' : 'Set a Password'}
                 </Button>
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Two-Factor Authentication</Label>
-                    <CardDescription>
-                      Add an extra layer of security to your account
-                    </CardDescription>
-                  </div>
-                  <Switch />
-                </div>
+                {!signedIn && (
+                  <CardDescription>Sign in to manage your password.</CardDescription>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -439,66 +455,6 @@ const Settings = (): JSX.Element => {
             </CardContent>
           </Card>
         </TabsContent>
-
-        {/* Connected Accounts Tab */}
-        <TabsContent value="connected" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Connected Accounts</CardTitle>
-              <CardDescription>
-                Manage your connected social and developer accounts
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {connectedAccounts.map((account, index) => (
-                  <div key={index} className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                      <LinkIcon className="w-5 h-5" />
-                      <div>
-                        <p className="font-medium">{account.platform}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {account.isConnected ? account.username : 'Not connected'}
-                        </p>
-                      </div>
-                    </div>
-                    <Button variant={account.isConnected ? "destructive" : "outline"}>
-                      {account.isConnected ? 'Disconnect' : 'Connect'}
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Subscription Tab */}
-        <TabsContent value="subscription" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Subscription Plan</CardTitle>
-              <CardDescription>
-                Manage your subscription and billing information
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="font-semibold">Current Plan</h4>
-                    <p className="text-sm text-muted-foreground">{subscriptionInfo.plan}</p>
-                  </div>
-                  <Badge variant="secondary">{subscriptionInfo.price}/month</Badge>
-                </div>
-                <Separator />
-                <div className="space-y-2">
-                  <p className="text-sm">Next billing date: {subscriptionInfo.nextBilling}</p>
-                  <Button variant="outline" className="w-full">Manage Subscription</Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
       </Tabs>
 
       {/* Additional Actions */}
@@ -536,7 +492,7 @@ const Settings = (): JSX.Element => {
               <Button 
                 variant="outline" 
                 className="w-full flex items-center gap-2"
-                onClick={() => window.open('https://docs.blocra.com', '_blank')}
+                onClick={() => navigate('/docs')}
               >
                 <HelpCircle className="w-4 h-4" />
                 Help Center
@@ -548,7 +504,12 @@ const Settings = (): JSX.Element => {
                 <LogOut className="w-4 h-4" />
                 Sign Out
               </Button>
-              <Button variant="destructive" className="flex items-center gap-2">
+              <Button
+                variant="destructive"
+                className="flex items-center gap-2"
+                disabled={!signedIn}
+                onClick={() => setDeleteOpen(true)}
+              >
                 <Trash2 className="w-4 h-4" />
                 Delete Account
               </Button>
@@ -557,6 +518,62 @@ const Settings = (): JSX.Element => {
         </Card>
       </div>
       </main>
+
+      {/* Change Password Dialog */}
+      <Dialog open={passwordOpen} onOpenChange={setPasswordOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Change password</DialogTitle>
+            <DialogDescription>
+              Accounts created with a wallet or Google can leave the current password empty to set one.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="current-password">Current password</Label>
+              <Input id="current-password" type="password" autoComplete="current-password"
+                value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-password">New password</Label>
+              <Input id="new-password" type="password" autoComplete="new-password" placeholder="At least 6 characters"
+                value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPasswordOpen(false)}>Cancel</Button>
+            <Button onClick={handleChangePassword} disabled={accountBusy || newPassword.length < 6}>
+              {accountBusy ? 'Saving…' : 'Update password'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Account Dialog */}
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete account</DialogTitle>
+            <DialogDescription>
+              This permanently deletes your BlocRA account, saved queries and dashboards. Reports already
+              published on Stellar stay on-chain.
+            </DialogDescription>
+          </DialogHeader>
+          {user && (
+            <div className="space-y-2">
+              <Label htmlFor="delete-password">Confirm with your password</Label>
+              <Input id="delete-password" type="password" autoComplete="current-password"
+                value={deletePassword} onChange={(e) => setDeletePassword(e.target.value)} />
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDeleteAccount} disabled={accountBusy}>
+              {accountBusy ? 'Deleting…' : 'Delete account'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Feedback Dialog */}
       <Dialog open={feedbackOpen} onOpenChange={setFeedbackOpen}>
