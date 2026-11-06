@@ -96,7 +96,7 @@ User Behavior Patterns:
 • Total Unique Users: ${stats?.uniqueUsers || 0}
 • Transaction Frequency: ${stats?.avgTxPerBlock || '0.00'} transactions per block
 • Activity Trend: ${stats?.dateRange?.span > 10000 ? 'Growing' : 'Stable'}
-• Peak Activity: ${Math.max(...Object.values(stats?.eventTypes || {1: 1}))} events in single block
+• Peak Activity: ${Math.max(...(Object.values(stats?.eventTypes || {1: 1}) as number[]))} events in single block
 
 Top User Segments:
 
@@ -182,7 +182,7 @@ Market Metrics:
 
 • User Base Size: ${stats?.uniqueUsers || 0} (${(stats?.uniqueUsers || 0) > 1000 ? 'Large' : (stats?.uniqueUsers || 0) > 100 ? 'Medium' : 'Small'} scale)
 • Transaction Velocity: ${stats?.avgTxPerBlock || '0.00'} TX/block
-• Market Activity: ${stats?.dateRange?.span > 10000 ? 'Growing' : 'Stable'} trend with ${Math.max(...Object.values(stats?.eventTypes || {1: 1}))} peak events
+• Market Activity: ${stats?.dateRange?.span > 10000 ? 'Growing' : 'Stable'} trend with ${Math.max(...(Object.values(stats?.eventTypes || {1: 1}) as number[]))} peak events
 
 Competitive Positioning:
 
@@ -316,8 +316,8 @@ Business Development:
     
     return {
       trend: blocks.length > 10 ? 'Growing' : 'Stable',
-      peakActivity: Math.max(...Object.values(activity)) || 0,
-      averageActivity: Object.values(activity).reduce((a: any, b: any) => a + b, 0) / Object.keys(activity).length || 0
+      peakActivity: Math.max(...(Object.values(activity) as number[])) || 0,
+      averageActivity: (Object.values(activity) as number[]).reduce((a, b) => a + b, 0) / Object.keys(activity).length || 0
     };
   }
 

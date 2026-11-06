@@ -25,6 +25,7 @@ export const validatePassword = (password: string): {
   }
   
   return {
+    message: errors[0] ?? '',
     isValid: errors.length === 0,
     errors
   };

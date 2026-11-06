@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Link } from 'react-router-dom';
 import { Header } from '@/components/layout/Header';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -38,6 +37,7 @@ import {
   Upload,
   Send
 } from 'lucide-react';
+import { buildApiUrl } from '@/config/api';
 import { api } from '@/lib/api';interface WalletData {
   name: string;
   address: string;
@@ -129,13 +129,17 @@ const Settings = (): JSX.Element => {
       const formData = new FormData();
       formData.append('image', file);
 
-      const response = await api.post('/auth/upload-profile-image', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+      // Multipart upload: let the browser set the boundary, so no JSON helper.
+      const token = localStorage.getItem('auth_token');
+      const res = await fetch(buildApiUrl('auth/upload-profile-image'), {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
       });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.message || `Upload failed (${res.status})`);
 
-      setProfileImage(response.data.profile_picture);
+      setProfileImage(body.profile_picture);
       toast({
         title: "Success",
         description: "Profile image updated successfully"
@@ -263,7 +267,7 @@ const Settings = (): JSX.Element => {
             Wallets
           </TabsTrigger>
           <TabsTrigger value="connected" className="flex items-center gap-2">
-            <Link className="w-4 h-4" />
+            <LinkIcon className="w-4 h-4" />
             Connections
           </TabsTrigger>
           <TabsTrigger value="subscription" className="flex items-center gap-2">
@@ -428,7 +432,7 @@ const Settings = (): JSX.Element => {
                 {connectedAccounts.map((account, index) => (
                   <div key={index} className="flex items-center justify-between">
                     <div className="flex items-center space-x-4">
-                      <Link className="w-5 h-5" />
+                      <LinkIcon className="w-5 h-5" />
                       <div>
                         <p className="font-medium">{account.platform}</p>
                         <p className="text-sm text-muted-foreground">

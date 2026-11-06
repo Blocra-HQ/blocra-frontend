@@ -9,6 +9,13 @@ interface User {
   role: 'admin' | 'creator' | 'analyst';
   isActive: boolean;
   lastLogin?: Date;
+  profile_picture?: string;
+}
+
+/** Shape of /api/auth/register, /login and /google responses. */
+interface AuthResult {
+  success: boolean;
+  token?: string;
 }
 
 interface Profile extends User {
@@ -65,7 +72,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         return;
       }
       
-      const response = await apiClient.get('/api/auth/profile');
+      // GET /api/auth/profile -> { success, data: { user } }
+      const response = await apiClient.request<{ data?: { user?: User } }>('/auth/profile');
       if (response?.data?.user) {
         const userData = response.data.user as User;
         setUser(userData);
@@ -121,13 +129,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         });
         return { error: null };
       } else {
-        const response = await apiClient.post('/api/auth/signup', {
-          email,
-          password,
-          ...userData
+        // POST /api/auth/register -> { success, token, user }
+        const response = await apiClient.request<AuthResult>('/auth/register', {
+          method: 'POST',
+          body: JSON.stringify({
+            email,
+            password,
+            username: [userData?.firstName, userData?.lastName].filter(Boolean).join(' ') || undefined,
+          }),
         });
-        if (response?.data?.token) {
-          localStorage.setItem('auth_token', response.data.token);
+        if (response?.token) {
+          apiClient.setToken(response.token);
           await fetchProfile();
         }
         return { error: null };
@@ -161,9 +173,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         });
         return { error: null };
       } else {
-        const response = await apiClient.post('/api/auth/signin', { email, password });
-        if (response?.data?.token) {
-          localStorage.setItem('auth_token', response.data.token);
+        // POST /api/auth/login -> { success, token, user }
+        const response = await apiClient.request<AuthResult>('/auth/login', {
+          method: 'POST',
+          body: JSON.stringify({ email, password }),
+        });
+        if (response?.token) {
+          apiClient.setToken(response.token);
           await fetchProfile();
         }
         return { error: null };
@@ -197,9 +213,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         });
         return { error: null };
       } else {
-        const response = await apiClient.post('/api/auth/google', { token, role });
-        if (response?.data?.token) {
-          localStorage.setItem('auth_token', response.data.token);
+        // POST /api/auth/google -> { success, token, user }
+        const response = await apiClient.request<AuthResult>('/auth/google', {
+          method: 'POST',
+          body: JSON.stringify({ token, role }),
+        });
+        if (response?.token) {
+          apiClient.setToken(response.token);
           await fetchProfile();
         }
         return { error: null };
@@ -239,9 +259,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         });
         return { error: null };
       } else {
-        const response = await apiClient.put('/api/profile', updates);
-        if (response?.data) {
-          const userData = response.data as User;
+        // PUT /api/auth/profile -> { success, data: { user } }
+        const response = await apiClient.request<{ data?: { user?: User } }>('/auth/profile', {
+          method: 'PUT',
+          body: JSON.stringify(updates),
+        });
+        if (response?.data?.user) {
+          const userData = response.data.user;
           setUser(userData);
           setProfile({
             ...userData,

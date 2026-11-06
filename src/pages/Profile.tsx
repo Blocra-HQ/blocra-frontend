@@ -76,8 +76,8 @@ export default function Profile() {
 
     const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.SyntheticEvent) => {
+    e?.preventDefault();
     setLoading(true);
 
     try {
@@ -196,7 +196,7 @@ export default function Profile() {
                     <div className="flex space-x-2">
                       <Button
                         size="sm"
-                        onClick={handleSave}
+                        onClick={handleSubmit}
                         disabled={loading}
                         className="glow-primary"
                       >
