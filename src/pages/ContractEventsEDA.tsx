@@ -17,9 +17,8 @@ import { toCSV, downloadText } from '@/lib/csv';
 import { exportElementAsPng, exportFileName } from '@/lib/exportImage';
 import { AIService } from '@/services/AIService';
 import { DatabaseService } from '@/services/DatabaseService';
-import { StateAnalysisService } from '@/services/StateAnalysisService';
 import { DependencyGraphService } from '@/services/DependencyGraphService';
-import { AdvancedAIService } from '@/services/AdvancedAIService';
+import { EventAnomalyService, type EventAnomaly } from '@/services/EventAnomalyService';
 import { AlertPanel } from '@/components/AlertPanel';
 import { DependencyGraph } from '@/components/DependencyGraph';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPieChart, Cell, LineChart, Line, AreaChart, Area, Pie } from 'recharts';
@@ -270,9 +269,7 @@ export default function ContractEventsEDA() {
   const [generatingReport, setGeneratingReport] = useState(false);
   const [exportingImage, setExportingImage] = useState(false);
   const [dependencyGraph, setDependencyGraph] = useState<any>(null);
-  const [anomalies, setAnomalies] = useState<any[]>([]);
-  const [predictions, setPredictions] = useState<any[]>([]);
-  const [stateAnalysis, setStateAnalysis] = useState<any>(null);
+  const [anomalies, setAnomalies] = useState<EventAnomaly[]>([]);
   const [cancelFetch, setCancelFetch] = useState(false);
 
   // Clear all state when chain changes
@@ -287,8 +284,6 @@ export default function ContractEventsEDA() {
     setAiReport(null);
     setDependencyGraph(null);
     setAnomalies([]);
-    setPredictions([]);
-    setStateAnalysis(null);
     setCancelFetch(false);
   }, [currentChain.id]); // Re-run when chain ID changes
 
@@ -676,33 +671,12 @@ Tip: Verify the contract address on ${currentChain.explorer.replace('https://', 
     setLoading(false);
   };
 
-  const generateAdvancedAnalytics = async (events: any[], stats: any, contracts: any[]) => {
+  const generateAdvancedAnalytics = async (events: any[], _stats: any, contracts: any[]) => {
     try {
-      // Generate dependency graph
-      const graph = DependencyGraphService.buildDependencyGraph(contracts, events);
-      setDependencyGraph(graph);
-
-      // Detect anomalies
-      const detectedAnomalies = AdvancedAIService.detectAnomalies(events, stats);
-      setAnomalies(detectedAnomalies);
-
-      // Generate predictions
-      const predictions = AdvancedAIService.generatePredictions(stats);
-      setPredictions(predictions);
-
-      // Analyze contract state (for first contract)
-      if (contracts.length > 0) {
-        const { RpcProvider } = await import('starknet');
-        const provider = new RpcProvider({ nodeUrl: getRpcUrl() });
-        const latestBlock = await provider.getBlockNumber();
-        const historicalBlocks = await StateAnalysisService.getHistoricalBlocks(latestBlock);
-        const stateAnalysis = await StateAnalysisService.analyzeContractState(
-          contracts[0].address,
-          provider,
-          historicalBlocks
-        );
-        setStateAnalysis(stateAnalysis);
-      }
+      // Graph of from→to interactions found in the loaded events
+      setDependencyGraph(DependencyGraphService.buildDependencyGraph(contracts, events));
+      // Deterministic outlier checks over the same events
+      setAnomalies(EventAnomalyService.detect(events));
     } catch (error) {
       console.error('Advanced analytics error:', error);
     }
@@ -820,7 +794,8 @@ Tip: Verify the contract address on ${currentChain.explorer.replace('https://', 
           contractName,
           contractInfo,
           stats,
-          events
+          events,
+          chain: currentChain.name
         });
         report = `Note: written from BlocRA's statistics without the AI analyst (${aiError instanceof Error ? aiError.message : 'unavailable'}).\n\n${summary}`;
       }
@@ -1572,75 +1547,40 @@ Tip: Verify the contract address on ${currentChain.explorer.replace('https://', 
               </div>
             )}
 
-            {/* Anomalies & Predictions */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-6xl mx-auto">
-              {/* Anomaly Detection */}
-              {anomalies.length > 0 && (
+            {/* Unusual activity: deterministic outliers in the loaded events */}
+            {anomalies.length > 0 && (
+              <div className="max-w-6xl mx-auto">
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center space-x-2">
                       <Activity className="h-5 w-5 text-red-500" />
                       <span>Unusual Activity</span>
                     </CardTitle>
+                    <p className="text-xs text-muted-foreground">
+                      Statistical outliers in the {events.length} events loaded above, compared with their own median.
+                    </p>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    {anomalies.map((anomaly, index) => (
-                      <Card key={index} className="p-3">
+                    {anomalies.map((anomaly) => (
+                      <Card key={anomaly.type} className="p-3">
                         <div className="flex items-center justify-between mb-2">
-                          <Badge className={anomaly.severity === 'high' ? 'bg-red-500' : anomaly.severity === 'medium' ? 'bg-yellow-500' : 'bg-blue-500'}>
+                          <Badge className={anomaly.severity === 'high' ? 'bg-red-500' : 'bg-yellow-500'}>
                             {anomaly.severity.toUpperCase()}
                           </Badge>
-                          <span className="text-sm text-muted-foreground">
-                            {(anomaly.confidence * 100).toFixed(0)}% confidence
-                          </span>
+                          <span className="text-xs text-muted-foreground">{anomaly.method}</span>
                         </div>
                         <p className="text-sm">{anomaly.description}</p>
+                        {anomaly.blocks.length > 0 && (
+                          <p className="text-xs text-muted-foreground mt-1 font-mono">
+                            Blocks: {anomaly.blocks.slice(0, 10).join(', ')}{anomaly.blocks.length > 10 ? ` +${anomaly.blocks.length - 10} more` : ''}
+                          </p>
+                        )}
                       </Card>
                     ))}
                   </CardContent>
                 </Card>
-              )}
-
-              {/* Predictions */}
-              {predictions.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
-                      <TrendingUp className="h-5 w-5 text-green-500" />
-                      <span>Trend Forecasts</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {predictions.map((prediction, index) => (
-                      <div key={index} className="p-3 border rounded-lg">
-                        <div className="flex items-center justify-between mb-2">
-                          <h4 className="font-semibold">{prediction.metric}</h4>
-                          <Badge className={prediction.trend === 'increasing' ? 'bg-green-500' : prediction.trend === 'decreasing' ? 'bg-red-500' : 'bg-gray-500'}>
-                            {prediction.trend}
-                          </Badge>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2 text-sm">
-                          <div>
-                            <p className="text-muted-foreground">Current</p>
-                            <p className="font-mono">{prediction.currentValue}</p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Predicted ({prediction.timeframe})</p>
-                            <p className="font-mono">{prediction.predictedValue}</p>
-                          </div>
-                        </div>
-                        <div className="mt-2">
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div className="bg-blue-600 h-2 rounded-full" style={{ width: `${prediction.confidence * 100}%` }}></div>
-                          </div>
-                          <p className="text-xs text-muted-foreground mt-1">{(prediction.confidence * 100).toFixed(0)}% confidence</p>
-                        </div>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* Alert Panel */}
             <div className="max-w-6xl mx-auto">
