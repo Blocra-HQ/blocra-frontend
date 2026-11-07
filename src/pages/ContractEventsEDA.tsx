@@ -19,11 +19,9 @@ import { AIService } from '@/services/AIService';
 import { DatabaseService } from '@/services/DatabaseService';
 import { DependencyGraphService } from '@/services/DependencyGraphService';
 import { EventAnomalyService, type EventAnomaly } from '@/services/EventAnomalyService';
-import { AlertPanel } from '@/components/AlertPanel';
 import { DependencyGraph } from '@/components/DependencyGraph';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPieChart, Cell, LineChart, Line, AreaChart, Area, Pie } from 'recharts';
 import { useChain } from '@/contexts/ChainContext';
-import { multiChainRPC } from '@/services/MultiChainRPCService';
 import { validateAddress, getAddressPlaceholder } from '@/services/AddressValidationService';
 import { universalEventFetcher } from '@/services/UniversalEventFetcher';
 import { STARKNET_RPCS } from "@/config/chains";
@@ -341,9 +339,6 @@ export default function ContractEventsEDA() {
     try {
       console.log('Fetching data for contracts:', validContracts.map(c => c.address));
 
-      // Use multi-chain RPC service
-      const dashboardMetrics = await multiChainRPC.getDashboardMetrics();
-
       // REAL DATA FETCHING via backend
       let allEvents: any[] = [];
       let fetchedContractInfo: any = null;
@@ -434,12 +429,6 @@ export default function ContractEventsEDA() {
             return acc;
           }, []);
 
-        // Ensure we have at least start and end points if empty
-        if (volumeOverTime.length === 0) {
-          volumeOverTime.push({ name: 'Start', value: 0, transactions: 0 });
-          volumeOverTime.push({ name: 'Current', value: 0, transactions: 0 });
-        }
-
         // Calculate top callers
         const callerCounts = evs.reduce((acc: any, ev) => {
           const caller = ev.decoded_data?.from || ev.decoded_data?.user || ev.decoded_data?.owner || 'Unknown';
@@ -471,8 +460,7 @@ export default function ContractEventsEDA() {
               tx_count: 0,
               outgoing_txs: 0,
               incoming_txs: 0,
-              total_eth_volume: 0,
-              gas_prices: []
+              total_eth_volume: 0
             };
           }
           
@@ -507,17 +495,14 @@ export default function ContractEventsEDA() {
           tx_count: day.tx_count,
           outgoing_txs: day.outgoing_txs,
           incoming_txs: day.incoming_txs,
-          total_eth_volume: day.total_eth_volume.toFixed(8),
-          avg_gas_price: day.gas_prices.length > 0 
-            ? (day.gas_prices.reduce((a: number, b: number) => a + b, 0) / day.gas_prices.length).toFixed(2)
-            : 'n/a' // gas prices need transaction receipts, which events don't include
+          total_eth_volume: day.total_eth_volume.toFixed(8)
         })).sort((a, b) => b.day.localeCompare(a.day)); // Most recent first
 
         setStats({
           // Basic metrics
           totalEvents: evs.length,
           totalTransactions: transactions.length,
-          totalCalls: evs.length, // Assuming 1 event ~ 1 call for simplicity if not distinguishing internal calls
+          totalCalls: evs.length, // events loaded (shown as "Events"; internal calls are not distinguished)
           uniqueBlocks: blocks.length,
           uniqueUsers: users.length,
 
@@ -628,7 +613,7 @@ export default function ContractEventsEDA() {
           hasApprovals: false,
 
           // Error rate
-          errorRate: { rate: 0 }
+          errorRate: undefined
         };
 
         setStats(zeroStats);
@@ -980,8 +965,8 @@ Tip: Verify the contract address on ${currentChain.explorer.replace('https://', 
                 </div>
                 <div className="text-center p-3 bg-purple-500/10 rounded-lg border border-purple-500/20">
                   <BarChart3 className="h-5 w-5 mx-auto mb-1 text-purple-600" />
-                  <p className="text-xl font-bold text-purple-600">{stats.totalCalls.toLocaleString()}</p>
-                  <p className="text-xs text-muted-foreground">Contract Calls</p>
+                  <p className="text-xl font-bold text-purple-600">{stats.avgEventsPerTx}</p>
+                  <p className="text-xs text-muted-foreground">Events / Tx</p>
                 </div>
                 <div className="text-center p-3 bg-orange-500/10 rounded-lg border border-orange-500/20">
                   <Users className="h-5 w-5 mx-auto mb-1 text-orange-600" />
@@ -1131,42 +1116,7 @@ Tip: Verify the contract address on ${currentChain.explorer.replace('https://', 
               </div>
 
               {/* Performance Deep Dive */}
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mb-6">
-                {/* Gas Usage Bar Chart */}
-                <Card className="p-6">
-                  <h4 className="font-semibold mb-4 text-blue-800 dark:text-blue-300">Gas Usage Analysis</h4>
-                  <ResponsiveContainer width="100%" height={220}>
-                    <BarChart data={[
-                      { name: 'Min', value: 2000, efficiency: 'Low' },
-                      { name: 'Avg', value: 5000, efficiency: 'Medium' },
-                      { name: 'Max', value: 15000, efficiency: 'High' }
-                    ]}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis />
-                      <Tooltip formatter={(value) => [`${value.toLocaleString()} gas`, 'Gas Usage']} />
-                      <Bar dataKey="value" fill="#3b82f6" radius={[6, 6, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                  <div className="mt-4 grid grid-cols-3 gap-2 text-sm">
-                    <div className="p-2 bg-blue-50 dark:bg-blue-950/20 rounded text-center">
-                      <p className="font-semibold">{Math.floor(stats.totalTransactions * 45000 / 100).toLocaleString()}</p>
-                      <p className="text-xs text-muted-foreground">Min Gas</p>
-                    </div>
-                    <div className="p-2 bg-green-50 dark:bg-green-950/20 rounded text-center">
-                      <p className="font-semibold">{Math.floor(stats.totalTransactions * 75000 / 100).toLocaleString()}</p>
-                      <p className="text-xs text-muted-foreground">Avg Gas</p>
-                    </div>
-                    <div className="p-2 bg-red-50 dark:bg-red-950/20 rounded text-center">
-                      <p className="font-semibold">{Math.floor(stats.totalTransactions * 120000 / 100).toLocaleString()}</p>
-                      <p className="text-xs text-muted-foreground">Max Gas</p>
-                    </div>
-                  </div>
-                  <div className="mt-3 text-center">
-                    <Badge variant="outline">{stats.totalTransactions > 100 ? 'High Efficiency' : stats.totalTransactions > 50 ? 'Moderate Efficiency' : 'Low Efficiency'}</Badge>
-                  </div>
-                </Card>
-
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 {/* User Retention Progress */}
                 <Card className="p-4 h-full">
                   <h4 className="font-semibold mb-3 text-purple-800 dark:text-purple-300">User Retention</h4>
@@ -1265,100 +1215,37 @@ Tip: Verify the contract address on ${currentChain.explorer.replace('https://', 
                         <AreaChart data={stats.volumeOverTime}>
                           <XAxis dataKey="name" />
                           <YAxis />
-                          <Tooltip formatter={(value, name) => name === 'value' ? [`${Number(value).toFixed(4)} ETH`, 'Volume'] : [`${value}`, 'Transactions']} />
+                          <Tooltip formatter={(value, name) => name === 'value' ? [`${Number(value).toFixed(4)}`, 'Amount (token units)'] : [`${value}`, 'Transactions']} />
                           <Area type="monotone" dataKey="value" stroke="#6366f1" fill="#6366f1" fillOpacity={0.3} />
                           <Area type="monotone" dataKey="transactions" stroke="#10b981" fill="#10b981" fillOpacity={0.2} />
                         </AreaChart>
                       </ResponsiveContainer>
                       <div className="mt-4 grid grid-cols-3 gap-3 text-sm">
                         <div className="p-3 bg-indigo-50 dark:bg-indigo-950/20 rounded text-center">
-                          <p className="text-xl font-bold">{(stats.totalTransactions * 0.00015).toFixed(6)}</p>
-                          <p className="text-xs text-muted-foreground">Total Volume ETH</p>
+                          <p className="text-xl font-bold">{stats.totalVolume}</p>
+                          <p className="text-xs text-muted-foreground">Amount transferred (token units)</p>
                         </div>
                         <div className="p-3 bg-green-50 dark:bg-green-950/20 rounded text-center">
-                          <p className="text-xl font-bold">{stats.transferCount || Math.floor(stats.totalEvents * 0.4)}</p>
+                          <p className="text-xl font-bold">{stats.transferCount ?? 0}</p>
                           <p className="text-xs text-muted-foreground">Transfers</p>
                         </div>
                         <div className="p-3 bg-purple-50 dark:bg-purple-950/20 rounded text-center">
-                          <p className="text-xl font-bold">{(stats.totalVolume / (stats.totalTransactions || 1)).toFixed(6)}</p>
-                          <p className="text-xs text-muted-foreground">Avg per TX</p>
+                          <p className="text-xl font-bold">{stats.transferCount ? (Number(stats.totalVolume) / stats.transferCount).toFixed(6) : 'n/a'}</p>
+                          <p className="text-xs text-muted-foreground">Avg per transfer</p>
                         </div>
                       </div>
                     </>
                   ) : (
                     <div className="flex items-center justify-center h-64">
                       <div className="text-center">
-                        <div className="animate-pulse flex flex-col items-center space-y-4">
-                          <div className="w-16 h-16 bg-indigo-200 dark:bg-indigo-800 rounded-full"></div>
-                          <p className="text-muted-foreground">No transfer events found in this contract</p>
+                        <div className="flex flex-col items-center space-y-4">
+                          <p className="text-muted-foreground">No Transfer events in the loaded sample</p>
                         </div>
                       </div>
                     </div>
                   )}
                 </Card>
 
-                {/* Trend Forecasts - Based on Real Data */}
-                <Card className="p-6">
-                  <h4 className="font-semibold mb-4 text-purple-800 dark:text-purple-300">📈 Trend Forecasts</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {/* Unique Users Forecast */}
-                    <div className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/20 dark:to-blue-900/20 rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
-                        <h5 className="font-semibold text-sm">Unique Users</h5>
-                        <span className="text-xs px-2 py-1 bg-green-200 dark:bg-green-800 rounded">stable</span>
-                      </div>
-                      <div className="space-y-2">
-                        <div>
-                          <p className="text-xs text-muted-foreground">Current</p>
-                          <p className="text-2xl font-bold">{stats.uniqueUsers}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground">Predicted (30 days)</p>
-                          <p className="text-xl font-bold text-blue-600">{Math.floor(stats.uniqueUsers * 1.15)}</p>
-                          <p className="text-xs text-muted-foreground">50% confidence</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Transaction Volume Forecast */}
-                    <div className="p-4 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950/20 dark:to-green-900/20 rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
-                        <h5 className="font-semibold text-sm">Transaction Volume</h5>
-                        <span className="text-xs px-2 py-1 bg-green-200 dark:bg-green-800 rounded">increasing</span>
-                      </div>
-                      <div className="space-y-2">
-                        <div>
-                          <p className="text-xs text-muted-foreground">Current</p>
-                          <p className="text-2xl font-bold">{stats.totalTransactions}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground">Predicted (30 days)</p>
-                          <p className="text-xl font-bold text-green-600">{Math.floor(stats.totalTransactions * 1.15)}</p>
-                          <p className="text-xs text-muted-foreground">45% confidence</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Events per Block Forecast */}
-                    <div className="p-4 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950/20 dark:to-purple-900/20 rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
-                        <h5 className="font-semibold text-sm">Events per Block</h5>
-                        <span className="text-xs px-2 py-1 bg-green-200 dark:bg-green-800 rounded">increasing</span>
-                      </div>
-                      <div className="space-y-2">
-                        <div>
-                          <p className="text-xs text-muted-foreground">Current</p>
-                          <p className="text-2xl font-bold">{stats.avgEventsPerBlock}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground">Predicted (7 days)</p>
-                          <p className="text-xl font-bold text-purple-600">{(parseFloat(stats.avgEventsPerBlock) * 1.2).toFixed(2)}</p>
-                          <p className="text-xs text-muted-foreground">60% confidence</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </Card>
               </div>
 
               {/* Most Active Wallets - Full Width */}
@@ -1406,8 +1293,7 @@ Tip: Verify the contract address on ${currentChain.explorer.replace('https://', 
                           <th className="text-right p-3 font-semibold">TX Count</th>
                           <th className="text-right p-3 font-semibold">Outgoing TXs</th>
                           <th className="text-right p-3 font-semibold">Incoming TXs</th>
-                          <th className="text-right p-3 font-semibold">Total ETH Volume</th>
-                          <th className="text-right p-3 font-semibold">Avg Gas Price (Gwei)</th>
+                          <th className="text-right p-3 font-semibold">Value ({currentChain.nativeCurrency})</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1429,10 +1315,7 @@ Tip: Verify the contract address on ${currentChain.explorer.replace('https://', 
                               {row.incoming_txs}
                             </td>
                             <td className="p-3 text-right font-mono font-semibold">
-                              {row.total_eth_volume} ETH
-                            </td>
-                            <td className="p-3 text-right font-mono text-purple-600 dark:text-purple-400">
-                              {row.avg_gas_price}
+                              {row.total_eth_volume}
                             </td>
                           </tr>
                         ))}
@@ -1450,10 +1333,7 @@ Tip: Verify the contract address on ${currentChain.explorer.replace('https://', 
                             {stats.transactionAnalytics.reduce((sum: number, row: any) => sum + row.incoming_txs, 0)}
                           </td>
                           <td className="p-3 text-right font-mono font-semibold">
-                            {stats.transactionAnalytics.reduce((sum: number, row: any) => sum + parseFloat(row.total_eth_volume), 0).toFixed(8)} ETH
-                          </td>
-                          <td className="p-3 text-right font-mono text-purple-600 dark:text-purple-400">
-                            {(stats.transactionAnalytics.reduce((sum: number, row: any) => sum + parseFloat(row.avg_gas_price), 0) / stats.transactionAnalytics.length).toFixed(2)}
+                            {stats.transactionAnalytics.reduce((sum: number, row: any) => sum + parseFloat(row.total_eth_volume), 0).toFixed(8)}
                           </td>
                         </tr>
                       </tfoot>
@@ -1499,7 +1379,7 @@ Tip: Verify the contract address on ${currentChain.explorer.replace('https://', 
                       <span className="font-mono">{stats.totalTransactions}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>Contract Calls:</span>
+                      <span>Events:</span>
                       <span className="font-mono">{stats.totalCalls}</span>
                     </div>
                     <div className="flex justify-between">
@@ -1581,11 +1461,6 @@ Tip: Verify the contract address on ${currentChain.explorer.replace('https://', 
                 </Card>
               </div>
             )}
-
-            {/* Alert Panel */}
-            <div className="max-w-6xl mx-auto">
-              <AlertPanel contractAddresses={contracts.map(c => c.address)} />
-            </div>
 
             {/* REPORTS: Stellar contracts get the verifiable traction report;
                 other chains keep the summary of the loaded events. */}

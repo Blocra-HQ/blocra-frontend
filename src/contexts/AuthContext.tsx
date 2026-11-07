@@ -56,22 +56,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Production auth mode
-  const isDemoAuth = false;
-
   const fetchProfile = async () => {
     try {
-      const storedUser = localStorage.getItem('demo_user');
-      if (storedUser) {
-        const userData = JSON.parse(storedUser) as User;
-        setUser(userData);
-        setProfile({
-          ...userData,
-          fullName: `${userData.firstName || ''} ${userData.lastName || ''}`.trim(),
-        });
-        return;
-      }
-      
+      // Drop any profile left by the old local demo sign-in.
+      localStorage.removeItem('demo_user');
+
       // GET /api/auth/profile -> { success, data: { user } }
       const response = await apiClient.request<{ data?: { user?: User } }>('/auth/profile');
       if (response?.data?.user) {
@@ -111,40 +100,20 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     // No global loading flag here: it is for the initial session check, and
     // toggling it unmounts the sign-in page (and its error message).
     try {
-      if (isDemoAuth) {
-        const demoUser: User = {
-          _id: `demo_${Date.now()}`,
+      // POST /api/auth/register -> { success, token, user }
+      const response = await apiClient.request<AuthResult>('/auth/register', {
+        method: 'POST',
+        body: JSON.stringify({
           email,
-          firstName: userData?.firstName || 'Demo',
-          lastName: userData?.lastName || 'User',
-          role: userData?.role || 'analyst',
-          isActive: true,
-          lastLogin: new Date()
-        };
-        localStorage.setItem('demo_user', JSON.stringify(demoUser));
-        localStorage.setItem('auth_token', `demo_token_${Date.now()}`);
-        setUser(demoUser);
-        setProfile({
-          ...demoUser,
-          fullName: `${demoUser.firstName} ${demoUser.lastName}`.trim()
-        });
-        return { error: null };
-      } else {
-        // POST /api/auth/register -> { success, token, user }
-        const response = await apiClient.request<AuthResult>('/auth/register', {
-          method: 'POST',
-          body: JSON.stringify({
-            email,
-            password,
-            username: [userData?.firstName, userData?.lastName].filter(Boolean).join(' ') || undefined,
-          }),
-        });
-        if (response?.token) {
-          apiClient.setToken(response.token);
-          await fetchProfile();
-        }
-        return { error: null };
+          password,
+          username: [userData?.firstName, userData?.lastName].filter(Boolean).join(' ') || undefined,
+        }),
+      });
+      if (response?.token) {
+        apiClient.setToken(response.token);
+        await fetchProfile();
       }
+      return { error: null };
     } catch (error: any) {
       return { error };
     }
@@ -154,36 +123,16 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     // No global loading flag here: it is for the initial session check, and
     // toggling it unmounts the sign-in page (and its error message).
     try {
-      if (isDemoAuth) {
-        const demoUser: User = {
-          _id: 'demo_user_123',
-          email,
-          firstName: 'Demo',
-          lastName: 'User',
-          role: 'analyst',
-          isActive: true,
-          lastLogin: new Date()
-        };
-        localStorage.setItem('demo_user', JSON.stringify(demoUser));
-        localStorage.setItem('auth_token', 'demo_token_123');
-        setUser(demoUser);
-        setProfile({
-          ...demoUser,
-          fullName: 'Demo User'
-        });
-        return { error: null };
-      } else {
-        // POST /api/auth/login -> { success, token, user }
-        const response = await apiClient.request<AuthResult>('/auth/login', {
-          method: 'POST',
-          body: JSON.stringify({ email, password }),
-        });
-        if (response?.token) {
-          apiClient.setToken(response.token);
-          await fetchProfile();
-        }
-        return { error: null };
+      // POST /api/auth/login -> { success, token, user }
+      const response = await apiClient.request<AuthResult>('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
+      });
+      if (response?.token) {
+        apiClient.setToken(response.token);
+        await fetchProfile();
       }
+      return { error: null };
     } catch (error: any) {
       return { error };
     }
@@ -193,36 +142,16 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     // No global loading flag here: it is for the initial session check, and
     // toggling it unmounts the sign-in page (and its error message).
     try {
-      if (isDemoAuth) {
-        const demoUser: User = {
-          _id: 'demo_google_user',
-          email: 'demo@google.com',
-          firstName: 'Google',
-          lastName: 'User',
-          role: role || 'analyst',
-          isActive: true,
-          lastLogin: new Date()
-        };
-        localStorage.setItem('demo_user', JSON.stringify(demoUser));
-        localStorage.setItem('auth_token', 'demo_google_token');
-        setUser(demoUser);
-        setProfile({
-          ...demoUser,
-          fullName: 'Google User'
-        });
-        return { error: null };
-      } else {
-        // POST /api/auth/google -> { success, token, user }
-        const response = await apiClient.request<AuthResult>('/auth/google', {
-          method: 'POST',
-          body: JSON.stringify({ token, role }),
-        });
-        if (response?.token) {
-          apiClient.setToken(response.token);
-          await fetchProfile();
-        }
-        return { error: null };
+      // POST /api/auth/google -> { success, token, user }
+      const response = await apiClient.request<AuthResult>('/auth/google', {
+        method: 'POST',
+        body: JSON.stringify({ token, role }),
+      });
+      if (response?.token) {
+        apiClient.setToken(response.token);
+        await fetchProfile();
       }
+      return { error: null };
     } catch (error: any) {
       return { error };
     }
@@ -245,32 +174,20 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const updateProfile = async (updates: Partial<Profile>) => {
     try {
       setLoading(true);
-      if (isDemoAuth) {
-        const currentUser = JSON.parse(localStorage.getItem('demo_user') || '{}');
-        const updatedUser = { ...currentUser, ...updates };
-        localStorage.setItem('demo_user', JSON.stringify(updatedUser));
-        setUser(updatedUser);
+      // PUT /api/auth/profile -> { success, data: { user } }
+      const response = await apiClient.request<{ data?: { user?: User } }>('/auth/profile', {
+        method: 'PUT',
+        body: JSON.stringify(updates),
+      });
+      if (response?.data?.user) {
+        const userData = response.data.user;
+        setUser(userData);
         setProfile({
-          ...updatedUser,
-          fullName: `${updatedUser.firstName || ''} ${updatedUser.lastName || ''}`.trim()
+          ...userData,
+          fullName: `${userData.firstName || ''} ${userData.lastName || ''}`.trim()
         });
-        return { error: null };
-      } else {
-        // PUT /api/auth/profile -> { success, data: { user } }
-        const response = await apiClient.request<{ data?: { user?: User } }>('/auth/profile', {
-          method: 'PUT',
-          body: JSON.stringify(updates),
-        });
-        if (response?.data?.user) {
-          const userData = response.data.user;
-          setUser(userData);
-          setProfile({
-            ...userData,
-            fullName: `${userData.firstName || ''} ${userData.lastName || ''}`.trim()
-          });
-        }
-        return { error: null };
       }
+      return { error: null };
     } catch (error: any) {
       return { error };
     } finally {
