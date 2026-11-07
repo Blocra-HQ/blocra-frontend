@@ -1,8 +1,13 @@
-// Stellar traction report: types, number formatting and the Markdown export.
+// Stellar traction report: types and number formatting for the on-screen
+// document and the PDF rendering.
 //
-// The report itself is computed by the backend (GET /api/reports/traction);
-// everything here only formats the figures it returns. Nothing is estimated:
-// a missing figure is printed as "—".
+// The report itself is computed and signed by the backend
+// (GET /api/reports/traction?signed=true); everything here only formats the
+// figures it returns. Nothing is estimated: a missing figure is printed as "—".
+//
+// The verifiable exports (.md / .json) are NOT produced here: they come from
+// the CLI's renderer vendored at src/lib/blocra (see src/lib/blocra/files.ts),
+// so they are byte-identical to `blocra report` and pass `npx blocra verify`.
 
 export interface Kpi {
   value: number | null;
@@ -15,6 +20,9 @@ export interface TractionReport {
   type: string;
   subject: { id: string; kind: "contract" | "asset"; label: string };
   network: string;
+  /** Methodology version, e.g. "traction/1" (also in the attestation). */
+  method_version?: string;
+  chain?: string;
   generated_at: string;
   period: {
     days: number;
@@ -43,7 +51,19 @@ export interface TractionReport {
     /** Assets only: payments an account sent to itself (arbitrage loops), excluded from volume. */
     self_payments?: number | null;
     self_payment_share_pct?: number | null;
+    /** Contracts only: calls submitted by an account other than the one that signed the authorization. */
+    relayed_calls?: number | null;
+    relayed_share_pct?: number | null;
+    /** Contracts only: smart-wallet (C...) accounts that signed calls. */
+    smart_wallet_accounts?: number | null;
   };
+  /** Relayers the requester declared (?relayers=), excluded from account counts. */
+  declared_relayers?: {
+    accounts: string[];
+    /** How many of the declared relayers submitted calls in the period. */
+    active?: number | null;
+    calls_without_user_auth?: number | null;
+  } | null;
   functions: { function: string; calls: number; failed: number; failed_pct: number }[];
   ecosystem: {
     rank: number | null;
@@ -162,6 +182,15 @@ export function qualityRows(r: TractionReport, opts: { dash?: string; ge?: strin
   if (r.subject.kind === "asset" && q.self_payment_share_pct != null) {
     rows.push(["Self-payments (to own account, excluded from volume)", `${fmtPct(q.self_payment_share_pct)} (${fmtInt(q.self_payments ?? 0)})`]);
   }
+  if (r.subject.kind === "contract" && q.relayed_share_pct != null) {
+    rows.push(["Calls submitted by a relayer or sponsor (counted for the signing user)", `${fmtPct(q.relayed_share_pct)} (${fmtInt(q.relayed_calls)})`]);
+    rows.push(["Smart-wallet (contract) accounts", fmtInt(q.smart_wallet_accounts)]);
+  }
+  const dr = r.declared_relayers;
+  if (dr?.accounts?.length) {
+    rows.push(["Declared relayers (excluded from account counts)", `${dr.accounts.map((a) => shortId(a)).join(", ")}${dr.active != null ? ` (${fmtInt(dr.active)} of ${fmtInt(dr.accounts.length)} active)` : ""}`]);
+    rows.push(["Calls from declared relayers without user authorization", fmtInt(dr.calls_without_user_auth ?? 0)]);
+  }
   return rows;
 }
 
@@ -206,9 +235,6 @@ export function scorecard(r: TractionReport): ScorecardRow[] {
 export const reportTitle = (r: TractionReport) =>
   `Traction report: ${r.subject.label} ${r.period.from}–${r.period.to}`;
 
-export const reportFileBase = (r: TractionReport) =>
-  `blocra-traction-${r.subject.id.replace(/[^A-Za-z0-9]+/g, "-").slice(0, 40)}-${r.period.from}_${r.period.to}`;
-
 /** "5.2 hours" under a day, otherwise "3.4 days". */
 export function heldTime(c: TractionReport["coverage"]): string {
   const days = c.days_covered ?? 0;
@@ -225,201 +251,4 @@ export function partialDataNote(r: TractionReport): string | null {
     `All figures cover only the collected time` +
     (r.period.has_previous ? "." : ", and there is no previous period to compare with.")
   );
-}
-
-const cell = (s: string) => s.replace(/\|/g, "\\|").replace(/\n/g, " ");
-
-function table(head: string[], rows: string[][]): string {
-  return [
-    `| ${head.map(cell).join(" | ")} |`,
-    `| ${head.map(() => "---").join(" | ")} |`,
-    ...rows.map((r) => `| ${r.map(cell).join(" | ")} |`),
-  ].join("\n");
-}
-
-/** The report as a Markdown document, following the same template as the page. */
-export function reportToMarkdown(r: TractionReport, extras: ReportExtras = {}): string {
-  const out: string[] = [];
-  const net = r.network;
-  const push = (...lines: string[]) => out.push(...lines);
-
-  // 1. Header
-  push(
-    "# Stellar Traction Report",
-    "",
-    `**${r.subject.label}**`,
-    "",
-    table(
-      ["Field", "Value"],
-      [
-        ["Subject", `\`${r.subject.id}\``],
-        ["Kind", r.subject.kind === "contract" ? "Soroban contract" : "Asset"],
-        ["Network", `Stellar ${net}`],
-        ["Period", `${r.period.from} – ${r.period.to} (UTC, ${r.period.days} days)`],
-        ["Generated", fmtUtc(r.generated_at)],
-        ["Source", "BlocRA, from Stellar ledgers it collected"],
-      ],
-    ),
-    "",
-  );
-
-  // 2. Partial data
-  const partial = partialDataNote(r);
-  if (partial) push(`> **⚠ ${partial}**`, "");
-
-  // 3. Scorecard
-  push("## Scorecard", "");
-  push(
-    table(
-      ["Metric", "Value", r.period.has_previous ? `Δ vs ${r.period.previous_from} – ${r.period.previous_to}` : "Δ vs previous period"],
-      scorecard(r).map((s) => [s.label, s.note ? `${s.value} (${s.note})` : s.value, s.change]),
-    ),
-    "",
-  );
-
-  // 4. Findings
-  push("## Key findings", "");
-  if (r.findings.length) r.findings.forEach((f) => push(`- ${f}`));
-  else push(`- ${DASH}`);
-  push("");
-
-  if (extras.aiSummary?.trim()) {
-    push("## AI-written summary (from the figures above)", "", extras.aiSummary.trim(), "");
-  }
-
-  // 5. Activity
-  push("## Activity", "");
-  if (r.daily.length) {
-    push(
-      table(
-        ["Day (UTC)", "Active accounts", activityLabel(r), "Failed", ...(r.kpis.volume ? ["Volume"] : [])],
-        r.daily.map((d) => [
-          d.day,
-          fmtInt(d.active_accounts),
-          fmtInt(d.calls),
-          fmtInt(d.failed),
-          ...(r.kpis.volume ? [fmtNum(d.volume)] : []),
-        ]),
-      ),
-    );
-  } else push("No activity recorded in this period.");
-  push("");
-
-  // 6. Retention & quality
-  const q = r.quality;
-  push("## Retention & user quality", "");
-  push(
-    table(
-      ["Measure", "Value"],
-      qualityRows(r),
-    ),
-    "",
-  );
-  if (q.top_accounts.length) {
-    push("Top accounts:", "");
-    push(
-      table(
-        ["Account", activityLabel(r), "Share", "Bot-like"],
-        q.top_accounts.slice(0, 5).map((a) => [
-          `[${shortId(a.account)}](${accountUrl(net, a.account)})`,
-          fmtInt(a.calls),
-          fmtPct(a.share_pct),
-          a.bot_like ? "yes" : "no",
-        ]),
-      ),
-      "",
-    );
-  }
-
-  // 7. Contract functions / asset snapshot
-  if (r.subject.kind === "contract") {
-    push("## Contract functions", "");
-    if (r.functions.length) {
-      push(
-        table(
-          ["Function", "Calls", "Failed", "Failure rate"],
-          r.functions.map((f) => [`\`${f.function}\``, fmtInt(f.calls), fmtInt(f.failed), fmtPct(f.failed_pct)]),
-        ),
-      );
-    } else push("No function calls recorded in this period.");
-    push("");
-  } else {
-    push("## Asset snapshot", "");
-    const a = r.asset_snapshot;
-    if (a) {
-      push(
-        table(
-          ["Measure", "Value"],
-          [
-            ["Holders (accounts with a trustline)", fmtInt(a.holders)],
-            ["Supply in accounts", fmtNum(a.supply_in_accounts)],
-            ["Supply in contracts", fmtNum(a.supply_in_contracts)],
-            ["Supply in liquidity pools", fmtNum(a.supply_in_liquidity_pools)],
-            ["Contracts holding the asset", fmtInt(a.contract_holders)],
-            ["Liquidity pools", fmtInt(a.liquidity_pools)],
-            ["Stellar Asset Contract", a.sac_contract_id ? `[\`${a.sac_contract_id}\`](${contractUrl(net, a.sac_contract_id)})` : DASH],
-            ["stellar.toml", a.toml ? `<${a.toml}>` : DASH],
-          ],
-        ),
-        "",
-        `Snapshot from Horizon at ${fmtUtc(a.as_of)}.`,
-      );
-    } else push(`No Horizon snapshot for this asset${r.subject.id === "XLM" ? " (XLM is the native asset and has no issuer record)" : ""}.`);
-    push("");
-  }
-
-  // 8. Ecosystem
-  push("## Ecosystem position", "");
-  const e = r.ecosystem;
-  const peers = r.subject.kind === "contract" ? "contracts" : "assets";
-  if (e && e.rank != null) {
-    push(
-      table(
-        ["Measure", "Value"],
-        [
-          [`Rank by ${e.metric.replace(/_/g, " ")}`, `#${fmtInt(e.rank)} of ${fmtInt(e.of)} ${peers}`],
-          ["Percentile", fmtNum(e.percentile, 1)],
-          [`Median failure rate of peer ${peers}`, fmtPct(e.median_failed_pct)],
-        ],
-      ),
-    );
-  } else push(`${DASH} (not enough peers in this period)`);
-  push("");
-
-  // 9. Coverage & methodology
-  const c = r.coverage;
-  push("## Coverage & methodology", "");
-  push(
-    table(
-      ["Measure", "Value"],
-      [
-        ["Ledger range", c.ledger_from != null && c.ledger_to != null ? `${fmtInt(c.ledger_from)} – ${fmtInt(c.ledger_to)}` : DASH],
-        ["Ledgers collected", fmtInt(c.ledgers_collected)],
-        ["Expected ledgers in period", fmtInt(c.expected_ledgers)],
-        ["Completeness", fmtPct(c.completeness_pct)],
-        ["Time covered", `${heldTime(c)} of ${r.period.days} days`],
-        ["Collection started", c.collection_started ?? DASH],
-      ],
-    ),
-    "",
-  );
-  r.methodology.forEach((m) => push(`- ${m}`));
-  push("");
-
-  // 10. Verification
-  push(
-    "## Verification",
-    "",
-    "This file is verifiable: its sha256 hash can be recorded in BlocRA's report registry on Stellar. " +
-      "Upload this exact file at BlocRA → Verify Report (/verify-report) to check that it was published and has not been modified.",
-    "",
-  );
-
-  return out.join("\n");
-}
-
-/** Raw JSON export (with the AI summary only when the user added one). */
-export function reportToJson(r: TractionReport, extras: ReportExtras = {}): string {
-  const body = extras.aiSummary?.trim() ? { ...r, ai_summary: extras.aiSummary.trim() } : r;
-  return JSON.stringify(body, null, 2);
 }

@@ -1,7 +1,7 @@
 // The traction report rendered as a printable document (white "paper" sheet),
-// in the same section order as the Markdown and PDF exports.
+// in the same section order as the PDF rendering and the CLI's Markdown.
 import { useState } from "react";
-import { ArrowDownRight, ArrowUpRight, Check, Copy, AlertTriangle, ExternalLink } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Check, Copy, AlertTriangle, ExternalLink, ShieldCheck } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import {
   type TractionReport,
@@ -68,10 +68,13 @@ export function TractionReportDocument({
   report: r,
   aiSummary,
   verification,
+  signed = false,
 }: {
   report: TractionReport;
   aiSummary?: string | null;
   verification: React.ReactNode;
+  /** The report came with BlocRA's signature (shown in the header). */
+  signed?: boolean;
 }) {
   const [copied, setCopied] = useState(false);
   const partial = partialDataNote(r);
@@ -118,6 +121,18 @@ export function TractionReportDocument({
             </dd>
             <dt className="text-zinc-500">Generated</dt>
             <dd>{fmtUtc(r.generated_at)}</dd>
+            <dt className="text-zinc-500">Method</dt>
+            <dd className="font-mono text-xs leading-5">{r.method_version ?? DASH}</dd>
+            <dt className="text-zinc-500">Signature</dt>
+            <dd data-testid="signature-status">
+              {signed ? (
+                <span className="inline-flex items-center gap-1 text-emerald-700">
+                  <ShieldCheck className="h-3.5 w-3.5" /> Signed by BlocRA (see Verification)
+                </span>
+              ) : (
+                <span className="text-amber-700">Unsigned</span>
+              )}
+            </dd>
           </dl>
         </div>
         <img src="/blocra-logo.png" alt="BlocRA" className="h-14 w-14 rounded-full border border-zinc-200 shrink-0" />

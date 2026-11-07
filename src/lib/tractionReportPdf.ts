@@ -1,7 +1,13 @@
-// PDF export of the Stellar traction report (same template as the page and
-// the Markdown export). Built with jsPDF's standard fonts, so text is reduced
-// to Latin-1 (dashes, ellipses and symbols are spelled out).
+// PDF rendering of the Stellar traction report (same template as the page).
+// Built with jsPDF's standard fonts, so text is reduced to Latin-1 (dashes,
+// ellipses and symbols are spelled out).
+//
+// The PDF is a human-friendly rendering, not the verifiable artifact: it says
+// so on every page and names the signed report's sha256 and signer, so a
+// reader can ask for (or match it with) the .md / .json that
+// `npx blocra verify` checks.
 import { jsPDF } from "jspdf";
+import type { Attestation } from "@/lib/blocra/types";
 import {
   type ReportExtras,
   type TractionReport,
@@ -47,7 +53,12 @@ export async function loadLogo(src = "/blocra-logo.png"): Promise<string | null>
   }
 }
 
-export function reportToPdf(r: TractionReport, extras: ReportExtras = {}, logo: string | null = null): Blob {
+export function reportToPdf(
+  r: TractionReport,
+  extras: ReportExtras = {},
+  logo: string | null = null,
+  attestation: Attestation | null = null,
+): Blob {
   const pdf = new jsPDF({ unit: "mm", format: "a4" });
   pdf.setProperties({ title: latin1(`Stellar Traction Report - ${r.subject.label}`), creator: "BlocRA" });
   let y = M;
@@ -150,6 +161,7 @@ export function reportToPdf(r: TractionReport, extras: ReportExtras = {}, logo: 
       ["Network", `Stellar ${r.network}`],
       ["Period", `${r.period.from} to ${r.period.to} (UTC, ${r.period.days} days)`],
       ["Generated", fmtUtc(r.generated_at)],
+      ["Method", r.method_version ?? "-"],
     ],
     [0.3, 0.7],
   );
@@ -283,10 +295,26 @@ export function reportToPdf(r: TractionReport, extras: ReportExtras = {}, logo: 
   // 10. Verification
   heading("Verification");
   text(
-    "This file is verifiable: its sha256 hash can be recorded in BlocRA's report registry on Stellar. " +
-      "Upload this exact file at BlocRA > Verify Report (/verify-report) to check that it was published and has not been modified.",
+    "This PDF is a rendering for reading and printing. It is not itself signed: the verifiable artifact is the " +
+      "report's .md or .json file exported from BlocRA (or written by `blocra report`), checked with `npx blocra verify <file>` " +
+      "or at BlocRA > Verify Report (/verify-report).",
     9.5,
   );
+  if (attestation) {
+    table(
+      ["Field", "Value"],
+      [
+        ["Signed by (BlocRA)", attestation.signer],
+        ["Signature", "Ed25519 over the signed report data"],
+        ["Report sha256", attestation.payload_sha256],
+        ["Method", attestation.method_version],
+        ["Signed at", attestation.signed_at],
+      ],
+      [0.3, 0.7],
+    );
+  } else {
+    text("Unsigned report: the server that produced it does not sign reports, so no signature can be checked.", 9.5, "bold");
+  }
 
   const pages = pdf.getNumberOfPages();
   for (let i = 1; i <= pages; i++) {
@@ -294,8 +322,19 @@ export function reportToPdf(r: TractionReport, extras: ReportExtras = {}, logo: 
     pdf.setFont("helvetica", "normal");
     pdf.setFontSize(8);
     pdf.setTextColor(140);
-    pdf.text(latin1(`BlocRA - Stellar Traction Report - ${r.subject.label}`), M, PAGE_H - 8);
-    pdf.text(`Page ${i} of ${pages}`, PAGE_W - M, PAGE_H - 8, { align: "right" });
+    pdf.text(latin1(`BlocRA - Stellar Traction Report - ${r.subject.label}`), M, PAGE_H - 13);
+    pdf.text(`Page ${i} of ${pages}`, PAGE_W - M, PAGE_H - 13, { align: "right" });
+    pdf.setFontSize(6.5);
+    pdf.text(
+      attestation
+        ? "Rendering only - the verifiable artifact is the signed .md/.json (npx blocra verify)."
+        : "Rendering of an UNSIGNED report - it cannot be verified.",
+      M,
+      PAGE_H - 9.5,
+    );
+    if (attestation) {
+      pdf.text(`sha256 ${attestation.payload_sha256}  signer ${attestation.signer}`, M, PAGE_H - 6.5);
+    }
   }
 
   return pdf.output("blob");

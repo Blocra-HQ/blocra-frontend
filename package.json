@@ -11,7 +11,9 @@
     "preview": "vite preview",
     "backend": "cd backend && npm run dev",
     "start": "vite preview --port $PORT --host",
-    "start:full": "concurrently \"npm run backend\" \"npm run dev\""
+    "start:full": "concurrently \"npm run backend\" \"npm run dev\"",
+    "check:blocra": "node scripts/sync-blocra.mjs",
+    "test:reports": "node scripts/sync-blocra.mjs && npx --yes tsx src/lib/tractionReport.test.ts && npx --yes tsx scripts/blocra-sync.test.ts"
   },
   "dependencies": {
     "@duneanalytics/client-sdk": "^0.2.5",
