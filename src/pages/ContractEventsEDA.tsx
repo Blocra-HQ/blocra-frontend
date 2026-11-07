@@ -20,7 +20,6 @@ import { DatabaseService } from '@/services/DatabaseService';
 import { StateAnalysisService } from '@/services/StateAnalysisService';
 import { DependencyGraphService } from '@/services/DependencyGraphService';
 import { AdvancedAIService } from '@/services/AdvancedAIService';
-import { RealtimeService } from '@/services/RealtimeService';
 import { AlertPanel } from '@/components/AlertPanel';
 import { DependencyGraph } from '@/components/DependencyGraph';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPieChart, Cell, LineChart, Line, AreaChart, Area, Pie } from 'recharts';
@@ -274,7 +273,6 @@ export default function ContractEventsEDA() {
   const [anomalies, setAnomalies] = useState<any[]>([]);
   const [predictions, setPredictions] = useState<any[]>([]);
   const [stateAnalysis, setStateAnalysis] = useState<any>(null);
-  const [realtimeEnabled, setRealtimeEnabled] = useState(false);
   const [cancelFetch, setCancelFetch] = useState(false);
 
   // Clear all state when chain changes
@@ -291,7 +289,6 @@ export default function ContractEventsEDA() {
     setAnomalies([]);
     setPredictions([]);
     setStateAnalysis(null);
-    setRealtimeEnabled(false);
     setCancelFetch(false);
   }, [currentChain.id]); // Re-run when chain ID changes
 
@@ -599,11 +596,6 @@ export default function ContractEventsEDA() {
           }
         }
 
-        // Enable real-time updates
-        if (validContracts.length === 1) {
-          const unsubscribe = RealtimeService.simulateRealtimeUpdates(validContracts[0].address);
-          setRealtimeEnabled(true);
-        }
       } else {
         // NO EVENTS FOUND - Show dashboard with zero values instead of hiding it
         const zeroStats = {
