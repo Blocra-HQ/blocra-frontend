@@ -85,7 +85,7 @@ export async function verifyEnvelope(
       unsupported: true,
       report: safeParse(text),
       sha256: s ? await sha256Hex(text, s) : null,
-      reasons: ["This browser cannot check Ed25519 signatures (WebCrypto Ed25519 is unsupported). Use a current browser or `npx blocra verify`."],
+      reasons: ["This browser cannot check Ed25519 signatures (WebCrypto Ed25519 is unsupported). Use a current browser or `blocra verify`."],
     };
   }
   if (att.algorithm !== "ed25519") reasons.push(`Unsupported signature algorithm "${att.algorithm}"`);

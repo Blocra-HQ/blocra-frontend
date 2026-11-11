@@ -5,7 +5,7 @@
 // The PDF is a human-friendly rendering, not the verifiable artifact: it says
 // so on every page and names the signed report's sha256 and signer, so a
 // reader can ask for (or match it with) the .md / .json that
-// `npx blocra verify` checks.
+// `blocra verify` checks.
 import { jsPDF } from "jspdf";
 import type { Attestation } from "@/lib/blocra/types";
 import {
@@ -296,7 +296,7 @@ export function reportToPdf(
   heading("Verification");
   text(
     "This PDF is a rendering for reading and printing. It is not itself signed: the verifiable artifact is the " +
-      "report's .md or .json file exported from BlocRA (or written by `blocra report`), checked with `npx blocra verify <file>` " +
+      "report's .md or .json file exported from BlocRA (or written by `blocra report`), checked with `blocra verify <file>` " +
       "or at BlocRA > Verify Report (/verify-report).",
     9.5,
   );
@@ -327,7 +327,7 @@ export function reportToPdf(
     pdf.setFontSize(6.5);
     pdf.text(
       attestation
-        ? "Rendering only - the verifiable artifact is the signed .md/.json (npx blocra verify)."
+        ? "Rendering only - the verifiable artifact is the signed .md/.json (blocra verify)."
         : "Rendering of an UNSIGNED report - it cannot be verified.",
       M,
       PAGE_H - 9.5,

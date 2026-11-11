@@ -37,7 +37,7 @@ This repository is the browser app. It works with:
 | Contract Analysis | `/contract-events-eda` | Fetches a contract's events and activity: Soroban contracts through Stellar RPC `getEvents` (and, for comparison, EVM contracts through logs, Starknet through `starknet_getEvents`). Shows event mix, users, transfer volume, top callers and timelines, with CSV/JSON/image export. Not yet available for Cosmos chains. |
 | Reports | `/reports` | Verifiable Stellar traction report for a Soroban contract or an asset (see [Reports](#reports)). Stellar contracts in Contract Analysis link here. |
 | Event summary | in Contract Analysis (non-Stellar chains) | A written summary of the loaded events by the backend AI analyst, or a statistical summary labelled as such when no AI is configured. Download as PDF or DOCX. |
-| Publish and verify | `/verify-report` | Checks a report file in the browser (it is never uploaded): a `.md` or `.json` traction report against BlocRA's Ed25519 signature, the same check as `npx blocra verify`, and any file (including PDF/DOCX) against the on-chain report registry. "Publish on Stellar" records an exported file's sha256 in that registry, signed with Freighter. See [Verify](#verify). |
+| Publish and verify | `/verify-report` | Checks a report file in the browser (it is never uploaded): a `.md` or `.json` traction report against BlocRA's Ed25519 signature, the same check as `blocra verify`, and any file (including PDF/DOCX) against the on-chain report registry. "Publish on Stellar" records an exported file's sha256 in that registry, signed with Freighter. See [Verify](#verify). |
 | Query editor | `/query` | SQL over the backend's analytics store (stored Stellar ledgers, transactions and operations; sampled blocks of other chains), with schema and data coverage, sample queries, CSV export and natural-language-to-SQL from the AI analyst. |
 | Dashboard builder | `/builder` | Charts, tables and numbers from SQL queries, arranged on a canvas; saved to your account, exported as PNG or JSON, imported from JSON. |
 | Library | `/library` | Saved queries and dashboards. |
@@ -84,7 +84,7 @@ mainnet ledgers it has collected and **signs** the report with BlocRA's Ed25519 
 The page renders the signed `report_json` as-is; anything missing shows as "—".
 
 The website and the [blocra CLI](https://github.com/Blocra-HQ/blocra-cli) produce **the same files**:
-a report exported here passes `npx blocra verify`, and one written by `blocra report` verifies here.
+a report exported here passes `blocra verify`, and one written by `blocra report` verifies here.
 
 - **Pick a subject:** contract or asset, from the most active ones (`GET /api/reports/subjects`) or by
   pasting an id; 7 or 30 days. Links of the form `/reports?subject=<id>&days=7[&relayers=G…]` open a
@@ -102,7 +102,7 @@ a report exported here passes `npx blocra verify`, and one written by `blocra re
   the last export's file sha256 and registry status.
 - **Exports:**
   - **Verifiable report (.md)**: exactly `blocra report`'s Markdown, with the signed envelope embedded
-    at the end. `npx blocra verify file.md` checks the signature and that the text was not edited.
+    at the end. `blocra verify file.md` checks the signature and that the text was not edited.
   - **Signed data (.json)**: the signed envelope `{report_json, attestation}`, as the CLI writes it.
   - **PDF (rendering)**: for reading and printing. Not itself verifiable; it says so on every page and
     names the report sha256 and signer in the footer. **Print / Save as PDF** prints the page.
@@ -117,27 +117,30 @@ a report exported here passes `npx blocra verify`, and one written by `blocra re
 - **AI summary (optional):** "Add AI summary" asks the backend AI analyst to summarise the figures; it
   is shown in a labelled box and included in the PDF only. The signed .md/.json never contain it.
 
-### One renderer for the website and the CLI
+### One report format for the website and the CLI
 
-The verifiable format is defined once, in blocra-cli's `src/markdown.js`. Until the `blocra` npm
-package is published, `src/lib/blocra/{markdown,strkey,defaults}.js` are exact copies (a header
-comment followed by the CLI file, unchanged); `src/lib/blocra/verify.ts` is the browser verifier
-(WebCrypto Ed25519) and `src/lib/blocra/files.ts` names and writes the exports like the CLI.
+The [blocra CLI](https://github.com/Blocra-HQ/blocra-cli) is written in Rust; the website renders the
+same files in the browser with `src/lib/blocra/markdown.js`. The two renderers are kept byte-identical
+by golden files in blocra-cli's `test/fixtures`, which both must reproduce. `src/lib/blocra/defaults.js`
+(official API and signing keys) is generated from blocra-cli's `defaults.json`;
+`src/lib/blocra/verify.ts` is the browser verifier (WebCrypto Ed25519) and `src/lib/blocra/files.ts`
+names and writes the exports like the CLI.
 
 ```bash
-npm run check:blocra                 # fails if a copy differs from ../blocra-cli/src (skipped if absent)
-node scripts/sync-blocra.mjs --write # re-sync after changing the CLI (BLOCRA_CLI_DIR to override the path)
-npm run test:reports                 # sync check + report tests + web/CLI cross-check
+npm run check:blocra                 # renderer vs golden files, keys vs defaults.json (skipped without ../blocra-cli)
+node scripts/sync-blocra.mjs --write # regenerate defaults.js after the CLI's keys change (BLOCRA_CLI_DIR to override the path)
+npm run test:reports                 # that check + report tests + web/CLI cross-check
 ```
 
 `scripts/blocra-sync.test.ts` takes real signed envelopes (from a backend at `BLOCRA_API`,
 `localhost:10000` or `localhost:3001`, else the CLI's signed fixtures), exports them with the website
-code, and asserts that `node ../blocra-cli/bin/blocra.js verify` and the browser verifier both say
-VALID for the genuine files and FAIL for a tampered figure, a tampered signed number or another key.
+code, and asserts that the `blocra` binary (`BLOCRA_BIN`, or built from `../blocra-cli` with cargo)
+and the browser verifier both say VALID for the genuine files and FAIL for a tampered figure, a
+tampered signed number or another key.
 
 ## Verify
 
-`/verify-report` checks a file in the browser, the way `npx blocra verify` does:
+`/verify-report` checks a file in the browser, the way `blocra verify` does:
 
 1. **BlocRA signature** (`.md` or `.json`): reads the signed envelope (embedded in the Markdown, or the
    JSON itself), checks the Ed25519 signature over `report_json` with WebCrypto
@@ -223,7 +226,7 @@ Soroban RPCs for the Stellar chain).
 | `npm run build` | Production build to `dist/` |
 | `npm run preview` | Serve the production build locally |
 | `npm run lint` | ESLint |
-| `npm run check:blocra` | Check `src/lib/blocra` matches `../blocra-cli/src` |
+| `npm run check:blocra` | Check the website renderer and keys against `../blocra-cli` |
 | `npm run test:reports` | Report tests and the web/CLI verification cross-check |
 
 ## Deployment
@@ -241,7 +244,7 @@ src/
 │                           DashboardBuilder, LibraryPage, Settings, Profile, ...
 ├── components/             layout, ai (chat), reports, query, dashboard, data-explorer, ui (shadcn/ui)
 ├── lib/tractionReport*.ts  traction report formatting for the page, PDF rendering
-├── lib/blocra/             report renderer copied from blocra-cli, browser verifier, export files
+├── lib/blocra/             report renderer (kept identical to blocra-cli), browser verifier, export files
 ├── config/
 │   ├── chains.ts           supported chains and verified RPCs (generated from blocra-research)
 │   └── api.ts              backend URL handling

@@ -7,7 +7,7 @@
 //
 // The verifiable exports (.md / .json) are NOT produced here: they come from
 // the CLI's renderer vendored at src/lib/blocra (see src/lib/blocra/files.ts),
-// so they are byte-identical to `blocra report` and pass `npx blocra verify`.
+// so they are byte-identical to `blocra report` and pass `blocra verify`.
 
 export interface Kpi {
   value: number | null;

@@ -1,6 +1,5 @@
-// copied from blocra-cli src/strkey.js v0.2.0 — keep identical.
-// Do not edit here: change blocra-cli, then run `node scripts/sync-blocra.mjs --write`.
-// `npm run check:blocra` fails when this copy and the CLI differ.
+// Stellar account id decoding for the browser verifier (the blocra CLI has the
+// same logic in Rust, blocra-cli src/strkey.rs).
 
 // Decoding of Stellar strkeys (G... account ids), enough to turn a signer's
 // public key into its 32 raw Ed25519 bytes. RFC 4648 base32, one version

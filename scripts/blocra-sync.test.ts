@@ -7,22 +7,34 @@
 //  b. a tampered figure fails it,
 //  c. the website's browser verifier (WebCrypto, src/lib/blocra/verify.ts)
 //     gives the same outcome on the same files.
-// Needs blocra-cli checked out at ../blocra-cli (or BLOCRA_CLI_DIR). Files are
-// written under BLOCRA_SYNC_OUT (default: the OS temp dir).
+// The CLI is the Rust binary: BLOCRA_BIN, else blocra-cli at ../blocra-cli (or
+// BLOCRA_CLI_DIR), built with cargo if needed. Files are written under
+// BLOCRA_SYNC_OUT (default: the OS temp dir).
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import { envelopeJson, verifiableMarkdown } from "../src/lib/blocra/files";
 import { ed25519Supported, verifyReportFile } from "../src/lib/blocra/verify";
 import type { SignedEnvelope } from "../src/lib/blocra/types";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const cliDir = resolve(process.env.BLOCRA_CLI_DIR ?? join(root, "..", "blocra-cli"));
-const CLI = join(cliDir, "bin", "blocra.js");
-if (!existsSync(CLI)) {
+const exe = process.platform === "win32" ? "blocra.exe" : "blocra";
+function findCli(): string | null {
+  if (process.env.BLOCRA_BIN) return process.env.BLOCRA_BIN;
+  if (!existsSync(join(cliDir, "Cargo.toml"))) return null;
+  for (const profile of ["release", "debug"]) {
+    const bin = join(cliDir, "target", profile, exe);
+    if (existsSync(bin)) return bin;
+  }
+  execFileSync("cargo", ["build", "--quiet", "--manifest-path", join(cliDir, "Cargo.toml")], { stdio: "inherit" });
+  return join(cliDir, "target", "debug", exe);
+}
+const CLI = findCli();
+if (!CLI) {
   console.log(`blocra-cli not found at ${cliDir}; skipping the web/CLI cross-check.`);
   process.exit(0);
 }
@@ -66,7 +78,7 @@ function fromFixtures() {
 
 function cliVerify(file: string, key: string): { code: number; out: string } {
   try {
-    return { code: 0, out: execFileSync("node", [CLI, "verify", file, "--key", key], { encoding: "utf8", env: { ...process.env, NO_COLOR: "1" } }) };
+    return { code: 0, out: execFileSync(CLI!, ["verify", file, "--key", key], { encoding: "utf8", env: { ...process.env, NO_COLOR: "1" } }) };
   } catch (e: any) {
     return { code: e.status ?? 1, out: `${e.stdout ?? ""}${e.stderr ?? ""}` };
   }
@@ -95,7 +107,6 @@ async function agree(file: string, key: string, expectValid: boolean, reason?: R
 
 const { source, envelopes } = (await fromBackend()) ?? fromFixtures();
 console.log(`# envelopes from ${source}`);
-const cliMarkdown = await import(pathToFileURL(join(cliDir, "src", "markdown.js")).href);
 const outRoot = process.env.BLOCRA_SYNC_OUT ?? tmpdir();
 mkdirSync(outRoot, { recursive: true });
 const dir = mkdtempSync(join(outRoot, "blocra-web-"));
@@ -112,9 +123,14 @@ for (const [label, env] of envelopes) {
   writeFileSync(`${base}.md`, md);
   writeFileSync(`${base}.json`, json);
 
-  await test(`${label}: web .md is byte-identical to the CLI renderer's`, () => {
-    assert.equal(md, cliMarkdown.renderMarkdown(env));
-  });
+  // `blocra verify` re-renders the body in Rust and compares it with the file, so a
+  // VALID result below also proves the two renderers agree on this report.
+  const golden = join(cliDir, "test", "fixtures", label.replace(/\.json$/, ".md"));
+  if (existsSync(golden)) {
+    await test(`${label}: web .md is byte-identical to the CLI's golden file`, () => {
+      assert.equal(md, readFileSync(golden, "utf8"));
+    });
+  }
 
   await test(`${label}: web .md and .json are VALID for blocra verify and the browser verifier`, async () => {
     await agree(`${base}.md`, signer, true);

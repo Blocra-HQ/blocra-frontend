@@ -1,6 +1,7 @@
-// copied from blocra-cli src/markdown.js v0.2.0 — keep identical.
-// Do not edit here: change blocra-cli, then run `node scripts/sync-blocra.mjs --write`.
-// `npm run check:blocra` fails when this copy and the CLI differ.
+// The website's renderer for verifiable reports. It must stay byte-identical to
+// the blocra CLI's (Rust, blocra-cli src/markdown.rs): both reproduce the golden
+// files in blocra-cli test/fixtures, and `npm run check:blocra` fails otherwise.
+// Change the layout in both renderers and regenerate those files together.
 
 // Markdown rendering of a traction report.
 //

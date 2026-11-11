@@ -1,4 +1,4 @@
-// Verify a report file in the browser, like `npx blocra verify <file>`:
+// Verify a report file in the browser, like `blocra verify <file>`:
 //
 // 1. BlocRA's signature (.md with the embedded envelope, or the .json
 //    envelope): Ed25519 via WebCrypto against a trusted BlocRA key, and for
@@ -98,7 +98,7 @@ export default function VerifyReport() {
         <p className="text-muted-foreground mt-1">
           Check that a BlocRA traction report is authentic and unmodified. A <span className="font-mono">.md</span> or{" "}
           <span className="font-mono">.json</span> report is checked against BlocRA's signature, the same check as{" "}
-          <span className="font-mono">npx blocra verify</span>; any file is also looked up in the BlocRA report registry on Stellar{" "}
+          <span className="font-mono">blocra verify</span>; any file is also looked up in the BlocRA report registry on Stellar{" "}
           {STELLAR_NETWORK}. The file is read in your browser and never uploaded.
         </p>
       </div>
@@ -136,7 +136,7 @@ export default function VerifyReport() {
                 Trusting {trust.keys.length > 1 ? "keys" : "key"} <span className="font-mono">{trust.keys.join(", ")}</span>{" "}
                 {trust.source === "built-in"
                   ? "(BlocRA's official keys built into this site)"
-                  : `(served by ${new URL(API_CONFIG.apiUrl, window.location.href).host}/api/attestation/key; pin it with npx blocra verify --key for an independent check)`}
+                  : `(served by ${new URL(API_CONFIG.apiUrl, window.location.href).host}/api/attestation/key; pin it with blocra verify --key for an independent check)`}
               </span>
             )}
           </p>
@@ -194,7 +194,7 @@ export default function VerifyReport() {
           <CardContent className="pt-6 text-sm">
             {result.name} is not a signed report file, so BlocRA's signature cannot be checked. Ask for the{" "}
             <span className="font-mono">.md</span> or <span className="font-mono">.json</span> export, which{" "}
-            <span className="font-mono">npx blocra verify</span> and this page can check. The registry lookup below still applies.
+            <span className="font-mono">blocra verify</span> and this page can check. The registry lookup below still applies.
           </CardContent>
         </Card>
       )}

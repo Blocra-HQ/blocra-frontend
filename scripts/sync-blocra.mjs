@@ -1,58 +1,81 @@
 #!/usr/bin/env node
-// Keeps src/lib/blocra/*.js identical to blocra-cli's src/*.js, so a report
-// exported from the website is byte-for-byte what `blocra report` writes and
-// `npx blocra verify` accepts.
+// Keeps the website's report files identical to the blocra CLI's (Rust,
+// Blocra-HQ/blocra-cli), so a report exported here is byte-for-byte what
+// `blocra report` writes and `blocra verify` accepts.
 //
-//   node scripts/sync-blocra.mjs          check (exit 1 if a copy differs)
-//   node scripts/sync-blocra.mjs --write  re-copy from the CLI
+//   node scripts/sync-blocra.mjs          check (exit 1 on any difference)
+//   node scripts/sync-blocra.mjs --write  rewrite src/lib/blocra/defaults.js
+//                                         from the CLI's defaults.json
 //
-// The CLI is looked up at ../blocra-cli (override with BLOCRA_CLI_DIR). When
-// it is not checked out next to this repo the check is skipped, not failed.
-// Each vendored file is a "// copied from ..." header followed by the CLI file
-// unchanged.
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+// Checks, against blocra-cli at ../blocra-cli (override with BLOCRA_CLI_DIR):
+//  1. src/lib/blocra/markdown.js renders every golden file in the CLI's
+//     test/fixtures byte for byte (the CLI's own tests check the same files);
+//  2. src/lib/blocra/defaults.js has the CLI's official API and keys.
+// When the CLI is not checked out next to this repo the check is skipped.
+import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const cliDir = resolve(process.env.BLOCRA_CLI_DIR ?? join(root, "..", "blocra-cli"));
-const FILES = ["markdown.js", "strkey.js", "defaults.js"];
+const fixtures = join(cliDir, "test", "fixtures");
 const write = process.argv.includes("--write");
 
-const header = (file, version) =>
-  `// copied from blocra-cli src/${file} v${version} — keep identical.\n` +
-  `// Do not edit here: change blocra-cli, then run \`node scripts/sync-blocra.mjs --write\`.\n` +
-  `// \`npm run check:blocra\` fails when this copy and the CLI differ.\n\n`;
-
-/** The vendored file without its header comment block. */
-export function stripHeader(text) {
-  const marker = text.indexOf("\n\n");
-  return text.startsWith("// copied from blocra-cli") && marker >= 0 ? text.slice(marker + 2) : null;
-}
-
-if (!existsSync(join(cliDir, "src", "markdown.js"))) {
-  console.log(`blocra-cli not found at ${cliDir}; skipping the vendored-copy check.`);
+if (!existsSync(join(cliDir, "defaults.json")) || !existsSync(fixtures)) {
+  console.log(`blocra-cli not found at ${cliDir}; skipping the renderer check.`);
   process.exit(0);
 }
 
-const version = JSON.parse(readFileSync(join(cliDir, "package.json"), "utf8")).version;
+const lib = join(root, "src", "lib", "blocra");
+const md = await import(pathToFileURL(join(lib, "markdown.js")).href);
+const readJson = (p) => JSON.parse(readFileSync(p, "utf8"));
 let differ = 0;
-for (const file of FILES) {
-  const source = readFileSync(join(cliDir, "src", file), "utf8");
-  const target = join(root, "src", "lib", "blocra", file);
-  const current = existsSync(target) ? readFileSync(target, "utf8") : "";
-  if (write) {
-    const next = header(file, version) + source;
-    if (next !== current) writeFileSync(target, next);
-    console.log(`${next === current ? "unchanged" : "updated  "} src/lib/blocra/${file}`);
-  } else if (stripHeader(current) !== source) {
+const check = (label, ok) => {
+  if (ok) console.log(`✓ ${label}`);
+  else {
     differ++;
-    console.error(`✗ src/lib/blocra/${file} differs from ${join(cliDir, "src", file)}`);
-  } else {
-    console.log(`✓ src/lib/blocra/${file} matches blocra-cli v${version}`);
+    console.error(`✗ ${label}`);
   }
+};
+
+for (const file of readdirSync(fixtures).filter((f) => /^signed-.*\.json$/.test(f))) {
+  const golden = join(fixtures, file.replace(/\.json$/, ".md"));
+  if (!existsSync(golden)) continue;
+  check(`renderMarkdown(${file}) matches ${file.replace(/\.json$/, ".md")}`, md.renderMarkdown(readJson(join(fixtures, file))) === readFileSync(golden, "utf8"));
 }
+const cases = join(fixtures, "render");
+for (const file of existsSync(cases) ? readdirSync(cases).filter((f) => f.endsWith(".json")) : []) {
+  const { report, attestation } = readJson(join(cases, file));
+  const golden = readFileSync(join(cases, file.replace(/\.json$/, ".md")), "utf8");
+  check(`renderBody(render/${file}) matches its golden file`, md.renderBody(report, attestation) === golden);
+}
+
+const defaults = readJson(join(cliDir, "defaults.json"));
+const api = defaults.api ?? null;
+const keys = defaults.official_keys ?? [];
+const defaultsPath = join(lib, "defaults.js");
+if (write) {
+  writeFileSync(
+    defaultsPath,
+    "// Generated from blocra-cli's defaults.json by `node scripts/sync-blocra.mjs --write`; do not edit.\n" +
+      "//\n" +
+      "// Official BlocRA endpoint and signing keys (newest first, past keys kept so\n" +
+      "// older reports still verify). The CLI builds the same file into its binary.\n\n" +
+      `export const DEFAULT_API = ${JSON.stringify(api)};\n` +
+      `export const OFFICIAL_KEYS = ${JSON.stringify(keys)};\n`,
+  );
+  console.log("updated   src/lib/blocra/defaults.js");
+}
+const current = await import(`${pathToFileURL(defaultsPath).href}?t=${Date.now()}`);
+check(
+  "src/lib/blocra/defaults.js matches blocra-cli defaults.json",
+  current.DEFAULT_API === api && JSON.stringify(current.OFFICIAL_KEYS) === JSON.stringify(keys),
+);
+
 if (differ) {
-  console.error("Run `node scripts/sync-blocra.mjs --write` to re-copy from blocra-cli.");
+  console.error(
+    "The website and the CLI disagree. Renderer: change src/lib/blocra/markdown.js and blocra-cli's src/markdown.rs together, " +
+      "and regenerate the golden files. Keys: run `node scripts/sync-blocra.mjs --write`.",
+  );
   process.exit(1);
 }

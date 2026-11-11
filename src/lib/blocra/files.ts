@@ -1,6 +1,6 @@
 // The report files the website exports, written exactly like `blocra report`
 // (blocra-cli bin/blocra.js cmdReport), so web and CLI exports are the same
-// bytes and both pass `npx blocra verify`.
+// bytes and both pass `blocra verify`.
 import { renderBody, renderMarkdown } from "./markdown";
 import type { SignedEnvelope } from "./types";
 

@@ -4,7 +4,7 @@
 //
 // Exports match the CLI byte for byte (renderer vendored from blocra-cli in
 // src/lib/blocra): the .md is `blocra report`'s Markdown with the signed
-// envelope embedded, the .json is the envelope; both pass `npx blocra verify`.
+// envelope embedded, the .json is the envelope; both pass `blocra verify`.
 // The PDF is a rendering for people and says so.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
@@ -258,7 +258,7 @@ export default function Reports() {
             <>
               This report is signed by BlocRA (Ed25519 over the exact report data). Export the{" "}
               <span className="font-medium">verifiable report (.md)</span> or <span className="font-medium">signed data (.json)</span>{" "}
-              and anyone can check it with <span className="font-mono">npx blocra verify &lt;file&gt;</span> or at{" "}
+              and anyone can check it with <span className="font-mono">blocra verify &lt;file&gt;</span> or at{" "}
               <span className="font-mono">/verify-report</span>; editing any figure breaks verification. The PDF is a rendering for
               reading, not the verifiable artifact.
             </>
@@ -317,8 +317,8 @@ export default function Reports() {
             <CardDescription>
               Independent usage figures for a Soroban contract or a Stellar asset — active and returning accounts, failure rate,
               concentration and bot share, relayed calls, ecosystem rank — computed and signed by BlocRA from mainnet ledgers. The
-              exported .md / .json are the same files <span className="font-mono">npx blocra report</span> writes, so reviewers and
-              investors can check them with <span className="font-mono">npx blocra verify</span>.
+              exported .md / .json are the same files <span className="font-mono">blocra report</span> writes, so reviewers and
+              investors can check them with <span className="font-mono">blocra verify</span>.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -415,7 +415,7 @@ export default function Reports() {
                   <AlertTriangle className="h-4 w-4 shrink-0" />
                   <span>
                     Unsigned — this server doesn't sign reports{fetched?.unsignedReason ? ` (${fetched.unsignedReason})` : ""}. Exports
-                    can't be checked with <span className="font-mono">npx blocra verify</span>.
+                    can't be checked with <span className="font-mono">blocra verify</span>.
                   </span>
                 </p>
               )}
