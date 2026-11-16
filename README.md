@@ -80,15 +80,18 @@ This repository is the browser app. It works with:
 or a Stellar asset, for teams proving traction to grant reviewers and investors, issuers tracking
 holders and flows, and investors comparing projects. The backend computes every figure from the
 mainnet ledgers it has collected and **signs** the report with BlocRA's Ed25519 key
-(`GET /api/reports/traction?subject=<C… | XLM | CODE:ISSUER>&days=7|30&chain=stellar&signed=true[&relayers=G…,G…]`).
+(`GET /api/reports/traction?subject=<C… | XLM | CODE:ISSUER>&range=<period>&chain=stellar&signed=true[&relayers=G…,G…]`).
 The page renders the signed `report_json` as-is; anything missing shows as "—".
 
 The website and the [blocra CLI](https://github.com/Blocra-HQ/blocra-cli) produce **the same files**:
 a report exported here passes `blocra verify`, and one written by `blocra report` verifies here.
 
 - **Pick a subject:** contract or asset, from the most active ones (`GET /api/reports/subjects`) or by
-  pasting an id; 7 or 30 days. Links of the form `/reports?subject=<id>&days=7[&relayers=G…]` open a
-  report directly.
+  pasting an id.
+- **Pick a period:** Today, 7 days, 30 days, 90 days, 1 year, All time, or Custom UTC dates (both
+  days included). Reports cover whole UTC days. Links of the form
+  `/reports?subject=<id>&range=30d` (or `&from=2026-11-01&to=2026-11-16`, or the older `&days=7`;
+  optionally `&relayers=G…`) open a report directly.
 - **Declared relayers (contracts, optional):** comma-separated `G…` accounts your project uses to
   submit transactions for users, sent as `relayers=` (the CLI's `--relayer`). Users who sign their own
   authorization are found automatically; list only relayers that sign everything themselves, so their
