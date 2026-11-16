@@ -13,6 +13,7 @@ import {
   fmtNum,
   fmtPct,
   fmtUtc,
+  dayCount,
   heldTime,
   partialDataNote,
   qualityRows,
@@ -117,7 +118,7 @@ export function TractionReportDocument({
             <dd>{r.subject.kind === "contract" ? "Soroban contract" : "Asset"}</dd>
             <dt className="text-zinc-500">Period</dt>
             <dd>
-              {r.period.from} – {r.period.to} (UTC, {r.period.days} days)
+              {r.period.from} – {r.period.to} (UTC, {dayCount(r.period.days)})
             </dd>
             <dt className="text-zinc-500">Generated</dt>
             <dd>{fmtUtc(r.generated_at)}</dd>
@@ -368,7 +369,7 @@ export function TractionReportDocument({
             ["Ledgers collected", fmtInt(c.ledgers_collected)],
             ["Expected ledgers in period", fmtInt(c.expected_ledgers)],
             ["Completeness", fmtPct(c.completeness_pct)],
-            ["Time covered", `${heldTime(c)} of ${r.period.days} days`],
+            ["Time covered", `${heldTime(c)} of ${dayCount(r.period.days)}`],
             ["Collection started", c.collection_started ?? DASH],
           ]}
         />

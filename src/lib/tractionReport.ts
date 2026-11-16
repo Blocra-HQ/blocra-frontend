@@ -26,6 +26,8 @@ export interface TractionReport {
   generated_at: string;
   period: {
     days: number;
+    /** What was asked for: "7d", "all", "1m", "custom", ... */
+    range?: string;
     from: string;
     to: string;
     previous_from: string;
@@ -234,6 +236,9 @@ export function scorecard(r: TractionReport): ScorecardRow[] {
 
 export const reportTitle = (r: TractionReport) =>
   `Traction report: ${r.subject.label} ${r.period.from}–${r.period.to}`;
+
+/** "1 day" or "7 days" (on screen and in the PDF; the signed .md keeps its own wording). */
+export const dayCount = (n: number) => `${fmtInt(n)} ${n === 1 ? "day" : "days"}`;
 
 /** "5.2 hours" under a day, otherwise "3.4 days". */
 export function heldTime(c: TractionReport["coverage"]): string {

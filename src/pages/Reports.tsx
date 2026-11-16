@@ -14,6 +14,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { TractionReportDocument } from "@/components/reports/TractionReportDocument";
+import {
+  type ReportPeriod,
+  PRESETS,
+  isCustom,
+  periodError,
+  periodFromSearch,
+  periodLabel,
+  periodParams,
+  samePeriod,
+} from "@/lib/reportPeriod";
 import { TractionReportService, type FetchedReport } from "@/services/TractionReportService";
 import { AIService } from "@/services/AIService";
 import { useStellarWallet } from "@/contexts/StellarWalletContext";
@@ -58,7 +68,15 @@ export default function Reports() {
   const [kind, setKind] = useState<Kind>(
     (params.get("kind") as Kind) || (initialSubject ? kindOf(initialSubject) : "contract"),
   );
-  const [days, setDays] = useState<7 | 30>(params.get("days") === "30" ? 30 : 7);
+  const [period, setPeriod] = useState<ReportPeriod>(() => periodFromSearch(params));
+  const periodKey = JSON.stringify(periodParams(period));
+  // Custom dates being edited, applied with the "Apply" button.
+  const [customOpen, setCustomOpen] = useState(isCustom(period));
+  const [draft, setDraft] = useState(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    return isCustom(period) ? { from: period.from, to: period.to } : { from: today, to: today };
+  });
+  const draftError = periodError(draft);
   const [subjectId, setSubjectId] = useState(initialSubject);
   const [relayersText, setRelayersText] = useState(params.get("relayers") ?? "");
 
@@ -89,13 +107,15 @@ export default function Reports() {
   useEffect(() => {
     let cancelled = false;
     setSubjectsState({ loading: true, error: null });
-    TractionReportService.subjects(kind, days, 20)
+    TractionReportService.subjects(kind, period, 20)
       .then((s) => !cancelled && (setSubjects(s), setSubjectsState({ loading: false, error: null })))
       .catch((e) => !cancelled && (setSubjects([]), setSubjectsState({ loading: false, error: errText(e) })));
     return () => {
       cancelled = true;
     };
-  }, [kind, days]);
+    // periodKey stands for period.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kind, periodKey]);
 
   // The AI summary only appears on screen and in the PDF; the signed .md/.json
   // never change.
@@ -115,7 +135,7 @@ export default function Reports() {
   };
 
   const generate = useCallback(
-    async (id: string, d: 7 | 30, relayerText: string) => {
+    async (id: string, p: ReportPeriod, relayerText: string) => {
       const subject = id.trim();
       if (!subject) return;
       // Declared relayers apply to contract calls only (as with the CLI).
@@ -132,11 +152,11 @@ export default function Reports() {
       setAiState({ loading: false, error: null });
       resetExports();
       setParams(
-        { subject, days: String(d), kind: kindOf(subject), ...(relayers.length ? { relayers: relayers.join(",") } : {}) },
+        { subject, ...periodParams(p), kind: kindOf(subject), ...(relayers.length ? { relayers: relayers.join(",") } : {}) },
         { replace: true },
       );
       try {
-        setFetched(await TractionReportService.traction(subject, d, { relayers }));
+        setFetched(await TractionReportService.traction(subject, p, { relayers }));
       } catch (e) {
         setError(errText(e));
       } finally {
@@ -146,13 +166,19 @@ export default function Reports() {
     [setParams],
   );
 
-  // ?subject=&days= opens straight into a report.
+  // ?subject=&range= (or &from=&to=, or the older &days=) opens straight into a report.
   const autoRan = useRef(false);
   useEffect(() => {
     if (autoRan.current || !initialSubject) return;
     autoRan.current = true;
-    generate(initialSubject, days, relayersText);
-  }, [initialSubject, days, relayersText, generate]);
+    generate(initialSubject, period, relayersText);
+  }, [initialSubject, period, relayersText, generate]);
+
+  const choosePeriod = (p: ReportPeriod) => {
+    setPeriod(p);
+    // A report already on screen follows the new period.
+    if (report && subjectId.trim()) generate(subjectId, p, relayersText);
+  };
 
   const buildFile = async (format: Format): Promise<ExportedFile> => {
     if (!report) throw new Error("Generate a report first");
@@ -330,18 +356,58 @@ export default function Reports() {
                   </Button>
                 ))}
               </div>
-              <div className="inline-flex rounded-md border p-0.5" role="group" aria-label="Period">
-                {([7, 30] as const).map((d) => (
-                  <Button key={d} size="sm" variant={days === d ? "default" : "ghost"} onClick={() => setDays(d)}>
-                    {d} days
+              <div className="inline-flex flex-wrap rounded-md border p-0.5" role="group" aria-label="Period" data-testid="period-picker">
+                {PRESETS.map((p) => (
+                  <Button
+                    key={p.range}
+                    size="sm"
+                    variant={!customOpen && samePeriod(period, { range: p.range }) ? "default" : "ghost"}
+                    onClick={() => {
+                      setCustomOpen(false);
+                      choosePeriod({ range: p.range });
+                    }}
+                  >
+                    {p.label}
                   </Button>
                 ))}
+                <Button size="sm" variant={customOpen ? "default" : "ghost"} onClick={() => setCustomOpen(true)}>
+                  Custom
+                </Button>
               </div>
             </div>
+            {customOpen && (
+              <div className="flex flex-wrap items-end gap-2" data-testid="custom-period">
+                <label className="text-xs text-muted-foreground">
+                  From
+                  <Input
+                    type="date"
+                    className="mt-1 w-40"
+                    value={draft.from}
+                    max={draft.to || undefined}
+                    onChange={(e) => setDraft((d) => ({ ...d, from: e.target.value }))}
+                  />
+                </label>
+                <label className="text-xs text-muted-foreground">
+                  To
+                  <Input
+                    type="date"
+                    className="mt-1 w-40"
+                    value={draft.to}
+                    min={draft.from || undefined}
+                    onChange={(e) => setDraft((d) => ({ ...d, to: e.target.value }))}
+                  />
+                </label>
+                <Button size="sm" disabled={!!draftError} onClick={() => choosePeriod({ ...draft })}>
+                  Apply
+                </Button>
+                {draftError && <span className="text-xs text-destructive">{draftError}</span>}
+                <span className="text-xs text-muted-foreground basis-full">Dates are UTC; both days are included.</span>
+              </div>
+            )}
 
             <div>
               <p className="text-xs text-muted-foreground mb-2">
-                Most active {kind === "contract" ? "contracts" : "assets"} in the last {days} days
+                Most active {kind === "contract" ? "contracts" : "assets"} ({periodLabel(period)})
               </p>
               {subjectsState.loading ? (
                 <p className="text-sm text-muted-foreground">Loading…</p>
@@ -370,7 +436,7 @@ export default function Reports() {
               className="space-y-2"
               onSubmit={(e) => {
                 e.preventDefault();
-                generate(subjectId, days, relayersText);
+                generate(subjectId, period, relayersText);
               }}
             >
               <div className="flex flex-col sm:flex-row gap-2">

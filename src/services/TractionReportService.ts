@@ -8,6 +8,7 @@ import { apiClient } from "@/lib/api";
 import { API_CONFIG } from "@/config/api";
 import type { ReportSubject, TractionReport } from "@/lib/tractionReport";
 import type { SignedEnvelope } from "@/lib/blocra/types";
+import { type ReportPeriod, periodParams } from "@/lib/reportPeriod";
 
 export interface FetchedReport {
   report: TractionReport;
@@ -38,16 +39,19 @@ async function getJson<T>(path: string): Promise<T> {
 }
 
 export const TractionReportService = {
-  async subjects(kind: "contract" | "asset", days: number, limit = 20): Promise<ReportSubject[]> {
-    const res = await apiClient.request<{ subjects: ReportSubject[] }>(
-      `/reports/subjects?kind=${kind}&days=${days}&limit=${limit}`,
-    );
+  async subjects(kind: "contract" | "asset", period: ReportPeriod, limit = 20): Promise<ReportSubject[]> {
+    const params = new URLSearchParams({ kind, ...periodParams(period), limit: String(limit) });
+    const res = await apiClient.request<{ subjects: ReportSubject[] }>(`/reports/subjects?${params}`);
     return res.subjects ?? [];
   },
 
   /** A signed report (falls back to unsigned if the server cannot sign). */
-  async traction(subject: string, days: number, opts: { relayers?: string[]; chain?: string } = {}): Promise<FetchedReport> {
-    const params = new URLSearchParams({ subject, days: String(days), chain: opts.chain ?? "stellar" });
+  async traction(
+    subject: string,
+    period: ReportPeriod,
+    opts: { relayers?: string[]; chain?: string } = {},
+  ): Promise<FetchedReport> {
+    const params = new URLSearchParams({ subject, ...periodParams(period), chain: opts.chain ?? "stellar" });
     if (opts.relayers?.length) params.set("relayers", opts.relayers.join(","));
     try {
       const res = await getJson<{ signed: SignedEnvelope }>(`/reports/traction?${params}&signed=true`);
